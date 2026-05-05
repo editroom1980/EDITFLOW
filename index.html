@@ -410,9 +410,9 @@ body{
   color:#fff;font-weight:800;
   text-shadow:0 0 8px rgba(255,255,255,0.5);
 }
-.cal-day.deadline-r .cal-day-num{color:#ff4040;font-weight:700;text-shadow:0 0 6px rgba(255,40,40,0.45)}
-.cal-day.deadline-o .cal-day-num{color:#ff8e0e;font-weight:700;text-shadow:0 0 6px rgba(255,130,0,0.4)}
-.cal-day.deadline-s .cal-day-num{color:#9eaabb;font-weight:600}
+.cal-day.deadline-red .cal-day-num{color:#ff4040;font-weight:700;text-shadow:0 0 6px rgba(255,40,40,0.45)}
+.cal-day.deadline-orange .cal-day-num{color:#ff8e0e;font-weight:700;text-shadow:0 0 6px rgba(255,130,0,0.4)}
+.cal-day.deadline-silver .cal-day-num{color:#9eaabb;font-weight:600}
 
 /* non-working day marker */
 .cal-day.nonworking::before{
@@ -432,6 +432,28 @@ body{
 /* ═══════════════════════════════════════════════
    GANTT (Project Schedule chart)
 ═══════════════════════════════════════════════ */
+.gantt-scroll-wrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  width:100%;
+}
+.gantt-scroll-wrap::-webkit-scrollbar{height:3px}
+.gantt-scroll-wrap::-webkit-scrollbar-track{background:rgba(255,255,255,0.04)}
+.gantt-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(120,160,220,0.3);border-radius:2px}
+.gantt-ctrl{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 12px 4px;
+}
+.gantt-toggle{
+  background:rgba(60,88,175,0.12);
+  border:.5px solid rgba(60,88,175,0.28);
+  border-radius:5px;
+  padding:4px 10px;
+  font:700 9px/1.3 -apple-system,sans-serif;
+  color:#7088c0;
+  cursor:pointer;
+}
+.gantt-toggle:active{opacity:0.7}
 .gantt-card{
   margin:10px 8px 8px;
   border-radius:var(--r);
@@ -939,6 +961,7 @@ const APP_VERSION = '1.0';
 const TODAY_OVERRIDE = null;
 
 const DEFAULT_STEP_LIBRARY = [
+  { code:'SH', jp:'撮影',                   en:'Shooting',        defaultHours:5 },
   { code:'IG', jp:'素材取り込み',           en:'Ingest',          defaultHours:1 },
   { code:'GR', jp:'カラーグレーディング',   en:'Color Grading',   defaultHours:2 },
   { code:'RC', jp:'仮編集',                 en:'Rough Cut',       defaultHours:4 },
@@ -1076,6 +1099,7 @@ const ui = {
   view: 'projects', // 'projects' | 'calendar'
   calMonth: null,   // {y, m} — current viewed month
   calEditMode: false,
+  ganttFullMode: false,
   sheetOpen: false,
   sheetStack: [], // for nested sheets
 };
@@ -1242,62 +1266,56 @@ function getCalendarGrid(year, month){
 /* Generate SVG bar segments for projects in current month */
 function computeBarSegments(projects, calDays){
   const segments = [];
-  for (const p of projects){
-    if (p.isComplete || !p.computedStart || !p.computedEnd) continue;
+  const URGENCY = { red:0, orange:1, silver:2 }; // 0=bottom slot
 
-    const startIdx = calDays.findIndex(d => d.date === p.computedStart);
-    const endIdx   = calDays.findIndex(d => d.date === p.computedEnd);
+  const active = projects.filter(p => !p.isComplete && p.startDate && p.deadline);
 
-    // Project might extend before/after current month
+  for (const p of active){
+    const projStart = strToDate(p.startDate);
+    const projEnd   = strToDate(p.deadline);
+    const calStart  = strToDate(calDays[0].date);
+    const calEnd    = strToDate(calDays[41].date);
+    if (projEnd < calStart || projStart > calEnd) continue;
+
+    const startIdx = calDays.findIndex(d => d.date === p.startDate);
+    const endIdx   = calDays.findIndex(d => d.date === p.deadline);
     const visStart = startIdx >= 0 ? startIdx : 0;
     const visEnd   = endIdx   >= 0 ? endIdx   : 41;
 
-    // Skip if project is entirely outside this month
-    if (startIdx < 0 && endIdx < 0){
-      // Check if any visible cell falls within project span
-      const projStart = strToDate(p.computedStart);
-      const projEnd   = strToDate(p.computedEnd);
-      const calStart  = strToDate(calDays[0].date);
-      const calEnd    = strToDate(calDays[41].date);
-      if (projEnd < calStart || projStart > calEnd) continue;
-      // Otherwise the project completely spans this month — visible from 0 to 41
-    }
-
-    const isProjStartVisible = startIdx >= 0;
-    const isProjEndVisible   = endIdx   >= 0;
-
-    // Group consecutive cells (same row, same isNonWorking) into segments
     let cur = null;
     const segs = [];
     for (let i = visStart; i <= visEnd; i++){
-      const d = calDays[i];
-      const row = Math.floor(i / 7);
+      const row = Math.floor(i/7);
       const col = i % 7;
-      const nw = d.isNonWorking;
-
-      const canExtend = cur && cur.row === row && cur.endCol + 1 === col && cur.isNonWorking === nw;
-      if (canExtend){
+      if (cur && cur.row === row && cur.endCol+1 === col){
         cur.endCol = col;
       } else {
         if (cur) segs.push(cur);
-        cur = {
-          row, startCol: col, endCol: col,
-          isNonWorking: nw,
-          urgencyColor: p.urgencyColor,
-          isProjectStart: false,
-          isProjectEnd: false,
-          projectId: p.id
-        };
+        cur = { row, startCol:col, endCol:col,
+                urgencyColor:p.urgencyColor,
+                laneKey: URGENCY[p.urgencyColor]||0,
+                isProjectStart:false, isProjectEnd:false,
+                projectId:p.id };
       }
     }
     if (cur) segs.push(cur);
-
     if (segs.length > 0){
-      if (isProjStartVisible) segs[0].isProjectStart = true;
-      if (isProjEndVisible)   segs[segs.length-1].isProjectEnd = true;
+      if (startIdx >= 0) segs[0].isProjectStart = true;
+      if (endIdx   >= 0) segs[segs.length-1].isProjectEnd = true;
     }
-
     segments.push(...segs);
+  }
+
+  // Assign slotIndex per row (same laneKey = same slot across all rows)
+  // Group by row, sort by laneKey, assign slot
+  const rowGroups = new Map();
+  for (const seg of segments){
+    if (!rowGroups.has(seg.row)) rowGroups.set(seg.row, []);
+    rowGroups.get(seg.row).push(seg);
+  }
+  for (const rowSegs of rowGroups.values()){
+    rowSegs.sort((a,b) => a.laneKey - b.laneKey);
+    rowSegs.forEach((seg, idx) => { seg.slotIndex = idx; });
   }
   return segments;
 }
@@ -1313,12 +1331,18 @@ function colorForUrgency(urg, isNW){
 
 function renderBarSegmentSVG(seg, scaling){
   const { cellW, cellH, rowGap, barH } = scaling;
+  const BAR_GAP = 1.0;
   const r = barH / 2;
   const x = seg.startCol * cellW;
   const w = (seg.endCol - seg.startCol + 1) * cellW;
-  const y = seg.row * (cellH + rowGap) + cellH - barH - 4; // 4px from cell bottom
 
-  const fill = colorForUrgency(seg.urgencyColor, seg.isNonWorking);
+  // Y: stack from bottom of cell, slotIndex=0 is bottom
+  const slot      = seg.slotIndex || 0;
+  const cellBottom = seg.row * (cellH + rowGap) + cellH;
+  const y = cellBottom - barH - slot * (barH + BAR_GAP) - 2;
+
+  // Deadline cell: darker fill
+  const fill = colorForUrgency(seg.urgencyColor, seg.isProjectEnd);
   const lc = seg.isProjectStart;
   const rc = seg.isProjectEnd;
 
@@ -1332,16 +1356,10 @@ function renderBarSegmentSVG(seg, scaling){
   } else {
     shape = `<rect x="${x}" y="${y}" width="${w}" height="${barH}" fill="${fill}"/>`;
   }
-
-  // Gloss overlay
-  const gloss = `<rect x="${x}" y="${y}" width="${w}" height="${barH/2}" fill="rgba(255,255,255,0.22)" rx="${lc&&rc?r:0}"/>`;
-
+  const gloss = `<rect x="${x}" y="${y}" width="${w}" height="${barH*0.45}" fill="rgba(255,255,255,0.24)"/>`;
   return shape + gloss;
 }
 
-/* ═══════════════════════════════════════════════
-   VIEW: PROJECTS
-═══════════════════════════════════════════════ */
 function renderProjects(){
   const projects = computeSchedule();
   const main = document.getElementById('main');
@@ -1483,93 +1501,106 @@ function renderCalendar(){
 }
 
 function renderGantt(projects, year, month){
-  const active = projects.filter(p => !p.isComplete && p.computedStart);
+  const active = projects.filter(p => !p.isComplete && p.startDate && p.deadline);
   if (active.length === 0) return '';
 
-  // Days in month
   const daysInMonth = new Date(year, month+1, 0).getDate();
-  const firstStr = `${year}-${String(month+1).padStart(2,'0')}-01`;
-  const lastStr  = `${year}-${String(month+1).padStart(2,'0')}-${String(daysInMonth).padStart(2,'0')}`;
+  const firstStr = year+'-'+String(month+1).padStart(2,'0')+'-01';
+  const lastStr  = year+'-'+String(month+1).padStart(2,'0')+'-'+String(daysInMonth).padStart(2,'0');
   const todayStr = getTodayStr();
+  const fullMode = ui.ganttFullMode;
 
-  // SVG layout
-  const W = 100; // %, will use viewBox
-  const innerW = 90; // 90 units for bars
-  const leftPad = 5;
-  const dayWidth = innerW / (daysInMonth - 1); // pixels per day step
+  // Fixed viewBox: 100 units wide
+  const VB_W    = 100;
+  const L_PAD   = 1;
+  const R_PAD   = 2;
+  const INNER_W = VB_W - L_PAD - R_PAD;
+  const DAY_W   = INNER_W / Math.max(1, daysInMonth - 1);
 
-  // Today position
+  const LABEL_H = 5;   // height reserved for label text
+  const BAR_H   = 6;   // bar height
+  const ROW_PAD = 4;   // padding below bar before next label
+  const ROW_H   = LABEL_H + BAR_H + ROW_PAD;
+  const AXIS_H  = 9;   // height of date axis
+  const VB_H    = active.length * ROW_H + AXIS_H;
+
+  // Today x
   let todayX = -1;
-  if (todayStr >= firstStr && todayStr <= lastStr){
-    const td = strToDate(todayStr);
-    todayX = leftPad + (td.getDate()-1) * dayWidth;
+  const todayDate = strToDate(todayStr);
+  if (todayDate.getFullYear()===year && todayDate.getMonth()===month){
+    todayX = L_PAD + (todayDate.getDate()-1) * DAY_W;
   }
 
-  let barRows = '';
-  const rowH = 7;
-  const rowGap = 6;
+  let rows = '';
   active.forEach((p, idx) => {
-    const y = idx * (rowH + rowGap);
-    const labelY = y - 1.5;
+    const rowY  = idx * ROW_H;
+    const labelY = rowY + LABEL_H;   // baseline of label text (ABOVE bar)
+    const barY   = rowY + LABEL_H + 0.5;  // top of bar
 
-    const ps = p.computedStart;
-    const pe = p.computedEnd;
-    if (!ps || !pe) return;
+    const ps = strToDate(p.startDate);
+    const pe = strToDate(p.deadline);
+    const mStart = strToDate(firstStr);
+    const mEnd   = strToDate(lastStr);
 
-    const psDate = strToDate(ps);
-    const peDate = strToDate(pe);
-    const monthStart = strToDate(firstStr);
-    const monthEnd   = strToDate(lastStr);
+    const visStart = ps < mStart ? mStart : ps;
+    const visEnd   = pe > mEnd   ? mEnd   : pe;
+    if (visEnd < mStart || visStart > mEnd) return;
 
-    // Clamp to current month for display
-    const visStart = psDate < monthStart ? monthStart : psDate;
-    const visEnd   = peDate > monthEnd   ? monthEnd   : peDate;
-    if (visEnd < monthStart || visStart > monthEnd) return;
+    const x1 = L_PAD + (visStart.getDate()-1) * DAY_W;
+    const x2 = L_PAD + (visEnd.getDate()-1)   * DAY_W + DAY_W * 0.7;
+    const bw  = Math.max(1.5, x2 - x1);
 
-    const x1 = leftPad + (visStart.getDate() - 1) * dayWidth;
-    const x2 = leftPad + (visEnd.getDate() - 1)   * dayWidth + dayWidth*0.6;
-    const w  = Math.max(2, x2 - x1);
+    const fill  = colorForUrgency(p.urgencyColor, false);
+    const lFill = p.urgencyColor==='red'    ? 'rgba(215,52,52,0.92)'
+                : p.urgencyColor==='orange' ? 'rgba(212,100,15,0.92)'
+                : 'rgba(145,152,162,0.92)';
 
-    const fill = colorForUrgency(p.urgencyColor, false);
-    const labelFill = p.urgencyColor === 'red' ? 'rgba(215,55,55,0.9)'
-                    : p.urgencyColor === 'orange' ? 'rgba(212,102,16,0.9)'
-                    : 'rgba(155,158,165,0.9)';
+    const title = p.title.length > 26 ? p.title.slice(0,26)+'…' : p.title;
+    const dlX   = Math.min(x2+0.5, VB_W-R_PAD-2);
 
-    const titleShort = p.title.length > 22 ? p.title.slice(0,22)+'…' : p.title;
-
-    barRows += `
-      <text x="${leftPad}" y="${labelY}" fill="${labelFill}" font-size="2.4" font-family="-apple-system" font-weight="700">${escapeHtml(titleShort)}</text>
-      <rect x="${x1}" y="${y}" width="${w}" height="${rowH}" rx="2" fill="${fill}"/>
-      <rect x="${x1}" y="${y}" width="${w}" height="${rowH/2}" rx="2" fill="rgba(255,255,255,0.2)"/>
-    `;
+    rows += `<text x="${L_PAD}" y="${labelY}" fill="${lFill}" font-size="3.8" font-family="-apple-system" font-weight="700">${escapeHtml(title)}</text>
+<rect x="${x1}" y="${barY}" width="${bw}" height="${BAR_H}" rx="1.8" fill="${fill}"/>
+<rect x="${x1}" y="${barY}" width="${bw}" height="${BAR_H*0.42}" rx="1.8" fill="rgba(255,255,255,0.22)"/>
+<polygon points="${dlX},${barY-0.5} ${dlX},${barY+BAR_H+0.5} ${dlX+2.2},${barY+BAR_H/2}" fill="${lFill}"/>
+`;
   });
 
-  // Day axis (every 5 days + 1 + last)
-  let axisHtml = '';
+  // Axis
+  const axisY = active.length * ROW_H;
+  let axis = `<line x1="${L_PAD}" y1="${axisY}" x2="${VB_W-R_PAD}" y2="${axisY}" stroke="rgba(80,105,180,0.22)" stroke-width="0.4"/>`;
   for (let d=1; d<=daysInMonth; d++){
-    const x = leftPad + (d-1) * dayWidth;
-    const isMajor = (d === 1 || d % 5 === 0 || d === daysInMonth);
-    const fontSize = isMajor ? 2.2 : 0;
-    if (isMajor){
-      axisHtml += `<text x="${x}" y="${active.length * (rowH+rowGap) + 3}" fill="rgba(74,98,160,0.6)" font-size="${fontSize}" font-family="-apple-system" text-anchor="middle">${d}</text>`;
-    }
+    const x = L_PAD + (d-1)*DAY_W;
+    const major = (d===1 || d%5===0 || d===daysInMonth);
+    if (!major) continue;
+    axis += `<line x1="${x}" y1="${axisY}" x2="${x}" y2="${axisY+2.5}" stroke="rgba(80,105,180,0.28)" stroke-width="0.4"/>`;
+    axis += `<text x="${x}" y="${axisY+7}" fill="rgba(80,105,180,0.62)" font-size="3.2" font-family="-apple-system" text-anchor="middle">${d}</text>`;
   }
 
-  const todayLine = todayX >= 0 ? `<line x1="${todayX}" y1="0" x2="${todayX}" y2="${active.length * (rowH+rowGap)}" stroke="rgba(210,235,255,0.3)" stroke-width="0.4" stroke-dasharray="1,0.8"/>` : '';
+  const todayLine = todayX >= 0
+    ? `<line x1="${todayX}" y1="0" x2="${todayX}" y2="${axisY}" stroke="rgba(210,235,255,0.32)" stroke-width="0.5" stroke-dasharray="1.5,1"/>`
+    : '';
 
-  const gantHeight = active.length * (rowH + rowGap) + 6;
+  // CSS pixel height: use fixed ratio so text doesn't distort
+  // SVG will scale uniformly (xMinYMin meet) to fill width
+  const pxH = Math.round(VB_H * 2.4);
+
+  const wrapStyle = fullMode ? 'overflow-x:auto;-webkit-overflow-scrolling:touch;' : '';
+  const svgW = fullMode ? '220%' : '100%';
 
   return `<div class="gantt-card">
-    <div class="gantt-body">
-      <div class="gantt-title">PROJECT SCHEDULE — ${year}/${String(month+1).padStart(2,'0')}</div>
-      <svg viewBox="0 0 100 ${gantHeight}" preserveAspectRatio="none" style="display:block;width:100%;height:${gantHeight*1.6}px">
-        ${todayLine}
-        ${barRows}
-        ${axisHtml}
-      </svg>
-    </div>
-  </div>`;
+  <div class="gantt-ctrl">
+    <span class="gantt-title">PROJECT SCHEDULE</span>
+    <button class="gantt-toggle" data-act="toggleGanttMode">${fullMode?'縮小表示':'全体表示'}</button>
+  </div>
+  <div class="gantt-scroll-wrap" style="${wrapStyle}">
+    <svg viewBox="0 0 ${VB_W} ${VB_H}" preserveAspectRatio="xMinYMin meet"
+         style="display:block;width:${svgW};height:${pxH}px;">
+      ${todayLine}${rows}${axis}
+    </svg>
+  </div>
+</div>`;
 }
+
 
 /* ═══════════════════════════════════════════════
    SHEET / MODAL SYSTEM
@@ -1983,6 +2014,31 @@ function attachEvents(){
 
   // Global delegated click handler
   document.addEventListener('click', handleAction);
+
+  // ① Swipe to switch tabs on #main
+  const mainEl = document.getElementById('main');
+  let swipeStartX = 0;
+  let swipeStartY = 0;
+  mainEl.addEventListener('touchstart', e => {
+    swipeStartX = e.touches[0].clientX;
+    swipeStartY = e.touches[0].clientY;
+  }, { passive: true });
+  mainEl.addEventListener('touchend', e => {
+    if (ui.sheetOpen) return;
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    const dy = e.changedTouches[0].clientY - swipeStartY;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+    const views = ['projects','calendar'];
+    const cur = views.indexOf(ui.view);
+    if (dx < 0 && cur < views.length-1){
+      ui.view = views[cur+1];
+    } else if (dx > 0 && cur > 0){
+      ui.view = views[cur-1];
+    } else return;
+    document.querySelectorAll('.tab').forEach(t =>
+      t.classList.toggle('on', t.dataset.view === ui.view));
+    render();
+  }, { passive: true });
 }
 
 function handleAction(e){
@@ -2066,6 +2122,10 @@ function handleAction(e){
       break;
     case 'saveAsPreset':
       saveCurrentProjectAsPreset();
+      break;
+    case 'toggleGanttMode':
+      ui.ganttFullMode = !ui.ganttFullMode;
+      render();
       break;
   }
 }
