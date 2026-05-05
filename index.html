@@ -211,8 +211,8 @@ body{
   flex:1;display:flex;align-items:center;gap:3px;
   font-size:11px;min-width:0;
 }
-.pj-dates .lbl{color:var(--tx-faint);font-weight:700;flex-shrink:0}
-.pj-dates .val{color:var(--tx-mid);font-weight:700;flex-shrink:0}
+.pj-dates .lbl{color:rgba(140,165,210,0.75);font-weight:700;flex-shrink:0}
+.pj-dates .val{color:rgba(188,210,245,0.92);font-weight:700;flex-shrink:0}
 .pj-dates .arrow{color:var(--tx-faint);margin:0 3px;flex-shrink:0;font-size:12px}
 .pj-dates .deadline-r{color:#ff4040;text-shadow:0 0 7px rgba(255,40,40,0.5)}
 .pj-dates .deadline-o{color:#ff8e0e;text-shadow:0 0 7px rgba(255,142,14,0.45)}
@@ -255,15 +255,15 @@ body{
 }
 .pj-step:active{transform:scale(0.92)}
 .pj-step.done{
-  background:linear-gradient(180deg,rgba(28,38,68,0.62),rgba(14,22,50,0.66));
-  border-color:rgba(60,86,165,0.22);
-  color:rgba(68,96,180,0.5);
+  background:linear-gradient(180deg,rgba(28,38,68,0.75),rgba(14,22,50,0.80));
+  border-color:rgba(80,110,195,0.35);
+  color:rgba(110,145,215,0.75);
 }
 .pj-step.todo{
-  background:linear-gradient(180deg,rgba(196,215,252,0.95),rgba(160,184,240,0.9));
-  border-color:rgba(218,236,255,0.88);
-  color:rgba(8,16,56,0.92);
-  box-shadow:0 1px 3px rgba(0,0,0,0.28),inset 0 1.5px 0 rgba(255,255,255,0.55);
+  background:linear-gradient(180deg,rgba(140,170,220,0.92),rgba(100,138,200,0.88));
+  border-color:rgba(160,200,255,0.75);
+  color:rgba(8,16,56,0.96);
+  box-shadow:0 1px 3px rgba(0,0,0,0.28),inset 0 1.5px 0 rgba(255,255,255,0.45);
 }
 
 /* ═══════════════════════════════════════════════
@@ -925,13 +925,13 @@ function makeStepInstance(libStep, hours, done){
   };
 }
 
-const PRESET_COLORS = ['#2a9d8f','#9b5de5','#4361ee','#e76f51','#06d6a0','#f72585','#6b7280'];
+const PRESET_COLORS = ['#2a9d8f','#9b5de5','#4361ee','#06d6a0','#f72585','#6b7280'];
 const DEFAULT_PRESET_COLORS = {'preset_shisou':'#2a9d8f','preset_kagayaite':'#9b5de5','preset_cm':'#4361ee'};
 const DEFAULT_PRESETS = [
   {
     id:'preset_shisou',
-    name:'しそうトピックス番組',
-    description:'地域情報番組フル工程',
+    name:'しそうトピックス',
+    description:'地域情報番組',
     color:'#2a9d8f',
     steps: DEFAULT_STEP_LIBRARY.map(s => makeStepInstance(s))
   },
@@ -999,6 +999,7 @@ function loadState(){
       if (s && s.version === APP_VERSION && s.projects && s.presets){
         s.presets.forEach(p => { if (!p.color) p.color = DEFAULT_PRESET_COLORS[p.id] || '#6b7280'; });
         s.projects.forEach(p => { if (!p.color){ const pr = s.presets.find(r=>r.id===p.presetId); p.color = pr?(pr.color||'#6b7280'):'#6b7280'; } });
+        if (!s.customColors) s.customColors = [];
         return s;
       }
     }
@@ -1011,7 +1012,8 @@ function loadState(){
     presets: DEFAULT_PRESETS.map(p => ({...p, steps: p.steps.map(s => ({...s}))})),
     stepLibrary: DEFAULT_STEP_LIBRARY.map(s => ({...s})),
     nonWorkingDates: [...DEFAULT_NON_WORKING_DATES],
-    maxHoursPerDay: DEFAULT_MAX_HOURS
+    maxHoursPerDay: DEFAULT_MAX_HOURS,
+    customColors: []
   };
 }
 
@@ -1277,24 +1279,24 @@ function renderCalendar(){
   const grid = getCalendarGrid(y, m);
   const todayStr = getTodayStr();
 
-  // ─ Dimensions matching Gantt proportionally ─
-  const BAR_H  = 14;   // px (calendar bar height)
-  const GLOSS_H = 5;   // px (gloss overlay height, same ratio as Gantt 2/5)
-  const R      = 5;    // border-radius px (Gantt rx=1.8 on h=5 ≈ 36% → 5px on h=14)
-  const GAP    = 4;    // px between bars
+  const BAR_H  = 14;
+  const GLOSS_H = 5;
+  const R      = 5;
+  const GAP    = 4;
   const SLOT_H = BAR_H + GAP;
+  const BOT_PAD = 3; // px from bottom of cell
 
   const dlMap = new Map();
   for (const p of projects) if (!p.isComplete) dlMap.set(p.deadline, p.urgencyColor);
 
-  // Sort: nearest deadline first (slot 0 = top bar)
+  // Sort: nearest deadline = slot 0 = TOP bar
   const activeForBars = projects
     .filter(p => !p.isComplete && p.startDate && p.deadline)
     .sort((a,b) => strToDate(a.deadline) - strToDate(b.deadline));
   const numSlots = activeForBars.length;
   const cellH = numSlots > 0 ? 26 + numSlots * SLOT_H : 44;
 
-  // Urgency colors for top-2 deadline items
+  // Urgency colors for top-2 deadline
   function dlUrgency(slot){
     if (slot === 0) return {border:'rgba(210,52,52,0.95)',text:'rgba(255,110,110,1)',bg:'rgba(90,6,6,0.97)'};
     if (slot === 1) return {border:'rgba(208,100,18,0.95)',text:'rgba(255,170,60,1)',bg:'rgba(80,36,2,0.97)'};
@@ -1306,14 +1308,13 @@ function renderCalendar(){
     return [parseInt(h.slice(0,2),16)||107, parseInt(h.slice(2,4),16)||114, parseInt(h.slice(4,6),16)||128];
   }
 
-  // Build a bar div with separate gloss overlay (same method as Gantt's separate rect)
-  // tl/tr/br/bl = border-radius for each corner
-  function barDivs(x1pct, wpct, barY, fill, tl, tr, br, bl, isPast){
-    const alpha = isPast ? 0.38 : 0.92;
-    const actualFill = fill.replace(/0\.92\)/, `${alpha})`);
+  // Build bar divs: main bar + gloss overlay
+  // isPast=true → darken color (multiply RGB by 0.55, keep alpha)
+  function barDivs(x1pct, wpct, barY, r, g, b, isPast, tl, tr, br, bl){
+    const mult = isPast ? 0.55 : 1.0;
+    const fill = `rgba(${Math.round(r*mult)},${Math.round(g*mult)},${Math.round(b*mult)},0.92)`;
     const brad = `${tl}px ${tr}px ${br}px ${bl}px`;
-    const bar  = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${actualFill};border-radius:${brad};box-sizing:border-box"></div>`;
-    // Gloss overlay: same width, GLOSS_H tall, white→transparent, same radius on top corners
+    const bar  = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${fill};border-radius:${brad};box-sizing:border-box"></div>`;
     const gloss = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${GLOSS_H}px;background:linear-gradient(180deg,rgba(255,255,255,0.25),rgba(255,255,255,0));border-radius:${tl}px ${tr}px 0 0;pointer-events:none"></div>`;
     return bar + gloss;
   }
@@ -1328,12 +1329,17 @@ function renderCalendar(){
     if (pe < calStart || ps > calEnd) return;
 
     const [r,g,b] = hexRgb(p.color);
-    const fillCol = `rgba(${r},${g},${b},0.92)`;
 
     const urg = dlUrgency(slot);
     const dlBorderCol = urg ? urg.border : `rgba(${r},${g},${b},0.85)`;
     const dlTextCol   = urg ? urg.text   : `rgba(${Math.min(255,r+80)},${Math.min(255,g+80)},${Math.min(255,b+80)},1)`;
     const dlBgCol     = urg ? urg.bg     : `rgba(${Math.round(r*0.35)},${Math.round(g*0.35)},${Math.round(b*0.35)},0.97)`;
+
+    // barY: stack from bottom of cell, slot0=top, slot(N-1)=bottom
+    // slot(N-1) is at bottom: row*cellH + cellH - BOT_PAD - BAR_H
+    // slot s: row*cellH + cellH - BOT_PAD - BAR_H - (numSlots-1-s)*SLOT_H
+    // → slot0(nearest,top): row*cellH + cellH - BOT_PAD - BAR_H - (numSlots-1)*SLOT_H
+    // → slot(N-1)(farthest,bottom): row*cellH + cellH - BOT_PAD - BAR_H
 
     let titleDone = false;
 
@@ -1348,45 +1354,103 @@ function renderCalendar(){
       const sCol = isProjStart ? rowDays.findIndex(d => d.date === p.startDate) : 0;
       const eCol = isProjEnd   ? rowDays.findIndex(d => d.date === p.deadline)  : 6;
 
-      // slot 0 = nearest = top bar; slot N = farthest = bottom bar
-      const barY = row * cellH + slot * SLOT_H + (cellH - numSlots * SLOT_H + GAP) / 2;
+      // この行に表示されるバーのスロット一覧
+      const slotsInRow = activeForBars
+        .map((_p,_s) => ({_p,_s}))
+        .filter(({_p}) => {
+          const _ps = strToDate(_p.startDate);
+          const _pe = strToDate(_p.deadline);
+          return !(_pe < rowStart || _ps > rowEnd);
+        })
+        .map(({_s}) => _s);
+      const rankInRow = slotsInRow.indexOf(slot); // この行内での順位(0=top)
+      const countInRow = slotsInRow.length;
+      // 1本だけ→最下段、複数→下から積み上げ(rank0=top, rankN-1=bottom)
+      const barY = countInRow <= 1
+        ? row * cellH + cellH - BOT_PAD - BAR_H
+        : row * cellH + cellH - BOT_PAD - BAR_H - (countInRow - 1 - rankInRow) * SLOT_H;
 
-      // Is this entire row segment in the past?
-      const rowEndDate = rowDays[eCol].date;
-      const isPast = rowEndDate < todayStr;
+      // Find today's column in this row (for past/future split)
+      const todayColInRow = rowDays.findIndex(d => d.date === todayStr);
+
+      // Determine past/present split for this row segment
+      const colStart = isProjStart ? sCol : 0;
+      const colEnd   = isProjEnd ? eCol : 6;
+
+      // Check if today falls within this segment
+      // todayCol < 0 means today not in this row
+      // If entire segment is before today: isPast
+      // If entire segment is after/at today: not past
+      // If split: draw two bars
+
+      const segStartDate = rowDays[colStart]?.date || '';
+      const segEndDate   = rowDays[Math.min(colEnd, 6)]?.date || '';
+
+      // dlX: deadline cell left edge (defined here for title clipping)
+      const dlX = eCol / 7 * 100;
 
       if (isProjEnd){
-        const dlX = eCol / 7 * 100;
-        const dlW = 1 / 7 * 100;
-        const bx1 = (isProjStart ? sCol : 0) / 7 * 100;
-        const bx2 = dlX;
+        const dlW  = 1 / 7 * 100;
+        const bx1  = colStart / 7 * 100;
+        const bx2  = dlX;
 
-        // Body bar: left end rounded if project starts here, right end SQUARE (connects to dl cell)
         if (bx2 > bx1){
-          const tl = isProjStart ? R : 0;
-          overlayBars += barDivs(bx1, bx2-bx1, barY, fillCol, tl, 0, 0, tl, isPast);
+          // Split at today if needed
+          if (todayColInRow >= 0 && todayColInRow > colStart && todayColInRow <= eCol){
+            // Past portion
+            const pastW = (todayColInRow - colStart) / 7 * 100;
+            const tl = isProjStart ? R : 0;
+            overlayBars += barDivs(bx1, pastW, barY, r,g,b, true, tl, 0, 0, tl);
+            // Future portion
+            const futX  = todayColInRow / 7 * 100;
+            const futW  = bx2 - futX;
+            if (futW > 0) overlayBars += barDivs(futX, futW, barY, r,g,b, false, 0, 0, 0, 0);
+          } else {
+            const allPast = segEndDate < todayStr && !isProjEnd || (bx2 > 0 && rowDays[Math.min(eCol-1,6)]?.date < todayStr);
+            const isPast  = todayColInRow < 0 ? (rowDays[6].date < todayStr) : (todayColInRow <= colStart);
+            const tl = isProjStart ? R : 0;
+            overlayBars += barDivs(bx1, bx2-bx1, barY, r,g,b, isPast, tl, 0, 0, tl);
+          }
         }
 
-        // Deadline cell: left SQUARE (connects to body), right end rounded = R
+        // Deadline cell
         const dlTl = (isProjStart && sCol === eCol) ? R : 0;
-        const dlIsPast = p.deadline < todayStr;
-        const dlAlpha = dlIsPast ? 0.5 : 1;
-        overlayBars += `<div style="position:absolute;top:${barY}px;left:${dlX.toFixed(3)}%;width:${dlW.toFixed(3)}%;height:${BAR_H}px;background:${dlBgCol};border-radius:${dlTl}px ${R}px ${R}px ${dlTl}px;border:2px solid ${dlBorderCol};box-sizing:border-box;display:flex;align-items:center;justify-content:center;z-index:10;opacity:${dlAlpha}"><span style="font-size:9px;font-weight:800;color:${dlTextCol};letter-spacing:0;line-height:1;text-shadow:0 0 5px rgba(0,0,0,0.7)">納期</span></div>`;
+        overlayBars += `<div style="position:absolute;top:${barY}px;left:${dlX.toFixed(3)}%;width:${dlW.toFixed(3)}%;height:${BAR_H}px;background:${dlBgCol};border-radius:${dlTl}px ${R}px ${R}px ${dlTl}px;border:2px solid ${dlBorderCol};box-sizing:border-box;display:flex;align-items:center;justify-content:center;z-index:10"><span style="font-size:9px;font-weight:800;color:${dlTextCol};letter-spacing:0;line-height:1;text-shadow:0 0 5px rgba(0,0,0,0.7)">納期</span></div>`;
 
       } else {
-        // Full row span
-        const bx1 = (isProjStart ? sCol : 0) / 7 * 100;
-        const bx2 = (eCol + 1) / 7 * 100;
+        const bx1 = colStart / 7 * 100;
+        const bx2 = (colEnd + 1) / 7 * 100;
         const tl  = isProjStart ? R : 0;
-        // Right end: 0 unless this is also the last row of the project (then handled by dl cell)
-        overlayBars += barDivs(bx1, bx2-bx1, barY, fillCol, tl, 0, 0, tl, isPast);
+
+        if (todayColInRow >= 0 && todayColInRow > colStart){
+          // Split at today
+          const pastW = (todayColInRow - colStart) / 7 * 100;
+          overlayBars += barDivs(bx1, pastW, barY, r,g,b, true, tl, 0, 0, tl);
+          const futX = todayColInRow / 7 * 100;
+          const futW = bx2 - futX;
+          if (futW > 0) overlayBars += barDivs(futX, futW, barY, r,g,b, false, 0, 0, 0, 0);
+        } else {
+          const isPast = todayColInRow < 0 ? (rowDays[6].date < todayStr) : (todayColInRow <= colStart);
+          overlayBars += barDivs(bx1, bx2-bx1, barY, r,g,b, isPast, tl, 0, 0, tl);
+        }
       }
 
-      // Title
+      // Title: bar start position, clipped to deadline cell left or row right
       if (!titleDone){
-        const txLeft = (isProjStart ? sCol : 0) / 7 * 100;
-        overlayBars += `<div style="position:absolute;top:${barY}px;left:calc(${txLeft.toFixed(3)}% + 4px);right:0;height:${BAR_H}px;line-height:${BAR_H}px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.92);white-space:nowrap;overflow:hidden;z-index:11;pointer-events:none">${escapeHtml(p.title)}</div>`;
+        const txLeft = colStart / 7 * 100;
+        // If deadline is in this row: clip right to deadline cell left edge
+        const clipRight = isProjEnd ? `${(dlX).toFixed(3)}%` : '0px';
+        const clipStyle = isProjEnd ? `right:calc(100% - ${(dlX).toFixed(3)}%)` : 'right:0';
+        overlayBars += `<div style="position:absolute;top:${barY}px;left:calc(${txLeft.toFixed(3)}% + 4px);${clipStyle};height:${BAR_H}px;line-height:${BAR_H}px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.92);white-space:nowrap;overflow:hidden;z-index:11;pointer-events:none">${escapeHtml(p.title)}</div>`;
         titleDone = true;
+      } else if (!isProjEnd && !isProjStart) {
+        // Continuation: show title remainder at left of this row's bar
+        // Use a canvas to estimate how many chars fit – approximate by char count
+        const charsPerRow = Math.floor((eCol + 1 - colStart) / 7 * 100 / 5.8); // ~5.8px per char at 9px
+        // Find how many chars would have shown so far (first row was full width)
+        // Simple approach: show title with ellipsis from beginning on continuation rows
+        const contTitle = '…' + p.title;
+        overlayBars += `<div style="position:absolute;top:${barY}px;left:calc(${(colStart/7*100).toFixed(3)}% + 4px);right:0;height:${BAR_H}px;line-height:${BAR_H}px;font-size:9px;font-weight:600;color:rgba(255,255,255,0.7);white-space:nowrap;overflow:hidden;z-index:11;pointer-events:none">${escapeHtml(contTitle)}</div>`;
       }
     }
   });
@@ -1473,7 +1537,7 @@ function renderGantt(projects, year, month){
 
     const x1 = L_PAD + (visS.getDate()-1) * DAY_W;
     const x2 = L_PAD + (visE.getDate()-1) * DAY_W;
-    const dlX = Math.min(x2 + DAY_W * 0.6, VB_W - R_PAD);
+    const dlX = Math.min(x2, VB_W - R_PAD - 2); // tip of arrow = axis number center
 
     // done (today以前) vs remaining
     const todayX2 = todayX >= 0 ? Math.min(todayX, dlX) : x1;
@@ -1653,12 +1717,12 @@ function openNewProjectSheet(){
           </div>
           <div class="form-row">
             <span class="form-label">カラー</span>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              ${PRESET_COLORS.map(c=>`<div data-act="pickNewProjColor" data-color="${c}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${ (draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0"></div>`).join('')}
-              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.3);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:${draft.color||'#6b7280'}">
-                <input type="color" value="${draft.color||'#6b7280'}" id="np-color-picker" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
-                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,0.8);pointer-events:none">✎</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.25);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:conic-gradient(from 0deg,#ff0080,#ff8c00,#ffcc00,#00cc44,#0088ff,#aa00ff,#ff0080)" title="カスタムカラー">
+                <input type="color" value="${draft.color||'#6b7280'}" id="np-custom-color" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
               </label>
+              <div style="width:8px;flex-shrink:0"></div>
+              ${allColors().map((c,i)=>`<div data-act="pickNewProjColor" data-color="${c}" data-idx="${i}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${(draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0;touch-action:none" title="${c}"></div>`).join('')}
             </div>
           </div>
           <div class="form-row">
@@ -1683,6 +1747,8 @@ function openNewProjectSheet(){
         <div class="sheet-card">${stepsHtml}</div>
       </div>
       <button class="btn btn-secondary" data-act="addStepNewProj" style="margin-top:8px">＋ 工程を追加 / Add Step</button>
+      <button class="btn btn-secondary" data-act="saveAsPreset" style="margin-top:6px">プリセットとして保存 / Save as Preset</button>
+      <button class="btn btn-secondary" data-act="openPresetManager" style="margin-top:6px">プリセット管理 / Manage Presets</button>
       <div class="total-row" style="margin-top:8px;background:rgba(28,32,52,0.5);border-radius:8px;border-top:none">
         <span>合計作業時間 / Total</span>
         <span class="num">${total}h</span>
@@ -1785,12 +1851,12 @@ function openProjectSettings(projectId){
           </div>
           <div class="form-row">
             <span class="form-label">カラー</span>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              ${PRESET_COLORS.map(c=>`<div data-act="pickProjColor" data-color="${c}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${ (draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0"></div>`).join('')}
-              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.3);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:${draft.color||'#6b7280'}">
-                <input type="color" value="${draft.color||'#6b7280'}" id="ps-color-picker" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
-                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,0.8);pointer-events:none">✎</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.25);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:conic-gradient(from 0deg,#ff0080,#ff8c00,#ffcc00,#00cc44,#0088ff,#aa00ff,#ff0080)" title="カスタムカラー">
+                <input type="color" value="${draft.color||'#6b7280'}" id="ps-custom-color" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
               </label>
+              <div style="width:8px;flex-shrink:0"></div>
+              ${allColors().map((c,i)=>`<div data-act="pickProjColor" data-color="${c}" data-idx="${i}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${(draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0;touch-action:none" title="${c}"></div>`).join('')}
             </div>
           </div>
           <div class="form-row">
@@ -1812,8 +1878,7 @@ function openProjectSettings(projectId){
         </div>
       </div>
       <button class="btn btn-secondary" data-act="addStepProj">＋ 工程を追加 / Add Step</button>
-      <button class="btn btn-secondary" data-act="saveAsPreset">プリセットとして保存 / Save as Preset</button>
-      <button class="btn btn-secondary" data-act="openPresetManager">プリセット管理 / Manage Presets</button>
+
       <button class="btn btn-danger" data-act="deleteProject">このプロジェクトを削除</button>
     `;
 
@@ -1982,6 +2047,31 @@ function showToast(msg, duration = 2000){
   showToast._timer = setTimeout(() => t.classList.remove('on'), duration);
 }
 
+// カラーパレット全色（PRESET_COLORS + state.customColors）
+function allColors(){ return [...PRESET_COLORS, ...(state.customColors||[])]; }
+
+// カラーパレットHTML（np=新規プロジェクト用、ps=設定用）
+function colorSwatchesHtml(currentColor, actionPrefix){
+  const colors = allColors();
+  const swatches = colors.map((c,i) => {
+    const sel = (currentColor||'#6b7280')===c;
+    return `<div data-act="${actionPrefix}Color" data-color="${c}" data-idx="${i}"
+      style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;
+      border:${sel?'2.5px solid #fff':'2.5px solid transparent'};
+      box-shadow:0 0 0 1px ${c};flex-shrink:0;touch-action:none"
+      title="${c}"></div>`;
+  }).join('');
+  const rainbow = `<label style="width:22px;height:22px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,0.25);overflow:hidden;cursor:pointer;
+    flex-shrink:0;position:relative;
+    background:conic-gradient(from 0deg,#ff0080,#ff8c00,#ffcc00,#00cc44,#0088ff,#aa00ff,#ff0080)"
+    title="カスタムカラー">
+    <input type="color" id="${actionPrefix}-custom-color"
+      style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
+  </label>`;
+  return rainbow + '<div style="width:6px;flex-shrink:0"></div>' + swatches;
+}
+
 function attachEvents(){
   // Tab switching
   document.querySelectorAll('.tab').forEach(btn => {
@@ -2001,6 +2091,50 @@ function attachEvents(){
 
   // Sheet overlay close
   document.getElementById('sheetOverlay').addEventListener('click', closeSheet);
+
+  // カスタムカラー選択（input type=color）
+  document.addEventListener('input', e => {
+    const id = e.target.id;
+    if (!e.target.type || e.target.type !== 'color') return;
+    const color = e.target.value;
+    if (id === 'np-custom-color'){
+      if (ui.activeNewProjectDraft){ ui.activeNewProjectDraft.color = color; ui.activeNewProjectRerender?.(); }
+    } else if (id === 'ps-custom-color'){
+      if (ui.activeProjectDraft){ ui.activeProjectDraft.color = color; ui.activeProjectRerender?.(); }
+    } else if (id === 'pm-custom-color'){
+      if (ui.pendingPresetDraft){ ui.pendingPresetDraft.color = color; }
+    }
+    // プリセット管理の虹色ボタン（pm-color-input class）
+    if (e.target.classList && e.target.classList.contains('pm-color-input')){
+      const pmIdx = parseInt(e.target.dataset.pmidx, 10);
+      if (!isNaN(pmIdx) && state.presets[pmIdx]){
+        state.presets[pmIdx].color = color;
+        saveState();
+        ui.presetMgrRerender?.();
+      }
+    }
+  });
+
+  // カラーボタン長押しで削除
+  let _colorLongPress = null;
+  document.addEventListener('touchstart', e => {
+    const el = e.target.closest('[data-act$="Color"][data-idx]');
+    if (!el) return;
+    const idx = parseInt(el.dataset.idx, 10);
+    if (idx < PRESET_COLORS.length) return; // 標準色は削除不可
+    _colorLongPress = setTimeout(() => {
+      const customIdx = idx - PRESET_COLORS.length;
+      state.customColors.splice(customIdx, 1);
+      saveState();
+      // 現在のシートを再レンダリング
+      if (ui.activeNewProjectRerender) ui.activeNewProjectRerender();
+      else if (ui.activeProjectRerender) ui.activeProjectRerender();
+      else if (ui.presetMgrRerender) ui.presetMgrRerender();
+      _colorLongPress = null;
+    }, 700);
+  }, { passive: true });
+  document.addEventListener('touchend', () => { clearTimeout(_colorLongPress); }, { passive: true });
+  document.addEventListener('touchmove', () => { clearTimeout(_colorLongPress); }, { passive: true });
 
   // Global delegated click handler
   document.addEventListener('click', handleAction);
@@ -2218,10 +2352,25 @@ function handleAction(e){
       render();
       break;
     case 'pickNewProjColor':
-      if(ui.activeNewProjectDraft){ui.activeNewProjectDraft.color=ds.color;ui.activeNewProjectRerender?.();}
+      if(ui.activeNewProjectDraft){
+        ui.activeNewProjectDraft.color=ds.color;
+        // カスタムカラーに追加（重複・標準色を除く）
+        if(!PRESET_COLORS.includes(ds.color)&&!(state.customColors||[]).includes(ds.color)){
+          (state.customColors=state.customColors||[]).push(ds.color);
+          saveState();
+        }
+        ui.activeNewProjectRerender?.();
+      }
       break;
     case 'pickProjColor':
-      if(ui.activeProjectDraft){ui.activeProjectDraft.color=ds.color;ui.activeProjectRerender?.();}
+      if(ui.activeProjectDraft){
+        ui.activeProjectDraft.color=ds.color;
+        if(!PRESET_COLORS.includes(ds.color)&&!(state.customColors||[]).includes(ds.color)){
+          (state.customColors=state.customColors||[]).push(ds.color);
+          saveState();
+        }
+        ui.activeProjectRerender?.();
+      }
       break;
     case 'pickPresetColor':
       if (ui.pendingPresetDraft) ui.pendingPresetDraft.color = ds.color;
@@ -2459,9 +2608,9 @@ function confirmDeleteProject(){
 }
 
 function saveCurrentProjectAsPreset(){
-  const d = ui.activeProjectDraft;
+  const d = ui.activeProjectDraft || ui.activeNewProjectDraft;
   if (!d) return;
-  const name = prompt('プリセット名を入力\n(例: しそうトピックス番組)', d.title);
+  const name = prompt('プリセット名を入力\n(例: しそうトピックス)', d.title);
   if (!name) return;
   ui.pendingPresetName = name.trim();
   ui.pendingPresetDraft = d;
