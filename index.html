@@ -351,9 +351,9 @@ body{
 .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);background:rgba(2,2,5,0.97);border-bottom:.5px solid var(--sep)}
 .dh{text-align:center;font-size:10px;font-weight:600;color:#384060;padding:4px 0 3px}
 
-.cal-grid-wrap{position:relative;padding:3px 8px 4px}
+.cal-grid-wrap{position:relative;padding:3px 8px 4px;overflow-x:hidden}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);column-gap:0;row-gap:0;position:relative;z-index:3}
-.cal-day{aspect-ratio:1;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:10%;background:transparent;cursor:default;overflow:visible}
+.cal-day{aspect-ratio:1;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:10%;background:transparent;cursor:default;overflow:hidden}
 .cal-day.editable{cursor:pointer}
 .cal-day.editable:active{background:rgba(120,160,220,0.12)}
 
@@ -365,8 +365,8 @@ body{
 .cal-day.deadline-silver .cal-day-num{color:#9eaabb;font-weight:600}
 
 /* バーCSS: セル内div、SVGオーバーレイ廃止 */
-.day-bars{position:absolute;bottom:0;left:-1px;right:-1px;z-index:1;display:flex;flex-direction:column;gap:1px}
-.dbar{height:3px;width:100%;border-radius:0;position:relative;overflow:hidden}
+.day-bars{position:absolute;bottom:0;left:0;right:0;z-index:1}
+.dbar{height:16px;width:100%;border-radius:0;position:absolute;left:0;right:0}
 .dbar::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:rgba(255,255,255,0.28)}
 .dbar.s-start{border-radius:1.25px 0 0 1.25px}
 .dbar.s-end{border-radius:0 1.25px 1.25px 0}
@@ -374,12 +374,14 @@ body{
 .dbar.c-r{background:rgba(210,52,52,0.92)}
 .dbar.c-o{background:rgba(208,100,18,0.92)}
 .dbar.c-s{background:rgba(158,162,170,0.88)}
-.dbar.s-start.c-r{background:rgba(210,52,52,0.38)}
-.dbar.s-start.c-o{background:rgba(208,100,18,0.36)}
-.dbar.s-start.c-s{background:rgba(158,162,170,0.34)}
 .cal-day.nonworking .dbar.c-r{background:rgba(118,12,12,0.88)}
 .cal-day.nonworking .dbar.c-o{background:rgba(98,42,4,0.88)}
 .cal-day.nonworking .dbar.c-s{background:rgba(62,64,72,0.85)}
+.bar-title{position:absolute;left:4px;right:0;height:16px;line-height:16px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:10;pointer-events:none}
+.dl-label{position:absolute;right:2px;font-size:7px;font-weight:700;border:.8px solid;border-radius:2px;padding:1px 3px;z-index:15;line-height:14px;pointer-events:none}
+.dl-label.c-r{color:#ff8080;border-color:rgba(210,52,52,0.8);background:rgba(100,8,8,0.88)}
+.dl-label.c-o{color:#ffb060;border-color:rgba(208,100,18,0.8);background:rgba(88,38,4,0.88)}
+.dl-label.c-s{color:#c8ccd4;border-color:rgba(158,162,170,0.8);background:rgba(52,54,60,0.88)}
 
 /* non-working day marker */
 .cal-day.nonworking::before{
@@ -1308,32 +1310,32 @@ function renderCalendar(){
     if (!p.isComplete) dlMap.set(p.deadline, p.urgencyColor);
   }
 
-  // project bars per date: date → [{color, isStart, isEnd}]
-  // urgency slot order: red=slot0(bottom), orange=slot1, silver=slot2
-  const SLOT = { red:0, orange:1, silver:2 };
+  // project bars: 締切順にソートしてslot番号を割り当て
   const COLOR = { red:'r', orange:'o', silver:'s' };
-  const barMap = new Map(); // date → array slot-indexed
+  const activeForBars = projects.filter(p => !p.isComplete && p.startDate && p.deadline);
+  const numSlots = activeForBars.length;
+  const barMap = new Map(); // date → Map(slotIdx → {color,isStart,isEnd})
 
-  for (const p of projects){
-    if (p.isComplete || !p.startDate || !p.deadline) continue;
+  activeForBars.forEach((p, slot) => {
     const ps = strToDate(p.startDate);
     const pe = strToDate(p.deadline);
     const calS = strToDate(grid.days[0].date);
     const calE = strToDate(grid.days[41].date);
-    if (pe < calS || ps > calE) continue;
+    if (pe < calS || ps > calE) return;
 
-    const slot  = SLOT[p.urgencyColor] ?? 2;
     const color = COLOR[p.urgencyColor] ?? 's';
-
     for (const day of grid.days){
       const dc = strToDate(day.date);
       if (dc < ps || dc > pe) continue;
-      if (!barMap.has(day.date)) barMap.set(day.date, []);
-      const isStart = day.date === p.startDate;
-      const isEnd   = day.date === p.deadline;
-      barMap.get(day.date)[slot] = { color, isStart, isEnd };
+      if (!barMap.has(day.date)) barMap.set(day.date, new Map());
+      barMap.get(day.date).set(slot, {
+        color,
+        isStart: day.date === p.startDate,
+        isEnd:   day.date === p.deadline,
+        title:   p.title
+      });
     }
-  }
+  });
 
   // Build weekday headers (class=dh)
   const weekdays = ['日','月','火','水','木','金','土'];
@@ -1349,26 +1351,34 @@ function renderCalendar(){
     const dlColor = dlMap.get(d.date);
     if (dlColor) classes.push('deadline-'+dlColor);
 
-    // Build bars for this cell (slot0=bottom rendered last in DOM = visually bottom)
-    // We want slot2(top) first in DOM, slot0(bottom) last → flex-direction:column
-    // Actually day-bars has flex-direction:column, so first child = top
-    // slot2=silver=top, slot1=orange=middle, slot0=red=bottom
-    const bars = barMap.get(d.date) || [];
+    // bars: slot0=bottom(most urgent), slotN=top
+    // bottom値 = slot * 6px (5px bar + 1px gap)
+    const barSlots = barMap.get(d.date);
     let barsHtml = '';
-    for (let s = 2; s >= 0; s--){ // s=2(silver/top) → s=0(red/bottom)
-      const b = bars[s];
-      if (!b) continue;
-      let cls = `dbar c-${b.color}`;
-      if (b.isStart && b.isEnd) cls += ' s-only';
-      else if (b.isStart) cls += ' s-start';
-      else if (b.isEnd)   cls += ' s-end';
-      barsHtml += `<div class="${cls}"></div>`;
+    let titlesHtml = '';
+    if (barSlots && barSlots.size > 0){
+      for (const [s, b] of barSlots){
+        const btm = s * 18;
+        let cls = `dbar c-${b.color}`;
+        if (b.isStart && b.isEnd) cls += ' s-only';
+        else if (b.isStart)       cls += ' s-start';
+        else if (b.isEnd)         cls += ' s-end';
+        barsHtml += `<div class="${cls}" style="bottom:${btm}px"></div>`;
+        if (b.isEnd){
+          barsHtml += `<div class="dl-label c-${b.color}" style="bottom:${btm+1}px">納期</div>`;
+        }
+        if (b.isStart && b.title){
+          titlesHtml += `<div class="bar-title" style="bottom:${btm}px">${escapeHtml(b.title)}</div>`;
+        }
+      }
     }
 
+    const cellH = 22 + numSlots * 18;
     const act = ui.calEditMode ? 'data-act="toggleNonWorking"' : '';
-    return `<div class="${classes.join(' ')}" data-date="${d.date}" ${act}>
+    return `<div class="${classes.join(' ')}" data-date="${d.date}" ${act} style="height:${cellH}px">
       <span class="cal-day-num">${d.day}</span>
-      ${barsHtml ? `<div class="day-bars">${barsHtml}</div>` : ''}
+      ${barsHtml ? `<div class="day-bars" style="height:${numSlots*18-2}px">${barsHtml}</div>` : ''}
+      ${titlesHtml}
     </div>`;
   }).join('');
 
@@ -1497,15 +1507,26 @@ function renderGantt(projects, year, month){
   const axisY  = N * ROW_H + 2;
   const numY   = N * ROW_H + 9;
   let axis = `<line x1="${L_PAD}" y1="${axisY}" x2="${VB_W-R_PAD}" y2="${axisY}" stroke="rgba(50,75,155,0.2)" stroke-width=".5"/>`;
+  // 納期日のカラーマップ
+  const dlColorMap = new Map();
+  active.forEach(p => {
+    const pe = strToDate(p.deadline);
+    if (pe.getFullYear()===year && pe.getMonth()===month){
+      dlColorMap.set(pe.getDate(), p.urgencyColor);
+    }
+  });
   for (let d=1; d<=daysInMonth; d++){
     const gx = L_PAD + (d-1)*DAY_W;
-    const major = (d===1 || d%5===0 || d===daysInMonth);
-    if (!major) continue;
-    axis += `<text x="${gx}" y="${numY}" fill="rgba(50,75,155,0.6)" font-size="3.8" font-family="-apple-system" text-anchor="middle">${d}</text>`;
+    const urg = dlColorMap.get(d);
+    const axFill = urg==='red'    ? 'rgba(210,52,52,0.88)'
+                 : urg==='orange' ? 'rgba(205,98,18,0.88)'
+                 : urg==='silver' ? 'rgba(145,148,156,0.88)'
+                 : 'rgba(50,75,155,0.6)';
+    const axW = urg ? '3.6' : '2.8';
+    axis += `<text x="${gx}" y="${numY}" fill="${axFill}" font-size="${axW}" font-family="-apple-system" text-anchor="middle" font-weight="${urg?'700':'400'}">${d}</text>`;
   }
 
   return `<div class="gantt-card"><div class="gantt-body">
-  <div class="gantt-title">PROJECT SCHEDULE</div>
   <svg viewBox="0 0 ${VB_W} ${VB_H}" preserveAspectRatio="xMinYMin meet"
        style="display:block;width:100%;height:auto">
     <defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1">
