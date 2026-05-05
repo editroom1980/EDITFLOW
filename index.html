@@ -58,8 +58,6 @@ html,body{
   background:var(--bg-deepest);
   color:var(--tx);
   font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Hiragino Sans','Noto Sans JP',sans-serif;
-  font-size:14px;
-  line-height:1.4;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   overscroll-behavior-y:contain;
@@ -350,69 +348,38 @@ body{
 }
 .cal-edit-banner .ic{font-size:11px}
 
-.cal-weekdays{
-  display:grid;grid-template-columns:repeat(7,1fr);
-  background:rgba(2,2,5,0.97);
-  border-bottom:.5px solid var(--sep);
-}
-.cal-weekday{
-  text-align:center;
-  padding:6px 0 5px;
-  font:600 10px/1 -apple-system,sans-serif;
-  color:#384060;
-}
-.cal-weekday.sun{color:#5a3050}
-.cal-weekday.sat{color:#304060}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);background:rgba(2,2,5,0.97);border-bottom:.5px solid var(--sep)}
+.dh{text-align:center;font-size:10px;font-weight:600;color:#384060;padding:4px 0 3px}
 
-/* Calendar grid */
-.cal-grid-wrap{
-  position:relative;
-  padding:3px 8px 5px;
-}
-.cal-bars-svg{
-  position:absolute;
-  top:3px;left:8px;
-  width:calc(100% - 16px);
-  height:calc(100% - 8px);
-  pointer-events:none;
-  z-index:2;
-  overflow:visible;
-}
-.cal-grid{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  column-gap:0;
-  row-gap:2px;
-  position:relative;
-  z-index:3;
-}
-.cal-day{
-  aspect-ratio:1;
-  position:relative;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
-  padding-top:5px;
-  cursor:default;
-  border-radius:6px;
-  background:transparent;
-  transition:background .15s;
-}
+.cal-grid-wrap{position:relative;padding:3px 8px 4px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);column-gap:0;row-gap:0;position:relative;z-index:3}
+.cal-day{aspect-ratio:1;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:10%;background:transparent;cursor:default;overflow:visible}
 .cal-day.editable{cursor:pointer}
 .cal-day.editable:active{background:rgba(120,160,220,0.12)}
-.cal-day-num{
-  font-size:13px;font-weight:500;
-  color:rgba(140,172,222,0.78);
-  position:relative;z-index:5;
-  line-height:1;
-  font-variant-numeric:tabular-nums;
-}
-.cal-day.oth .cal-day-num{color:rgba(140,172,222,0.22)}
-.cal-day.tod .cal-day-num{
-  color:#fff;font-weight:800;
-  text-shadow:0 0 8px rgba(255,255,255,0.5);
-}
-.cal-day.deadline-red .cal-day-num{color:#ff4040;font-weight:700;text-shadow:0 0 6px rgba(255,40,40,0.45)}
-.cal-day.deadline-orange .cal-day-num{color:#ff8e0e;font-weight:700;text-shadow:0 0 6px rgba(255,130,0,0.4)}
+
+.cal-day-num{font-size:13px;font-weight:500;color:rgba(130,160,215,0.7);position:relative;z-index:5;line-height:1;font-variant-numeric:tabular-nums}
+.cal-day.oth .cal-day-num{color:rgba(130,160,215,0.2)}
+.cal-day.tod .cal-day-num{color:#fff;font-weight:800;text-shadow:0 0 5px rgba(255,255,255,0.38)}
+.cal-day.deadline-red .cal-day-num{color:#ff4040;font-weight:700}
+.cal-day.deadline-orange .cal-day-num{color:#ff8e0e;font-weight:700}
 .cal-day.deadline-silver .cal-day-num{color:#9eaabb;font-weight:600}
+
+/* バーCSS: セル内div、SVGオーバーレイ廃止 */
+.day-bars{position:absolute;bottom:0;left:-1px;right:-1px;z-index:1;display:flex;flex-direction:column;gap:1px}
+.dbar{height:3px;width:100%;border-radius:0;position:relative;overflow:hidden}
+.dbar::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:rgba(255,255,255,0.28)}
+.dbar.s-start{border-radius:1.25px 0 0 1.25px}
+.dbar.s-end{border-radius:0 1.25px 1.25px 0}
+.dbar.s-only{border-radius:1.25px}
+.dbar.c-r{background:rgba(210,52,52,0.92)}
+.dbar.c-o{background:rgba(208,100,18,0.92)}
+.dbar.c-s{background:rgba(158,162,170,0.88)}
+.dbar.s-start.c-r{background:rgba(210,52,52,0.38)}
+.dbar.s-start.c-o{background:rgba(208,100,18,0.36)}
+.dbar.s-start.c-s{background:rgba(158,162,170,0.34)}
+.cal-day.nonworking .dbar.c-r{background:rgba(118,12,12,0.88)}
+.cal-day.nonworking .dbar.c-o{background:rgba(98,42,4,0.88)}
+.cal-day.nonworking .dbar.c-s{background:rgba(62,64,72,0.85)}
 
 /* non-working day marker */
 .cal-day.nonworking::before{
@@ -1264,62 +1231,6 @@ function getCalendarGrid(year, month){
 }
 
 /* Generate SVG bar segments for projects in current month */
-function computeBarSegments(projects, calDays){
-  const segments = [];
-  const URGENCY = { red:0, orange:1, silver:2 }; // 0=bottom slot
-
-  const active = projects.filter(p => !p.isComplete && p.startDate && p.deadline);
-
-  for (const p of active){
-    const projStart = strToDate(p.startDate);
-    const projEnd   = strToDate(p.deadline);
-    const calStart  = strToDate(calDays[0].date);
-    const calEnd    = strToDate(calDays[41].date);
-    if (projEnd < calStart || projStart > calEnd) continue;
-
-    const startIdx = calDays.findIndex(d => d.date === p.startDate);
-    const endIdx   = calDays.findIndex(d => d.date === p.deadline);
-    const visStart = startIdx >= 0 ? startIdx : 0;
-    const visEnd   = endIdx   >= 0 ? endIdx   : 41;
-
-    let cur = null;
-    const segs = [];
-    for (let i = visStart; i <= visEnd; i++){
-      const row = Math.floor(i/7);
-      const col = i % 7;
-      if (cur && cur.row === row && cur.endCol+1 === col){
-        cur.endCol = col;
-      } else {
-        if (cur) segs.push(cur);
-        cur = { row, startCol:col, endCol:col,
-                urgencyColor:p.urgencyColor,
-                laneKey: URGENCY[p.urgencyColor]||0,
-                isProjectStart:false, isProjectEnd:false,
-                projectId:p.id };
-      }
-    }
-    if (cur) segs.push(cur);
-    if (segs.length > 0){
-      if (startIdx >= 0) segs[0].isProjectStart = true;
-      if (endIdx   >= 0) segs[segs.length-1].isProjectEnd = true;
-    }
-    segments.push(...segs);
-  }
-
-  // Assign slotIndex per row (same laneKey = same slot across all rows)
-  // Group by row, sort by laneKey, assign slot
-  const rowGroups = new Map();
-  for (const seg of segments){
-    if (!rowGroups.has(seg.row)) rowGroups.set(seg.row, []);
-    rowGroups.get(seg.row).push(seg);
-  }
-  for (const rowSegs of rowGroups.values()){
-    rowSegs.sort((a,b) => a.laneKey - b.laneKey);
-    rowSegs.forEach((seg, idx) => { seg.slotIndex = idx; });
-  }
-  return segments;
-}
-
 function colorForUrgency(urg, isNW){
   const t = {
     red:    { lt:'rgba(215,52,52,0.92)',  dk:'rgba(118,12,12,0.92)' },
@@ -1327,37 +1238,6 @@ function colorForUrgency(urg, isNW){
     silver: { lt:'rgba(155,158,165,0.92)',dk:'rgba(62,64,72,0.92)' }
   };
   return isNW ? t[urg].dk : t[urg].lt;
-}
-
-function renderBarSegmentSVG(seg, scaling){
-  const { cellW, cellH, rowGap, barH } = scaling;
-  const BAR_GAP = 1.0;
-  const r = barH / 2;
-  const x = seg.startCol * cellW;
-  const w = (seg.endCol - seg.startCol + 1) * cellW;
-
-  // Y: stack from bottom of cell, slotIndex=0 is bottom
-  const slot      = seg.slotIndex || 0;
-  const cellBottom = seg.row * (cellH + rowGap) + cellH;
-  const y = cellBottom - barH - slot * (barH + BAR_GAP) - 2;
-
-  // Deadline cell: darker fill
-  const fill = colorForUrgency(seg.urgencyColor, seg.isProjectEnd);
-  const lc = seg.isProjectStart;
-  const rc = seg.isProjectEnd;
-
-  let shape;
-  if (lc && rc){
-    shape = `<rect x="${x}" y="${y}" width="${w}" height="${barH}" rx="${r}" fill="${fill}"/>`;
-  } else if (lc){
-    shape = `<path d="M${x+r},${y} H${x+w} V${y+barH} H${x+r} Q${x},${y+barH} ${x},${y+r} Q${x},${y} ${x+r},${y} Z" fill="${fill}"/>`;
-  } else if (rc){
-    shape = `<path d="M${x},${y} H${x+w-r} Q${x+w},${y} ${x+w},${y+r} Q${x+w},${y+barH} ${x+w-r},${y+barH} H${x},${y+barH} Z" fill="${fill}"/>`;
-  } else {
-    shape = `<rect x="${x}" y="${y}" width="${w}" height="${barH}" fill="${fill}"/>`;
-  }
-  const gloss = `<rect x="${x}" y="${y}" width="${w}" height="${barH*0.45}" fill="rgba(255,255,255,0.24)"/>`;
-  return shape + gloss;
 }
 
 function renderProjects(){
@@ -1415,27 +1295,49 @@ function renderCalendar(){
   const projects = computeSchedule();
   const main = document.getElementById('main');
 
-  // Initialize calendar month if needed
   if (!ui.calMonth){
     const t = getTodayDate();
     ui.calMonth = { y: t.getFullYear(), m: t.getMonth() };
   }
-
   const { y, m } = ui.calMonth;
   const grid = getCalendarGrid(y, m);
 
-  // Determine deadline cells
+  // deadline date → urgency color map
   const dlMap = new Map();
   for (const p of projects){
     if (!p.isComplete) dlMap.set(p.deadline, p.urgencyColor);
   }
 
-  // Build weekday headers
+  // project bars per date: date → [{color, isStart, isEnd}]
+  // urgency slot order: red=slot0(bottom), orange=slot1, silver=slot2
+  const SLOT = { red:0, orange:1, silver:2 };
+  const COLOR = { red:'r', orange:'o', silver:'s' };
+  const barMap = new Map(); // date → array slot-indexed
+
+  for (const p of projects){
+    if (p.isComplete || !p.startDate || !p.deadline) continue;
+    const ps = strToDate(p.startDate);
+    const pe = strToDate(p.deadline);
+    const calS = strToDate(grid.days[0].date);
+    const calE = strToDate(grid.days[41].date);
+    if (pe < calS || ps > calE) continue;
+
+    const slot  = SLOT[p.urgencyColor] ?? 2;
+    const color = COLOR[p.urgencyColor] ?? 's';
+
+    for (const day of grid.days){
+      const dc = strToDate(day.date);
+      if (dc < ps || dc > pe) continue;
+      if (!barMap.has(day.date)) barMap.set(day.date, []);
+      const isStart = day.date === p.startDate;
+      const isEnd   = day.date === p.deadline;
+      barMap.get(day.date)[slot] = { color, isStart, isEnd };
+    }
+  }
+
+  // Build weekday headers (class=dh)
   const weekdays = ['日','月','火','水','木','金','土'];
-  const wkHtml = weekdays.map((w,i) => {
-    const cls = i === 0 ? 'sun' : (i === 6 ? 'sat' : '');
-    return `<div class="cal-weekday ${cls}">${w}</div>`;
-  }).join('');
+  const wkHtml = weekdays.map(w => `<div class="dh">${w}</div>`).join('');
 
   // Build day cells
   const dayCellsHtml = grid.days.map(d => {
@@ -1444,29 +1346,31 @@ function renderCalendar(){
     if (d.isToday) classes.push('tod');
     if (d.isNonWorking) classes.push('nonworking');
     if (ui.calEditMode) classes.push('editable');
-
     const dlColor = dlMap.get(d.date);
     if (dlColor) classes.push('deadline-'+dlColor);
 
-    return `<div class="${classes.join(' ')}" data-date="${d.date}" data-act="${ui.calEditMode?'toggleNonWorking':''}">
+    // Build bars for this cell (slot0=bottom rendered last in DOM = visually bottom)
+    // We want slot2(top) first in DOM, slot0(bottom) last → flex-direction:column
+    // Actually day-bars has flex-direction:column, so first child = top
+    // slot2=silver=top, slot1=orange=middle, slot0=red=bottom
+    const bars = barMap.get(d.date) || [];
+    let barsHtml = '';
+    for (let s = 2; s >= 0; s--){ // s=2(silver/top) → s=0(red/bottom)
+      const b = bars[s];
+      if (!b) continue;
+      let cls = `dbar c-${b.color}`;
+      if (b.isStart && b.isEnd) cls += ' s-only';
+      else if (b.isStart) cls += ' s-start';
+      else if (b.isEnd)   cls += ' s-end';
+      barsHtml += `<div class="${cls}"></div>`;
+    }
+
+    const act = ui.calEditMode ? 'data-act="toggleNonWorking"' : '';
+    return `<div class="${classes.join(' ')}" data-date="${d.date}" ${act}>
       <span class="cal-day-num">${d.day}</span>
+      ${barsHtml ? `<div class="day-bars">${barsHtml}</div>` : ''}
     </div>`;
   }).join('');
-
-  // Build SVG bar segments
-  const segments = computeBarSegments(projects, grid.days);
-  const cellW = 100/7; // percentage based — but we use viewBox so: use 100 unit
-  // Use viewBox coordinates: 7 cols × 20 units = 140 total, 6 rows × 20 = 120 + 5 gaps × 2 = 130
-  const VB_CELL_W = 20;
-  const VB_CELL_H = 20;
-  const VB_GAP = 2;
-  const VB_BAR_H = 5;
-  const vbW = 7 * VB_CELL_W;
-  const vbH = 6 * VB_CELL_H + 5 * VB_GAP;
-
-  const svgBars = segments.map(s => renderBarSegmentSVG(s, {
-    cellW: VB_CELL_W, cellH: VB_CELL_H, rowGap: VB_GAP, barH: VB_BAR_H
-  })).join('');
 
   const editToggleHtml = `<button class="cal-edit-toggle ${ui.calEditMode?'on':''}" data-act="toggleCalEditMode">
     <span class="ic">${ui.calEditMode?'✓':'✏️'}</span>
@@ -1478,22 +1382,20 @@ function renderCalendar(){
     <span>日付をタップで編集不可日を切替</span>
   </div>` : '';
 
-  // Build gantt
   const ganttHtml = renderGantt(projects, y, m);
 
   main.innerHTML = `
     <div class="cal-header">
       <div class="cal-nav">
-        <button class="cal-arrow" data-act="prevMonth" aria-label="前月">‹</button>
-        <div class="cal-title">${y}年${m+1}月</div>
-        <button class="cal-arrow" data-act="nextMonth" aria-label="次月">›</button>
+        <button class="cal-arrow" data-act="prevMonth">‹</button>
+        <div class="ctit">${y}年${m+1}月</div>
+        <button class="cal-arrow" data-act="nextMonth">›</button>
       </div>
       ${editToggleHtml}
     </div>
     ${editBannerHtml}
     <div class="cal-weekdays">${wkHtml}</div>
     <div class="cal-grid-wrap">
-      <svg class="cal-bars-svg" viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="none">${svgBars}</svg>
       <div class="cal-grid">${dayCellsHtml}</div>
     </div>
     ${ganttHtml}
@@ -1508,97 +1410,111 @@ function renderGantt(projects, year, month){
   const firstStr = year+'-'+String(month+1).padStart(2,'0')+'-01';
   const lastStr  = year+'-'+String(month+1).padStart(2,'0')+'-'+String(daysInMonth).padStart(2,'0');
   const todayStr = getTodayStr();
-  const fullMode = ui.ganttFullMode;
 
-  // Fixed viewBox: 100 units wide
-  const VB_W    = 100;
-  const L_PAD   = 1;
-  const R_PAD   = 2;
+  // v12の座標系に完全準拠
+  // viewBox幅137、各行高さ13、軸はN*13+2、数字はN*13+9、total高さN*13+11
+  const VB_W   = 137;
+  const L_PAD  = 5;
+  const R_PAD  = 2;
+  const ROW_H  = 13;      // label(~5) + bar(5) + gap(3) = 13 per row
+  const BAR_H  = 5;
+  const N      = active.length;
+  const VB_H   = N * ROW_H + 11; // +11 for axis area
+
   const INNER_W = VB_W - L_PAD - R_PAD;
   const DAY_W   = INNER_W / Math.max(1, daysInMonth - 1);
 
-  const LABEL_H = 5;   // height reserved for label text
-  const BAR_H   = 6;   // bar height
-  const ROW_PAD = 4;   // padding below bar before next label
-  const ROW_H   = LABEL_H + BAR_H + ROW_PAD;
-  const AXIS_H  = 9;   // height of date axis
-  const VB_H    = active.length * ROW_H + AXIS_H;
-
-  // Today x
+  // today x
   let todayX = -1;
-  const todayDate = strToDate(todayStr);
-  if (todayDate.getFullYear()===year && todayDate.getMonth()===month){
-    todayX = L_PAD + (todayDate.getDate()-1) * DAY_W;
+  const td = strToDate(todayStr);
+  if (td.getFullYear()===year && td.getMonth()===month){
+    todayX = L_PAD + (td.getDate()-1) * DAY_W;
   }
 
   let rows = '';
   active.forEach((p, idx) => {
-    const rowY  = idx * ROW_H;
-    const labelY = rowY + LABEL_H;   // baseline of label text (ABOVE bar)
-    const barY   = rowY + LABEL_H + 0.5;  // top of bar
+    const labelY = idx * ROW_H + 5.5;
+    const barY   = idx * ROW_H + 7;
 
     const ps = strToDate(p.startDate);
     const pe = strToDate(p.deadline);
-    const mStart = strToDate(firstStr);
-    const mEnd   = strToDate(lastStr);
+    const mS = strToDate(firstStr);
+    const mE = strToDate(lastStr);
+    const visS = ps < mS ? mS : ps;
+    const visE = pe > mE ? mE : pe;
+    if (visE < mS || visS > mE) return;
 
-    const visStart = ps < mStart ? mStart : ps;
-    const visEnd   = pe > mEnd   ? mEnd   : pe;
-    if (visEnd < mStart || visStart > mEnd) return;
+    const x1 = L_PAD + (visS.getDate()-1) * DAY_W;
+    const x2 = L_PAD + (visE.getDate()-1) * DAY_W;
+    const dlX = Math.min(x2 + DAY_W * 0.6, VB_W - R_PAD);
 
-    const x1 = L_PAD + (visStart.getDate()-1) * DAY_W;
-    const x2 = L_PAD + (visEnd.getDate()-1)   * DAY_W + DAY_W * 0.7;
-    const bw  = Math.max(1.5, x2 - x1);
+    // done (today以前) vs remaining
+    const todayX2 = todayX >= 0 ? Math.min(todayX, dlX) : x1;
+    const doneW   = Math.max(0, todayX2 - x1);
+    const remW    = Math.max(0, dlX - Math.max(x1, todayX2));
 
     const fill  = colorForUrgency(p.urgencyColor, false);
-    const lFill = p.urgencyColor==='red'    ? 'rgba(215,52,52,0.92)'
-                : p.urgencyColor==='orange' ? 'rgba(212,100,15,0.92)'
-                : 'rgba(145,152,162,0.92)';
+    const fillD = p.urgencyColor==='red'    ? 'rgba(210,52,52,0.3)'
+                : p.urgencyColor==='orange' ? 'rgba(206,98,18,0.28)'
+                : 'rgba(155,158,165,0.28)';
+    const lFill = p.urgencyColor==='red'    ? 'rgba(210,50,50,0.88)'
+                : p.urgencyColor==='orange' ? 'rgba(205,98,18,0.88)'
+                : 'rgba(145,148,156,0.88)';
 
-    const title = p.title.length > 26 ? p.title.slice(0,26)+'…' : p.title;
-    const dlX   = Math.min(x2+0.5, VB_W-R_PAD-2);
+    const title = p.title.length > 22 ? p.title.slice(0,22)+'…' : p.title;
 
-    rows += `<text x="${L_PAD}" y="${labelY}" fill="${lFill}" font-size="3.8" font-family="-apple-system" font-weight="700">${escapeHtml(title)}</text>
-<rect x="${x1}" y="${barY}" width="${bw}" height="${BAR_H}" rx="1.8" fill="${fill}"/>
-<rect x="${x1}" y="${barY}" width="${bw}" height="${BAR_H*0.42}" rx="1.8" fill="rgba(255,255,255,0.22)"/>
-<polygon points="${dlX},${barY-0.5} ${dlX},${barY+BAR_H+0.5} ${dlX+2.2},${barY+BAR_H/2}" fill="${lFill}"/>
-`;
+    let barSvg = '';
+    if (doneW > 0){
+      barSvg += `<rect x="${x1}" y="${barY}" width="${doneW}" height="${BAR_H}" rx="1.8" fill="${fill}"/>`;
+      barSvg += `<rect x="${x1}" y="${barY}" width="${doneW}" height="2" rx="1.8" fill="url(#gg)"/>`;
+    }
+    if (remW > 0){
+      const remX = Math.max(x1, todayX2) + (doneW > 0 ? 0.5 : 0);
+      barSvg += `<rect x="${remX}" y="${barY}" width="${remW}" height="${BAR_H}" rx="1.8" fill="${fillD}"/>`;
+    }
+    // deadline marker (v12スタイル)
+    const py1 = barY - 0.5;
+    const py2 = barY + BAR_H + 0.5;
+    const pxr = dlX + (dlX + 3.7 <= VB_W - R_PAD ? 3.7 : 0);
+    barSvg += `<polygon points="${dlX},${py1} ${dlX},${py2} ${pxr},${(py1+py2)/2}" fill="${lFill}" opacity="0.82"/>`;
+
+    rows += `<text x="${L_PAD}" y="${labelY}" fill="${lFill}" font-size="3.8" font-family="-apple-system" font-weight="700">${escapeHtml(title)}</text>${barSvg}`;
   });
 
-  // Axis
-  const axisY = active.length * ROW_H;
-  let axis = `<line x1="${L_PAD}" y1="${axisY}" x2="${VB_W-R_PAD}" y2="${axisY}" stroke="rgba(80,105,180,0.22)" stroke-width="0.4"/>`;
-  for (let d=1; d<=daysInMonth; d++){
-    const x = L_PAD + (d-1)*DAY_W;
-    const major = (d===1 || d%5===0 || d===daysInMonth);
-    if (!major) continue;
-    axis += `<line x1="${x}" y1="${axisY}" x2="${x}" y2="${axisY+2.5}" stroke="rgba(80,105,180,0.28)" stroke-width="0.4"/>`;
-    axis += `<text x="${x}" y="${axisY+7}" fill="rgba(80,105,180,0.62)" font-size="3.2" font-family="-apple-system" text-anchor="middle">${d}</text>`;
+  // 縦グリッド線（5日ごと）
+  let grid = '';
+  for (let d=5; d<daysInMonth; d+=5){
+    const gx = L_PAD + (d-1)*DAY_W;
+    grid += `<line x1="${gx}" y1="0" x2="${gx}" y2="${N*ROW_H}" stroke="rgba(55,78,155,0.1)" stroke-width=".5"/>`;
   }
 
+  // today線
   const todayLine = todayX >= 0
-    ? `<line x1="${todayX}" y1="0" x2="${todayX}" y2="${axisY}" stroke="rgba(210,235,255,0.32)" stroke-width="0.5" stroke-dasharray="1.5,1"/>`
+    ? `<line x1="${todayX}" y1="0" x2="${todayX}" y2="${N*ROW_H}" stroke="rgba(205,230,255,0.24)" stroke-width=".8" stroke-dasharray="2,1.5"/>`
     : '';
 
-  // CSS pixel height: use fixed ratio so text doesn't distort
-  // SVG will scale uniformly (xMinYMin meet) to fill width
-  const pxH = Math.round(VB_H * 2.4);
+  // 日付軸
+  const axisY  = N * ROW_H + 2;
+  const numY   = N * ROW_H + 9;
+  let axis = `<line x1="${L_PAD}" y1="${axisY}" x2="${VB_W-R_PAD}" y2="${axisY}" stroke="rgba(50,75,155,0.2)" stroke-width=".5"/>`;
+  for (let d=1; d<=daysInMonth; d++){
+    const gx = L_PAD + (d-1)*DAY_W;
+    const major = (d===1 || d%5===0 || d===daysInMonth);
+    if (!major) continue;
+    axis += `<text x="${gx}" y="${numY}" fill="rgba(50,75,155,0.6)" font-size="3.8" font-family="-apple-system" text-anchor="middle">${d}</text>`;
+  }
 
-  const wrapStyle = fullMode ? 'overflow-x:auto;-webkit-overflow-scrolling:touch;' : '';
-  const svgW = fullMode ? '220%' : '100%';
-
-  return `<div class="gantt-card">
-  <div class="gantt-ctrl">
-    <span class="gantt-title">PROJECT SCHEDULE</span>
-    <button class="gantt-toggle" data-act="toggleGanttMode">${fullMode?'縮小表示':'全体表示'}</button>
-  </div>
-  <div class="gantt-scroll-wrap" style="${wrapStyle}">
-    <svg viewBox="0 0 ${VB_W} ${VB_H}" preserveAspectRatio="xMinYMin meet"
-         style="display:block;width:${svgW};height:${pxH}px;">
-      ${todayLine}${rows}${axis}
-    </svg>
-  </div>
-</div>`;
+  return `<div class="gantt-card"><div class="gantt-body">
+  <div class="gantt-title">PROJECT SCHEDULE</div>
+  <svg viewBox="0 0 ${VB_W} ${VB_H}" preserveAspectRatio="xMinYMin meet"
+       style="display:block;width:100%;height:auto">
+    <defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="white" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}${todayLine}${rows}${axis}
+  </svg>
+</div></div>`;
 }
 
 
@@ -2015,29 +1931,83 @@ function attachEvents(){
   // Global delegated click handler
   document.addEventListener('click', handleAction);
 
-  // ① Swipe to switch tabs on #main
+  // ① Swipe to switch tabs on #main (with animation)
   const mainEl = document.getElementById('main');
   let swipeStartX = 0;
   let swipeStartY = 0;
+  let swipeDragging = false;
+
   mainEl.addEventListener('touchstart', e => {
+    if (ui.sheetOpen) return;
     swipeStartX = e.touches[0].clientX;
     swipeStartY = e.touches[0].clientY;
+    swipeDragging = true;
   }, { passive: true });
+
+  mainEl.addEventListener('touchmove', e => {
+    if (!swipeDragging || ui.sheetOpen) return;
+    const dx = e.touches[0].clientX - swipeStartX;
+    const dy = e.touches[0].clientY - swipeStartY;
+    if (Math.abs(dy) > Math.abs(dx)) return; // vertical scroll takes priority
+    // Follow finger in real time
+    mainEl.style.transform = `translateX(${dx * 0.4}px)`;
+    mainEl.style.opacity = `${1 - Math.abs(dx) / 600}`;
+  }, { passive: true });
+
   mainEl.addEventListener('touchend', e => {
+    swipeDragging = false;
     if (ui.sheetOpen) return;
     const dx = e.changedTouches[0].clientX - swipeStartX;
     const dy = e.changedTouches[0].clientY - swipeStartY;
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+
+    const isHorizontal = Math.abs(dx) > 40 && Math.abs(dy) < Math.abs(dx) * 0.8;
+
+    if (!isHorizontal) {
+      // Snap back
+      mainEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      mainEl.style.transform = 'translateX(0)';
+      mainEl.style.opacity = '1';
+      setTimeout(() => { mainEl.style.transition = ''; }, 220);
+      return;
+    }
+
     const views = ['projects','calendar'];
     const cur = views.indexOf(ui.view);
-    if (dx < 0 && cur < views.length-1){
-      ui.view = views[cur+1];
-    } else if (dx > 0 && cur > 0){
-      ui.view = views[cur-1];
-    } else return;
-    document.querySelectorAll('.tab').forEach(t =>
-      t.classList.toggle('on', t.dataset.view === ui.view));
-    render();
+    let nextView = null;
+    if (dx < 0 && cur < views.length-1) nextView = views[cur+1];
+    else if (dx > 0 && cur > 0) nextView = views[cur-1];
+
+    if (!nextView) {
+      // No next view — snap back
+      mainEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      mainEl.style.transform = 'translateX(0)';
+      mainEl.style.opacity = '1';
+      setTimeout(() => { mainEl.style.transition = ''; }, 220);
+      return;
+    }
+
+    // Animate out
+    const dir = dx < 0 ? -1 : 1;
+    mainEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+    mainEl.style.transform = `translateX(${dir * -80}px)`;
+    mainEl.style.opacity = '0';
+
+    setTimeout(() => {
+      mainEl.style.transition = '';
+      mainEl.style.transform = `translateX(${dir * 80}px)`;
+      mainEl.style.opacity = '0';
+      ui.view = nextView;
+      document.querySelectorAll('.tab').forEach(t =>
+        t.classList.toggle('on', t.dataset.view === ui.view));
+      render();
+      // Animate in
+      requestAnimationFrame(() => {
+        mainEl.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+        mainEl.style.transform = 'translateX(0)';
+        mainEl.style.opacity = '1';
+        setTimeout(() => { mainEl.style.transition = ''; }, 240);
+      });
+    }, 200);
   }, { passive: true });
 }
 
