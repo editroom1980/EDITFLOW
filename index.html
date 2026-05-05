@@ -350,57 +350,30 @@ body{
 
 .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);background:rgba(2,2,5,0.97);border-bottom:.5px solid var(--sep)}
 .dh{text-align:center;font-size:10px;font-weight:600;color:#384060;padding:4px 0 3px}
-
-.cal-grid-wrap{position:relative;padding:3px 8px 4px;overflow-x:hidden}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);column-gap:0;row-gap:0;position:relative;z-index:3}
-.cal-day{aspect-ratio:1;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:10%;background:transparent;cursor:default;overflow:hidden}
+.cal-outer{
+  position:relative;
+  margin:8px 8px 0;
+  overflow:hidden;
+  border-radius:var(--r);
+  background:var(--card-bg-brushed),var(--card-bg);
+  border:.5px solid var(--card-border);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,0.13),0 2px 8px rgba(0,0,0,0.5);
+}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);column-gap:0;row-gap:0;position:relative;z-index:2}
+.cal-day{position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:5px;background:transparent;cursor:default;overflow:hidden;border-right:.5px solid rgba(255,255,255,0.04);border-bottom:.5px solid rgba(255,255,255,0.04)}
 .cal-day.editable{cursor:pointer}
 .cal-day.editable:active{background:rgba(120,160,220,0.12)}
-
 .cal-day-num{font-size:13px;font-weight:500;color:rgba(130,160,215,0.7);position:relative;z-index:5;line-height:1;font-variant-numeric:tabular-nums}
 .cal-day.oth .cal-day-num{color:rgba(130,160,215,0.2)}
 .cal-day.tod .cal-day-num{color:#fff;font-weight:800;text-shadow:0 0 5px rgba(255,255,255,0.38)}
 .cal-day.deadline-red .cal-day-num{color:#ff4040;font-weight:700}
 .cal-day.deadline-orange .cal-day-num{color:#ff8e0e;font-weight:700}
 .cal-day.deadline-silver .cal-day-num{color:#9eaabb;font-weight:600}
+.cal-day.nonworking::before{content:'';position:absolute;inset:2px;background:repeating-linear-gradient(45deg,transparent 0,transparent 3px,rgba(180,30,30,0.12) 3px,rgba(180,30,30,0.12) 4px);border-radius:3px;z-index:0;pointer-events:none}
+.cal-grid-wrap{position:relative}
+.cal-bars-layer{position:absolute;top:0;left:0;right:0;bottom:0;z-index:3;overflow:hidden;pointer-events:none}
 
-/* バーCSS: セル内div、SVGオーバーレイ廃止 */
-.day-bars{position:absolute;bottom:0;left:0;right:0;z-index:1}
-.dbar{height:16px;width:100%;border-radius:0;position:absolute;left:0;right:0}
-.dbar::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:rgba(255,255,255,0.28)}
-.dbar.s-start{border-radius:1.25px 0 0 1.25px}
-.dbar.s-end{border-radius:0 1.25px 1.25px 0}
-.dbar.s-only{border-radius:1.25px}
-.dbar.c-r{background:rgba(210,52,52,0.92)}
-.dbar.c-o{background:rgba(208,100,18,0.92)}
-.dbar.c-s{background:rgba(158,162,170,0.88)}
-.cal-day.nonworking .dbar.c-r{background:rgba(118,12,12,0.88)}
-.cal-day.nonworking .dbar.c-o{background:rgba(98,42,4,0.88)}
-.cal-day.nonworking .dbar.c-s{background:rgba(62,64,72,0.85)}
-.bar-title{position:absolute;left:4px;right:0;height:16px;line-height:16px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:10;pointer-events:none}
-.dl-label{position:absolute;right:2px;font-size:7px;font-weight:700;border:.8px solid;border-radius:2px;padding:1px 3px;z-index:15;line-height:14px;pointer-events:none}
-.dl-label.c-r{color:#ff8080;border-color:rgba(210,52,52,0.8);background:rgba(100,8,8,0.88)}
-.dl-label.c-o{color:#ffb060;border-color:rgba(208,100,18,0.8);background:rgba(88,38,4,0.88)}
-.dl-label.c-s{color:#c8ccd4;border-color:rgba(158,162,170,0.8);background:rgba(52,54,60,0.88)}
 
-/* non-working day marker */
-.cal-day.nonworking::before{
-  content:'';position:absolute;inset:2px;
-  background:repeating-linear-gradient(45deg,transparent 0,transparent 3px,rgba(180,30,30,0.18) 3px,rgba(180,30,30,0.18) 4px);
-  border-radius:5px;
-  z-index:1;
-  pointer-events:none;
-}
-
-/* Edit mode: add a subtle border */
-.cal-day.editable.nonworking{
-  outline:.5px solid rgba(255,80,80,0.4);
-  outline-offset:-1.5px;
-}
-
-/* ═══════════════════════════════════════════════
-   GANTT (Project Schedule chart)
-═══════════════════════════════════════════════ */
 .gantt-scroll-wrap{
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
@@ -577,6 +550,8 @@ input[type="date"]{color-scheme:dark}
   cursor:grab;
   -webkit-user-select:none;user-select:none;
 }
+.step-row.dragging{opacity:0.4;background:rgba(60,90,180,0.12)}
+.step-row.drag-over{border-top:2px solid rgba(120,180,255,0.6)}
 .step-code{
   width:32px;height:24px;border-radius:5px;
   background:linear-gradient(180deg,#1a2248,#101530);
@@ -922,8 +897,8 @@ input[type="date"]{color-scheme:dark}
 /* ═══════════════════════════════════════════════
    CONSTANTS & DEFAULTS
 ═══════════════════════════════════════════════ */
-const STORAGE_KEY = 'editflow_state_v1_0';
-const APP_VERSION = '1.0';
+const STORAGE_KEY = 'editflow_state_v1_2';
+const APP_VERSION = '1.2';
 
 // Set to a YYYY-MM-DD string to force a specific "today" for demo
 // Set to null to use the real current date
@@ -950,72 +925,31 @@ function makeStepInstance(libStep, hours, done){
   };
 }
 
+const PRESET_COLORS = ['#2a9d8f','#9b5de5','#4361ee','#e76f51','#06d6a0','#f72585','#6b7280'];
+const DEFAULT_PRESET_COLORS = {'preset_shisou':'#2a9d8f','preset_kagayaite':'#9b5de5','preset_cm':'#4361ee'};
 const DEFAULT_PRESETS = [
   {
     id:'preset_shisou',
-    name:'しそうチャンネル番組',
+    name:'しそうトピックス番組',
     description:'地域情報番組フル工程',
+    color:'#2a9d8f',
     steps: DEFAULT_STEP_LIBRARY.map(s => makeStepInstance(s))
   },
   {
     id:'preset_kagayaite',
     name:'いま、輝いてます。',
     description:'兵庫文化番組',
-    steps:[
-      makeStepInstance(DEFAULT_STEP_LIBRARY[0], 1),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[2], 3),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[3], 1),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[4], 1),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[5], 4),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[6], 1)
-    ]
+    color:'#9b5de5',
+    steps: DEFAULT_STEP_LIBRARY.map(s => makeStepInstance(s))
   },
   {
     id:'preset_cm',
     name:'CM・ショート',
     description:'CM・短編向け短工程',
-    steps:[
-      makeStepInstance(DEFAULT_STEP_LIBRARY[0], 1),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[1], 2),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[2], 2),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[5], 3),
-      makeStepInstance(DEFAULT_STEP_LIBRARY[6], 1)
-    ]
+    color:'#4361ee',
+    steps: DEFAULT_STEP_LIBRARY.map(s => makeStepInstance(s))
   }
 ];
-
-function makeDemoProjects(){
-  // Build demo data anchored to a relevant date
-  return [
-    {
-      id:'proj_demo_1',
-      title:'ヴィクトリーナ姫路SEASON2025-26ダイジェスト',
-      startDate:'2026-04-30',
-      deadline:'2026-05-08',
-      presetId:null,
-      steps: DEFAULT_STEP_LIBRARY.map((s,i) =>
-        makeStepInstance(s, s.defaultHours, i < 3))
-    },
-    {
-      id:'proj_demo_2',
-      title:'宍粟市職員募集CM',
-      startDate:'2026-04-21',
-      deadline:'2026-05-12',
-      presetId:'preset_cm',
-      steps: DEFAULT_PRESETS[2].steps.map((s,i) =>
-        makeStepInstance(s, s.hours, i < 2))
-    },
-    {
-      id:'proj_demo_3',
-      title:'しそうチャンネル「藤まつり2026」',
-      startDate:'2026-05-05',
-      deadline:'2026-05-17',
-      presetId:'preset_shisou',
-      steps: DEFAULT_PRESETS[0].steps.map(s =>
-        makeStepInstance(s, s.hours, false))
-    }
-  ];
-}
 
 const DEFAULT_NON_WORKING_DATES = ['2026-05-09','2026-05-10','2026-05-16','2026-05-17','2026-05-23','2026-05-24','2026-05-30','2026-05-31','2026-05-02','2026-05-03'];
 const DEFAULT_MAX_HOURS = 8;
@@ -1025,12 +959,46 @@ const DEFAULT_MAX_HOURS = 8;
 ═══════════════════════════════════════════════ */
 let state = loadState();
 
+function makeDemoProjects(){
+  return [
+    {
+      id:'proj_demo_1',
+      title:'ヴィクトリーナ姫路SEASON2025-26ダイジェスト',
+      startDate:'2026-04-30',
+      deadline:'2026-05-08',
+      color:'#ffb7c5',
+      presetId:null,
+      steps: DEFAULT_STEP_LIBRARY.map((s,i) => makeStepInstance(s, s.defaultHours, i < 3))
+    },
+    {
+      id:'proj_demo_2',
+      title:'宍粟市職員募集CM',
+      startDate:'2026-04-21',
+      deadline:'2026-05-12',
+      color:'#4361ee',
+      presetId:'preset_cm',
+      steps: DEFAULT_STEP_LIBRARY.map((s,i) => makeStepInstance(s, s.defaultHours, i < 2))
+    },
+    {
+      id:'proj_demo_3',
+      title:'しそうトピックス「藤まつり2026」',
+      startDate:'2026-05-05',
+      deadline:'2026-05-17',
+      color:'#2a9d8f',
+      presetId:'preset_shisou',
+      steps: DEFAULT_STEP_LIBRARY.map(s => makeStepInstance(s, s.defaultHours, false))
+    }
+  ];
+}
+
 function loadState(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw){
       const s = JSON.parse(raw);
       if (s && s.version === APP_VERSION && s.projects && s.presets){
+        s.presets.forEach(p => { if (!p.color) p.color = DEFAULT_PRESET_COLORS[p.id] || '#6b7280'; });
+        s.projects.forEach(p => { if (!p.color){ const pr = s.presets.find(r=>r.id===p.presetId); p.color = pr?(pr.color||'#6b7280'):'#6b7280'; } });
         return s;
       }
     }
@@ -1272,8 +1240,12 @@ function renderProjectCard(p){
   const badgeClass = p.isComplete ? 'done' : c;
   const deadlineCls = p.isComplete ? '' : `deadline-${c}`;
 
+  const accentCol = p.color || '#6b7280';
+  const _days = p.daysToDeadline != null ? p.daysToDeadline : 999;
+  const _endCol = _days <= 3 ? 'rgba(210,52,52,0.95)' : _days <= 7 ? 'rgba(208,100,18,0.95)' : accentCol;
+  const accentStyle = `background:linear-gradient(90deg,transparent 2%,${accentCol}cc 10%,${accentCol} 35%,${_endCol} 80%,transparent 98%);box-shadow:0 0 14px ${accentCol}88`;
   return `<div class="pj" data-pid="${p.id}">
-    <div class="pj-accent ${c}"></div>
+    <div class="pj-accent" style="${accentStyle}"></div>
     <div class="pj-body">
       <div class="pj-title">${escapeHtml(p.title)}</div>
       <div class="pj-row">
@@ -1299,99 +1271,141 @@ function renderCalendar(){
 
   if (!ui.calMonth){
     const t = getTodayDate();
-    ui.calMonth = { y: t.getFullYear(), m: t.getMonth() };
+    ui.calMonth = { y:t.getFullYear(), m:t.getMonth() };
   }
-  const { y, m } = ui.calMonth;
+  const {y, m} = ui.calMonth;
   const grid = getCalendarGrid(y, m);
+  const todayStr = getTodayStr();
 
-  // deadline date → urgency color map
+  // ─ Dimensions matching Gantt proportionally ─
+  const BAR_H  = 14;   // px (calendar bar height)
+  const GLOSS_H = 5;   // px (gloss overlay height, same ratio as Gantt 2/5)
+  const R      = 5;    // border-radius px (Gantt rx=1.8 on h=5 ≈ 36% → 5px on h=14)
+  const GAP    = 4;    // px between bars
+  const SLOT_H = BAR_H + GAP;
+
   const dlMap = new Map();
-  for (const p of projects){
-    if (!p.isComplete) dlMap.set(p.deadline, p.urgencyColor);
+  for (const p of projects) if (!p.isComplete) dlMap.set(p.deadline, p.urgencyColor);
+
+  // Sort: nearest deadline first (slot 0 = top bar)
+  const activeForBars = projects
+    .filter(p => !p.isComplete && p.startDate && p.deadline)
+    .sort((a,b) => strToDate(a.deadline) - strToDate(b.deadline));
+  const numSlots = activeForBars.length;
+  const cellH = numSlots > 0 ? 26 + numSlots * SLOT_H : 44;
+
+  // Urgency colors for top-2 deadline items
+  function dlUrgency(slot){
+    if (slot === 0) return {border:'rgba(210,52,52,0.95)',text:'rgba(255,110,110,1)',bg:'rgba(90,6,6,0.97)'};
+    if (slot === 1) return {border:'rgba(208,100,18,0.95)',text:'rgba(255,170,60,1)',bg:'rgba(80,36,2,0.97)'};
+    return null;
   }
 
-  // project bars: 締切順にソートしてslot番号を割り当て
-  const COLOR = { red:'r', orange:'o', silver:'s' };
-  const activeForBars = projects.filter(p => !p.isComplete && p.startDate && p.deadline);
-  const numSlots = activeForBars.length;
-  const barMap = new Map(); // date → Map(slotIdx → {color,isStart,isEnd})
+  function hexRgb(hex){
+    const h=(hex||'#6b7280').replace('#','');
+    return [parseInt(h.slice(0,2),16)||107, parseInt(h.slice(2,4),16)||114, parseInt(h.slice(4,6),16)||128];
+  }
+
+  // Build a bar div with separate gloss overlay (same method as Gantt's separate rect)
+  // tl/tr/br/bl = border-radius for each corner
+  function barDivs(x1pct, wpct, barY, fill, tl, tr, br, bl, isPast){
+    const alpha = isPast ? 0.38 : 0.92;
+    const actualFill = fill.replace(/0\.92\)/, `${alpha})`);
+    const brad = `${tl}px ${tr}px ${br}px ${bl}px`;
+    const bar  = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${actualFill};border-radius:${brad};box-sizing:border-box"></div>`;
+    // Gloss overlay: same width, GLOSS_H tall, white→transparent, same radius on top corners
+    const gloss = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${GLOSS_H}px;background:linear-gradient(180deg,rgba(255,255,255,0.25),rgba(255,255,255,0));border-radius:${tl}px ${tr}px 0 0;pointer-events:none"></div>`;
+    return bar + gloss;
+  }
+
+  let overlayBars = '';
 
   activeForBars.forEach((p, slot) => {
     const ps = strToDate(p.startDate);
     const pe = strToDate(p.deadline);
-    const calS = strToDate(grid.days[0].date);
-    const calE = strToDate(grid.days[41].date);
-    if (pe < calS || ps > calE) return;
+    const calStart = strToDate(grid.days[0].date);
+    const calEnd   = strToDate(grid.days[41].date);
+    if (pe < calStart || ps > calEnd) return;
 
-    const color = COLOR[p.urgencyColor] ?? 's';
-    for (const day of grid.days){
-      const dc = strToDate(day.date);
-      if (dc < ps || dc > pe) continue;
-      if (!barMap.has(day.date)) barMap.set(day.date, new Map());
-      barMap.get(day.date).set(slot, {
-        color,
-        isStart: day.date === p.startDate,
-        isEnd:   day.date === p.deadline,
-        title:   p.title
-      });
+    const [r,g,b] = hexRgb(p.color);
+    const fillCol = `rgba(${r},${g},${b},0.92)`;
+
+    const urg = dlUrgency(slot);
+    const dlBorderCol = urg ? urg.border : `rgba(${r},${g},${b},0.85)`;
+    const dlTextCol   = urg ? urg.text   : `rgba(${Math.min(255,r+80)},${Math.min(255,g+80)},${Math.min(255,b+80)},1)`;
+    const dlBgCol     = urg ? urg.bg     : `rgba(${Math.round(r*0.35)},${Math.round(g*0.35)},${Math.round(b*0.35)},0.97)`;
+
+    let titleDone = false;
+
+    for (let row = 0; row < 6; row++){
+      const rowDays  = grid.days.slice(row*7, row*7+7);
+      const rowStart = strToDate(rowDays[0].date);
+      const rowEnd   = strToDate(rowDays[6].date);
+      if (pe < rowStart || ps > rowEnd) continue;
+
+      const isProjStart = ps >= rowStart && ps <= rowEnd;
+      const isProjEnd   = pe >= rowStart && pe <= rowEnd;
+      const sCol = isProjStart ? rowDays.findIndex(d => d.date === p.startDate) : 0;
+      const eCol = isProjEnd   ? rowDays.findIndex(d => d.date === p.deadline)  : 6;
+
+      // slot 0 = nearest = top bar; slot N = farthest = bottom bar
+      const barY = row * cellH + slot * SLOT_H + (cellH - numSlots * SLOT_H + GAP) / 2;
+
+      // Is this entire row segment in the past?
+      const rowEndDate = rowDays[eCol].date;
+      const isPast = rowEndDate < todayStr;
+
+      if (isProjEnd){
+        const dlX = eCol / 7 * 100;
+        const dlW = 1 / 7 * 100;
+        const bx1 = (isProjStart ? sCol : 0) / 7 * 100;
+        const bx2 = dlX;
+
+        // Body bar: left end rounded if project starts here, right end SQUARE (connects to dl cell)
+        if (bx2 > bx1){
+          const tl = isProjStart ? R : 0;
+          overlayBars += barDivs(bx1, bx2-bx1, barY, fillCol, tl, 0, 0, tl, isPast);
+        }
+
+        // Deadline cell: left SQUARE (connects to body), right end rounded = R
+        const dlTl = (isProjStart && sCol === eCol) ? R : 0;
+        const dlIsPast = p.deadline < todayStr;
+        const dlAlpha = dlIsPast ? 0.5 : 1;
+        overlayBars += `<div style="position:absolute;top:${barY}px;left:${dlX.toFixed(3)}%;width:${dlW.toFixed(3)}%;height:${BAR_H}px;background:${dlBgCol};border-radius:${dlTl}px ${R}px ${R}px ${dlTl}px;border:2px solid ${dlBorderCol};box-sizing:border-box;display:flex;align-items:center;justify-content:center;z-index:10;opacity:${dlAlpha}"><span style="font-size:9px;font-weight:800;color:${dlTextCol};letter-spacing:0;line-height:1;text-shadow:0 0 5px rgba(0,0,0,0.7)">納期</span></div>`;
+
+      } else {
+        // Full row span
+        const bx1 = (isProjStart ? sCol : 0) / 7 * 100;
+        const bx2 = (eCol + 1) / 7 * 100;
+        const tl  = isProjStart ? R : 0;
+        // Right end: 0 unless this is also the last row of the project (then handled by dl cell)
+        overlayBars += barDivs(bx1, bx2-bx1, barY, fillCol, tl, 0, 0, tl, isPast);
+      }
+
+      // Title
+      if (!titleDone){
+        const txLeft = (isProjStart ? sCol : 0) / 7 * 100;
+        overlayBars += `<div style="position:absolute;top:${barY}px;left:calc(${txLeft.toFixed(3)}% + 4px);right:0;height:${BAR_H}px;line-height:${BAR_H}px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.92);white-space:nowrap;overflow:hidden;z-index:11;pointer-events:none">${escapeHtml(p.title)}</div>`;
+        titleDone = true;
+      }
     }
   });
 
-  // Build weekday headers (class=dh)
-  const weekdays = ['日','月','火','水','木','金','土'];
-  const wkHtml = weekdays.map(w => `<div class="dh">${w}</div>`).join('');
-
-  // Build day cells
+  const wkHtml = ['日','月','火','水','木','金','土'].map(w=>`<div class="dh">${w}</div>`).join('');
   const dayCellsHtml = grid.days.map(d => {
-    const classes = ['cal-day'];
-    if (d.isOtherMonth) classes.push('oth');
-    if (d.isToday) classes.push('tod');
-    if (d.isNonWorking) classes.push('nonworking');
-    if (ui.calEditMode) classes.push('editable');
+    const cls = ['cal-day'];
+    if (d.isOtherMonth) cls.push('oth');
+    if (d.isToday)      cls.push('tod');
+    if (d.isNonWorking) cls.push('nonworking');
+    if (ui.calEditMode) cls.push('editable');
     const dlColor = dlMap.get(d.date);
-    if (dlColor) classes.push('deadline-'+dlColor);
-
-    // bars: slot0=bottom(most urgent), slotN=top
-    // bottom値 = slot * 6px (5px bar + 1px gap)
-    const barSlots = barMap.get(d.date);
-    let barsHtml = '';
-    let titlesHtml = '';
-    if (barSlots && barSlots.size > 0){
-      for (const [s, b] of barSlots){
-        const btm = s * 18;
-        let cls = `dbar c-${b.color}`;
-        if (b.isStart && b.isEnd) cls += ' s-only';
-        else if (b.isStart)       cls += ' s-start';
-        else if (b.isEnd)         cls += ' s-end';
-        barsHtml += `<div class="${cls}" style="bottom:${btm}px"></div>`;
-        if (b.isEnd){
-          barsHtml += `<div class="dl-label c-${b.color}" style="bottom:${btm+1}px">納期</div>`;
-        }
-        if (b.isStart && b.title){
-          titlesHtml += `<div class="bar-title" style="bottom:${btm}px">${escapeHtml(b.title)}</div>`;
-        }
-      }
-    }
-
-    const cellH = 22 + numSlots * 18;
+    if (dlColor) cls.push('deadline-'+dlColor);
     const act = ui.calEditMode ? 'data-act="toggleNonWorking"' : '';
-    return `<div class="${classes.join(' ')}" data-date="${d.date}" ${act} style="height:${cellH}px">
-      <span class="cal-day-num">${d.day}</span>
-      ${barsHtml ? `<div class="day-bars" style="height:${numSlots*18-2}px">${barsHtml}</div>` : ''}
-      ${titlesHtml}
-    </div>`;
+    return `<div class="${cls.join(' ')}" data-date="${d.date}" ${act} style="height:${cellH}px"><span class="cal-day-num">${d.day}</span></div>`;
   }).join('');
 
-  const editToggleHtml = `<button class="cal-edit-toggle ${ui.calEditMode?'on':''}" data-act="toggleCalEditMode">
-    <span class="ic">${ui.calEditMode?'✓':'✏️'}</span>
-    <span>${ui.calEditMode?'完了':'編集不可日'}</span>
-  </button>`;
-
-  const editBannerHtml = ui.calEditMode ? `<div class="cal-edit-banner">
-    <span class="ic">ⓘ</span>
-    <span>日付をタップで編集不可日を切替</span>
-  </div>` : '';
-
+  const editToggleHtml = `<button class="cal-edit-toggle ${ui.calEditMode?'on':''}" data-act="toggleCalEditMode"><span class="ic">${ui.calEditMode?'✓':'✏️'}</span><span>${ui.calEditMode?'完了':'編集不可日'}</span></button>`;
+  const editBannerHtml = ui.calEditMode ? `<div class="cal-edit-banner"><span class="ic">ⓘ</span><span>日付をタップで編集不可日を切替</span></div>` : '';
   const ganttHtml = renderGantt(projects, y, m);
 
   main.innerHTML = `
@@ -1404,9 +1418,12 @@ function renderCalendar(){
       ${editToggleHtml}
     </div>
     ${editBannerHtml}
-    <div class="cal-weekdays">${wkHtml}</div>
-    <div class="cal-grid-wrap">
-      <div class="cal-grid">${dayCellsHtml}</div>
+    <div class="cal-outer">
+      <div class="cal-weekdays">${wkHtml}</div>
+      <div class="cal-grid-wrap">
+        <div class="cal-grid">${dayCellsHtml}</div>
+        <div class="cal-bars-layer">${overlayBars}</div>
+      </div>
     </div>
     ${ganttHtml}
   `;
@@ -1463,13 +1480,13 @@ function renderGantt(projects, year, month){
     const doneW   = Math.max(0, todayX2 - x1);
     const remW    = Math.max(0, dlX - Math.max(x1, todayX2));
 
-    const fill  = colorForUrgency(p.urgencyColor, false);
-    const fillD = p.urgencyColor==='red'    ? 'rgba(210,52,52,0.3)'
-                : p.urgencyColor==='orange' ? 'rgba(206,98,18,0.28)'
-                : 'rgba(155,158,165,0.28)';
-    const lFill = p.urgencyColor==='red'    ? 'rgba(210,50,50,0.88)'
-                : p.urgencyColor==='orange' ? 'rgba(205,98,18,0.88)'
-                : 'rgba(145,148,156,0.88)';
+    const _gc = p.color || '#6b7280';
+    const _gr = parseInt(_gc.replace('#','').substring(0,2),16);
+    const _gg = parseInt(_gc.replace('#','').substring(2,4),16);
+    const _gb = parseInt(_gc.replace('#','').substring(4,6),16);
+    const fill  = `rgba(${_gr},${_gg},${_gb},0.92)`;
+    const fillD = `rgba(${_gr},${_gg},${_gb},0.28)`;
+    const lFill = `rgba(${Math.min(255,_gr+60)},${Math.min(255,_gg+60)},${Math.min(255,_gb+60)},0.95)`;
 
     const title = p.title.length > 22 ? p.title.slice(0,22)+'…' : p.title;
 
@@ -1486,9 +1503,10 @@ function renderGantt(projects, year, month){
     const py1 = barY - 0.5;
     const py2 = barY + BAR_H + 0.5;
     const pxr = dlX + (dlX + 3.7 <= VB_W - R_PAD ? 3.7 : 0);
-    barSvg += `<polygon points="${dlX},${py1} ${dlX},${py2} ${pxr},${(py1+py2)/2}" fill="${lFill}" opacity="0.82"/>`;
+    const polyFill = idx===0 ? 'rgba(210,52,52,0.95)' : idx===1 ? 'rgba(208,100,18,0.95)' : lFill;
+    barSvg += `<polygon points="${dlX},${py1} ${dlX},${py2} ${pxr},${(py1+py2)/2}" fill="${polyFill}" opacity="0.92"/>`;
 
-    rows += `<text x="${L_PAD}" y="${labelY}" fill="${lFill}" font-size="3.8" font-family="-apple-system" font-weight="700">${escapeHtml(title)}</text>${barSvg}`;
+    rows += `<text x="${x1}" y="${labelY}" fill="${lFill}" font-size="3.8" font-family="-apple-system" font-weight="700">${escapeHtml(title)}</text>${barSvg}`;
   });
 
   // 縦グリッド線（5日ごと）
@@ -1512,18 +1530,22 @@ function renderGantt(projects, year, month){
   active.forEach(p => {
     const pe = strToDate(p.deadline);
     if (pe.getFullYear()===year && pe.getMonth()===month){
-      dlColorMap.set(pe.getDate(), p.urgencyColor);
+      dlColorMap.set(pe.getDate(), p);
     }
   });
   for (let d=1; d<=daysInMonth; d++){
     const gx = L_PAD + (d-1)*DAY_W;
-    const urg = dlColorMap.get(d);
-    const axFill = urg==='red'    ? 'rgba(210,52,52,0.88)'
-                 : urg==='orange' ? 'rgba(205,98,18,0.88)'
-                 : urg==='silver' ? 'rgba(145,148,156,0.88)'
-                 : 'rgba(50,75,155,0.6)';
-    const axW = urg ? '3.6' : '2.8';
-    axis += `<text x="${gx}" y="${numY}" fill="${axFill}" font-size="${axW}" font-family="-apple-system" text-anchor="middle" font-weight="${urg?'700':'400'}">${d}</text>`;
+    const dlP = dlColorMap.get(d);
+    let axFill = 'rgba(50,75,155,0.6)'; let axW = '2.8'; let axBold = '400';
+    if (dlP){
+      const _dc = dlP.color || '#6b7280';
+      const _dr = parseInt(_dc.replace('#','').substring(0,2),16);
+      const _dg = parseInt(_dc.replace('#','').substring(2,4),16);
+      const _db = parseInt(_dc.replace('#','').substring(4,6),16);
+      axFill = `rgba(${Math.min(255,_dr+60)},${Math.min(255,_dg+60)},${Math.min(255,_db+60)},0.95)`;
+      axW = '3.6'; axBold = '700';
+    }
+    axis += `<text x="${gx}" y="${numY}" fill="${axFill}" font-size="${axW}" font-family="-apple-system" text-anchor="middle" font-weight="${axBold}">${d}</text>`;
   }
 
   return `<div class="gantt-card"><div class="gantt-body">
@@ -1585,6 +1607,7 @@ function openNewProjectSheet(){
     title: '',
     startDate: today,
     deadline: defaultDeadline,
+    color: state.presets[0] ? (state.presets[0].color||'#6b7280') : '#6b7280',
     presetId: state.presets[0]?.id || null,
     steps: state.presets[0] ? state.presets[0].steps.map(s => ({...s, done:false})) : []
   };
@@ -1597,7 +1620,10 @@ function openNewProjectSheet(){
           <div class="preset-name">${escapeHtml(p.name)}</div>
           <div class="preset-desc">${escapeHtml(p.description || '')}</div>
         </div>
-        <div class="preset-meta">${p.steps.length}工程</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:16px;height:16px;border-radius:50%;background:${p.color||'#6b7280'};border:1.5px solid rgba(255,255,255,0.3);flex-shrink:0"></div>
+          <div class="preset-meta">${p.steps.length}工程</div>
+        </div>
       </div>
     `).join('');
 
@@ -1624,6 +1650,16 @@ function openNewProjectSheet(){
           <div class="form-row">
             <span class="form-label">タイトル</span>
             <input class="form-input" id="np-title" type="text" placeholder="プロジェクト名…" value="${escapeAttr(draft.title)}">
+          </div>
+          <div class="form-row">
+            <span class="form-label">カラー</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              ${PRESET_COLORS.map(c=>`<div data-act="pickNewProjColor" data-color="${c}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${ (draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0"></div>`).join('')}
+              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.3);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:${draft.color||'#6b7280'}">
+                <input type="color" value="${draft.color||'#6b7280'}" id="np-color-picker" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,0.8);pointer-events:none">✎</span>
+              </label>
+            </div>
           </div>
           <div class="form-row">
             <span class="form-label">開始日</span>
@@ -1679,6 +1715,8 @@ function openNewProjectSheet(){
     if (t) t.addEventListener('input', e => { draft.title = e.target.value; });
     if (s) s.addEventListener('input', e => { draft.startDate = e.target.value; });
     if (d) d.addEventListener('input', e => { draft.deadline = e.target.value; });
+    const cp = document.getElementById('np-color-picker');
+    if (cp) cp.addEventListener('input', e => { draft.color = e.target.value; ui.activeNewProjectRerender?.(); });
 
     // Step hour inputs
     document.querySelectorAll('[data-step-hours]').forEach(el => {
@@ -1734,7 +1772,7 @@ function openProjectSettings(projectId){
     const total = draft.steps.reduce((sum,s) => sum + (Number(s.hours)||0), 0);
     const stepsHtml = draft.steps.length === 0
       ? `<div style="padding:14px;text-align:center;color:var(--tx-low);font-size:11px">工程がありません</div>`
-      : draft.steps.map((s,i) => renderStepRowWithDone(s,i)).join('');
+      : draft.steps.map((s,i) => renderStepRow(s,i,'proj')).join('');
 
     const content = `
       <div class="sheet-subtitle">${escapeHtml(draft.title)}</div>
@@ -1744,6 +1782,16 @@ function openProjectSettings(projectId){
           <div class="form-row">
             <span class="form-label">タイトル</span>
             <input class="form-input" id="ps-title" type="text" value="${escapeAttr(draft.title)}">
+          </div>
+          <div class="form-row">
+            <span class="form-label">カラー</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              ${PRESET_COLORS.map(c=>`<div data-act="pickProjColor" data-color="${c}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${ (draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0"></div>`).join('')}
+              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.3);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:${draft.color||'#6b7280'}">
+                <input type="color" value="${draft.color||'#6b7280'}" id="ps-color-picker" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,0.8);pointer-events:none">✎</span>
+              </label>
+            </div>
           </div>
           <div class="form-row">
             <span class="form-label">開始日</span>
@@ -1765,6 +1813,7 @@ function openProjectSettings(projectId){
       </div>
       <button class="btn btn-secondary" data-act="addStepProj">＋ 工程を追加 / Add Step</button>
       <button class="btn btn-secondary" data-act="saveAsPreset">プリセットとして保存 / Save as Preset</button>
+      <button class="btn btn-secondary" data-act="openPresetManager">プリセット管理 / Manage Presets</button>
       <button class="btn btn-danger" data-act="deleteProject">このプロジェクトを削除</button>
     `;
 
@@ -1794,6 +1843,10 @@ function openProjectSettings(projectId){
     if (t) t.addEventListener('input', e => { draft.title = e.target.value; });
     if (s) s.addEventListener('input', e => { draft.startDate = e.target.value; });
     if (d) d.addEventListener('input', e => { draft.deadline = e.target.value; });
+    const cp2 = document.getElementById('ps-color-picker');
+    if (cp2) cp2.addEventListener('input', e => { draft.color = e.target.value; ui.activeProjectRerender?.(); });
+    const cp = document.getElementById('np-color-picker');
+    if (cp) cp.addEventListener('input', e => { draft.color = e.target.value; ui.activeNewProjectRerender?.(); });
 
     document.querySelectorAll('[data-step-hours]').forEach(el => {
       el.addEventListener('input', e => {
@@ -1952,6 +2005,42 @@ function attachEvents(){
   // Global delegated click handler
   document.addEventListener('click', handleAction);
 
+  // Step drag-to-reorder (touch)
+  let _dIdx=null,_dMode=null,_dOver=null;
+  document.addEventListener('touchstart',e=>{
+    const h=e.target.closest('.step-drag');
+    if(!h)return;
+    const row=h.closest('.step-row');
+    if(!row)return;
+    const rows=Array.from(row.parentElement.querySelectorAll('.step-row'));
+    _dIdx=rows.indexOf(row);
+    _dMode=row.querySelector('[data-step-hours]')?.dataset.mode||null;
+    row.classList.add('dragging');
+    e.preventDefault();
+  },{passive:false});
+  document.addEventListener('touchmove',e=>{
+    if(_dIdx===null)return;
+    const t=e.touches[0];
+    const el=document.elementFromPoint(t.clientX,t.clientY);
+    const over=el?.closest('.step-row');
+    document.querySelectorAll('.step-row.drag-over').forEach(r=>r.classList.remove('drag-over'));
+    if(over&&!over.classList.contains('dragging')){over.classList.add('drag-over');_dOver=over;}
+    e.preventDefault();
+  },{passive:false});
+  document.addEventListener('touchend',e=>{
+    if(_dIdx===null)return;
+    document.querySelectorAll('.step-row.dragging,.step-row.drag-over').forEach(r=>{r.classList.remove('dragging');r.classList.remove('drag-over');});
+    if(_dOver&&_dMode){
+      const rows=Array.from(_dOver.parentElement.querySelectorAll('.step-row'));
+      const toIdx=rows.indexOf(_dOver);
+      if(toIdx>=0&&toIdx!==_dIdx){
+        if(_dMode==='newproj'&&ui.activeNewProjectDraft){const s=ui.activeNewProjectDraft.steps;const[m]=s.splice(_dIdx,1);s.splice(toIdx,0,m);ui.activeNewProjectRerender?.();}
+        else if(_dMode==='proj'&&ui.activeProjectDraft){const s=ui.activeProjectDraft.steps;const[m]=s.splice(_dIdx,1);s.splice(toIdx,0,m);ui.activeProjectRerender?.();}
+      }
+    }
+    _dIdx=null;_dMode=null;_dOver=null;
+  },{passive:false});
+
   // ① Swipe to switch tabs on #main (with animation)
   const mainEl = document.getElementById('main');
   let swipeStartX = 0;
@@ -2010,12 +2099,12 @@ function attachEvents(){
     // Animate out
     const dir = dx < 0 ? -1 : 1;
     mainEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
-    mainEl.style.transform = `translateX(${dir * -80}px)`;
+    mainEl.style.transform = `translateX(${dir * 80}px)`;
     mainEl.style.opacity = '0';
 
     setTimeout(() => {
       mainEl.style.transition = '';
-      mainEl.style.transform = `translateX(${dir * 80}px)`;
+      mainEl.style.transform = `translateX(${dir * -80}px)`;
       mainEl.style.opacity = '0';
       ui.view = nextView;
       document.querySelectorAll('.tab').forEach(t =>
@@ -2111,6 +2200,16 @@ function handleAction(e){
     case 'deleteProject':
       confirmDeleteProject();
       break;
+    case 'executeDeleteProject':{
+      const d2 = ui.activeProjectDraft;
+      if (!d2) { closeSheet(); break; }
+      state.projects = state.projects.filter(p => p.id !== d2.id);
+      saveState();
+      closeSheet();
+      render();
+      showToast('削除しました');
+      break;
+    }
     case 'saveAsPreset':
       saveCurrentProjectAsPreset();
       break;
@@ -2118,6 +2217,65 @@ function handleAction(e){
       ui.ganttFullMode = !ui.ganttFullMode;
       render();
       break;
+    case 'pickNewProjColor':
+      if(ui.activeNewProjectDraft){ui.activeNewProjectDraft.color=ds.color;ui.activeNewProjectRerender?.();}
+      break;
+    case 'pickProjColor':
+      if(ui.activeProjectDraft){ui.activeProjectDraft.color=ds.color;ui.activeProjectRerender?.();}
+      break;
+    case 'pickPresetColor':
+      if (ui.pendingPresetDraft) ui.pendingPresetDraft.color = ds.color;
+      openColorPickerSheet();
+      break;
+    case 'openPresetManager':
+      openPresetManager();
+      break;
+    case 'presetMgrDelete':{
+      const idx2 = parseInt(ds.idx,10);
+      if(!isNaN(idx2)&&idx2>=0&&idx2<state.presets.length){
+        state.presets.splice(idx2,1);
+        saveState();
+        ui.presetMgrRerender?.();
+      }
+      break;
+    }
+    case 'presetMgrColor':{
+      const idx3 = parseInt(ds.idx,10);
+      if(!isNaN(idx3)&&state.presets[idx3]){
+        ui.pendingPresetDraft = state.presets[idx3];
+        ui.pendingPresetName  = state.presets[idx3].name;
+        ui._presetMgrColorIdx = idx3;
+        openColorPickerSheet();
+      }
+      break;
+    }
+    case 'confirmSavePreset':{
+      const pd = ui.pendingPresetDraft;
+      const pn = ui.pendingPresetName;
+      if (!pd || !pn) { closeSheet(); break; }
+      if(ui._presetMgrColorIdx!=null){
+        // 既存プリセットの色変更
+        const ep = state.presets[ui._presetMgrColorIdx];
+        if(ep){ ep.color = pd.color||'#6b7280'; saveState(); }
+        ui._presetMgrColorIdx=null;
+        popSheet();
+        ui.presetMgrRerender?.();
+        showToast('色を変更しました');
+      } else {
+        const np = {
+          id: 'preset_'+Date.now(),
+          name: pn,
+          description: '',
+          color: pd.color||'#6b7280',
+          steps: pd.steps.map(s=>({code:s.code,jp:s.jp,en:s.en,hours:s.hours,done:false}))
+        };
+        state.presets.push(np);
+        saveState();
+        closeSheet();
+        showToast('プリセットを保存しました');
+      }
+      break;
+    }
   }
 }
 
@@ -2153,6 +2311,7 @@ function selectPreset(presetId){
     const preset = state.presets.find(p => p.id === presetId);
     if (preset){
       draft.presetId = presetId;
+      draft.color = preset.color || '#6b7280';
       draft.steps = preset.steps.map(s => ({...s, done:false}));
     }
   }
@@ -2243,11 +2402,13 @@ function saveNewProject(){
     return;
   }
 
+  const _pr2 = d.presetId ? state.presets.find(p => p.id === d.presetId) : null;
   const newProj = {
     id: 'proj_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
     title: d.title.trim(),
     startDate: d.startDate,
     deadline: d.deadline,
+    color: d.color || (_pr2 ? (_pr2.color||'#6b7280') : '#6b7280'),
     presetId: d.presetId,
     steps: d.steps.map(s => ({...s}))
   };
@@ -2271,6 +2432,7 @@ function saveProjectChanges(){
   proj.title = d.title.trim();
   proj.startDate = d.startDate;
   proj.deadline = d.deadline;
+  proj.color = d.color || proj.color || '#6b7280';
   proj.steps = d.steps.map(s => ({...s}));
   saveState();
   closeSheet();
@@ -2279,30 +2441,78 @@ function saveProjectChanges(){
 }
 
 function confirmDeleteProject(){
-  if (!confirm('このプロジェクトを削除しますか？\nThis action cannot be undone.')) return;
   const d = ui.activeProjectDraft;
   if (!d) return;
-  state.projects = state.projects.filter(p => p.id !== d.id);
-  saveState();
-  closeSheet();
-  render();
-  showToast('削除しました');
+  // 確認シートを開く
+  const header = `<div style="width:100%"><div class="sheet-title" style="text-align:center">プロジェクトを削除</div></div>`;
+  const content = `<div style="text-align:center;padding:16px 8px">
+    <div style="font-size:13px;color:#dce8f8;margin-bottom:8px">${escapeHtml(d.title)}</div>
+    <div style="font-size:11px;color:var(--tx-mid)">この操作は取り消せません</div>
+  </div>`;
+  const footer = `<button class="btn btn-danger" data-act="executeDeleteProject">削除する</button>
+  <button class="btn btn-secondary" data-act="closeSheet">キャンセル</button>`;
+  ui.sheetStack.push({kind:'confirmDelete', header, content, footer});
+  rerenderSheet();
+  document.getElementById('sheetOverlay').classList.add('on');
+  document.getElementById('sheet').classList.add('on');
+  ui.sheetOpen = true;
 }
 
 function saveCurrentProjectAsPreset(){
   const d = ui.activeProjectDraft;
   if (!d) return;
-  const name = prompt('プリセット名を入力\n(例: しそうチャンネル番組)', d.title);
+  const name = prompt('プリセット名を入力\n(例: しそうトピックス番組)', d.title);
   if (!name) return;
-  const newPreset = {
-    id: 'preset_' + Date.now(),
-    name: name.trim(),
-    description: '',
-    steps: d.steps.map(s => ({code:s.code, jp:s.jp, en:s.en, hours:s.hours, done:false}))
-  };
-  state.presets.push(newPreset);
-  saveState();
-  showToast('プリセットを保存しました');
+  ui.pendingPresetName = name.trim();
+  ui.pendingPresetDraft = d;
+  openColorPickerSheet();
+}
+
+function openPresetManager(){
+  function rerender(){
+    const rows = state.presets.map((p,i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:.5px solid var(--sep)">
+        <div data-act="presetMgrColor" data-idx="${i}" style="width:28px;height:28px;border-radius:50%;background:${p.color||'#6b7280'};border:1.5px solid rgba(255,255,255,0.25);cursor:pointer;flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:#dce8f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.name)}</div>
+          <div style="font-size:10px;color:var(--tx-low)">${p.steps.length}工程</div>
+        </div>
+        <button data-act="presetMgrDelete" data-idx="${i}" style="background:none;border:.5px solid rgba(220,80,80,0.4);border-radius:6px;color:rgba(220,80,80,0.8);font-size:10px;font-weight:700;padding:4px 8px;cursor:pointer">削除</button>
+      </div>
+    `).join('');
+    const header = `<button class="sheet-back" data-act="popSheet">⟨ 戻る</button><div class="sheet-title">プリセット管理</div><span style="width:50px"></span>`;
+    const content = `<div class="sheet-card" style="margin-bottom:12px">${rows}</div>
+      <div style="font-size:10px;color:var(--tx-low);padding:4px">色丸をタップで色を変更できます</div>`;
+    const footer = '';
+    if(ui.sheetStack.length>0&&ui.sheetStack[ui.sheetStack.length-1].kind==='presetmgr'){
+      ui.sheetStack[ui.sheetStack.length-1]={kind:'presetmgr',header,content,footer,rerender};
+    } else {
+      ui.sheetStack.push({kind:'presetmgr',header,content,footer,rerender});
+    }
+    rerenderSheet();
+    document.getElementById('sheetOverlay').classList.add('on');
+    document.getElementById('sheet').classList.add('on');
+    ui.sheetOpen=true;
+  }
+  ui.presetMgrRerender=rerender;
+  rerender();
+}
+
+function openColorPickerSheet(){
+  const colors = PRESET_COLORS;
+  const current = ui.pendingPresetDraft.color || '#6b7280';
+  const swatches = colors.map(c => {
+    const sel = c === current;
+    return `<div data-act="pickPresetColor" data-color="${c}" style="width:36px;height:36px;border-radius:50%;background:${c};cursor:pointer;border:${sel?'3px solid #fff':'3px solid transparent'};box-shadow:0 0 0 1.5px ${c}"></div>`;
+  }).join('');
+  const header = `<button class="sheet-back" data-act="popSheet">⟨ 戻る</button><div class="sheet-title">カラー選択</div><span style="width:50px"></span>`;
+  const content = `<div style="padding:10px 0 6px;color:var(--tx-mid);font-size:11px">バーの色を選択してください</div><div style="display:flex;gap:14px;flex-wrap:wrap;padding:12px 0">${swatches}</div>`;
+  const footer = `<button class="btn btn-primary" data-act="confirmSavePreset">保存 / Save</button>`;
+  ui.sheetStack.push({kind:'colorpicker', header, content, footer});
+  rerenderSheet();
+  document.getElementById('sheetOverlay').classList.add('on');
+  document.getElementById('sheet').classList.add('on');
+  ui.sheetOpen = true;
 }
 
 /* ═══════════════════════════════════════════════
@@ -2334,6 +2544,25 @@ function render(){
 window.addEventListener('DOMContentLoaded', () => {
   attachEvents();
   render();
+
+  // 納期通知バナー
+  setTimeout(() => {
+    const projects = computeSchedule();
+    const urgent = projects.filter(p => !p.isComplete && p.daysToDeadline <= 7);
+    urgent.sort((a,b) => a.daysToDeadline - b.daysToDeadline);
+    if (urgent.length === 0) return;
+    const p = urgent[0];
+    const is3 = p.daysToDeadline <= 3;
+    const col = p.color || '#6b7280';
+    const banner = document.createElement('div');
+    banner.style.cssText = `position:fixed;top:calc(env(safe-area-inset-top)+60px);left:50%;transform:translateX(-50%);z-index:300;background:rgba(8,10,20,0.96);border:.5px solid ${col};border-radius:10px;padding:10px 16px;font-size:12px;font-weight:700;color:#f0f6fc;box-shadow:0 4px 16px rgba(0,0,0,0.6),0 0 12px ${col}66;max-width:85vw;text-align:center;cursor:pointer;transition:opacity .3s`;
+    const icon = is3 ? '🔴' : '🟠';
+    const days = p.daysToDeadline === 0 ? '今日が納期です！' : `納期まであと${p.daysToDeadline}日`;
+    banner.textContent = `${icon} ${p.title.length>18?p.title.slice(0,18)+'…':p.title} — ${days}`;
+    banner.addEventListener('click', () => { banner.style.opacity='0'; setTimeout(()=>banner.remove(),300); });
+    document.body.appendChild(banner);
+    setTimeout(() => { banner.style.opacity='0'; setTimeout(()=>banner.remove(),300); }, 5000);
+  }, 800);
 
   // Save on visibility change
   document.addEventListener('visibilitychange', () => {
