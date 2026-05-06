@@ -230,7 +230,7 @@ body{
   transition:transform .15s,opacity .15s;
 }
 .pj-badge:active,.pj-gear:active{transform:scale(0.94)}
-.pj-badge{padding:0 10px;font-size:10px}
+.pj-badge{width:54px;padding:0;font-size:10px;text-align:center;flex-shrink:0;box-sizing:border-box}
 .pj-gear{padding:0 10px;font-size:14px;background:none;line-height:1}
 .pj-badge.red{background:rgba(198,26,26,0.18);color:#ff4848;border-color:rgba(255,52,52,0.5);box-shadow:0 0 7px rgba(255,38,38,0.22)}
 .pj-badge.orange{background:rgba(192,90,8,0.18);color:#ff8e0e;border-color:rgba(255,142,18,0.5);box-shadow:0 0 7px rgba(255,134,16,0.18)}
@@ -925,7 +925,7 @@ function makeStepInstance(libStep, hours, done){
   };
 }
 
-const PRESET_COLORS = ['#2a9d8f','#9b5de5','#4361ee','#06d6a0','#f72585','#6b7280'];
+const PRESET_COLORS = ['#2a9d8f','#9b5de5','#4361ee','#06d6a0','#f72585','#6b7280','#0ea5e9','#84cc16','#ec4899','#8b5cf6'];
 const DEFAULT_PRESET_COLORS = {'preset_shisou':'#2a9d8f','preset_kagayaite':'#9b5de5','preset_cm':'#4361ee'};
 const DEFAULT_PRESETS = [
   {
@@ -958,6 +958,13 @@ const DEFAULT_MAX_HOURS = 8;
    STATE
 ═══════════════════════════════════════════════ */
 let state = loadState();
+
+function calcProgress(p){
+  const total = p.steps.reduce((s,st) => s + (st.hours||0), 0);
+  const done  = p.steps.filter(st => st.done).reduce((s,st) => s + (st.hours||0), 0);
+  const pct   = total > 0 ? Math.round(done / total * 100) : 0;
+  return {total, done, pct};
+}
 
 function makeDemoProjects(){
   return [
@@ -1241,6 +1248,8 @@ function renderProjectCard(p){
   const badgeText = p.isComplete ? '完了' : `残り${p.daysToDeadline}日`;
   const badgeClass = p.isComplete ? 'done' : c;
   const deadlineCls = p.isComplete ? '' : `deadline-${c}`;
+  const {total: _cTotal, pct: _cPct} = calcProgress(p);
+  const progressStr = `${_cTotal}h・${_cPct}%`;
 
   const accentCol = p.color || '#6b7280';
   const _days = p.daysToDeadline != null ? p.daysToDeadline : 999;
@@ -1250,14 +1259,20 @@ function renderProjectCard(p){
     <div class="pj-accent" style="${accentStyle}"></div>
     <div class="pj-body">
       <div class="pj-title">${escapeHtml(p.title)}</div>
-      <div class="pj-row">
-        <div class="pj-dates">
+      <div class="pj-row" style="gap:6px">
+        <div class="pj-dates" style="gap:3px">
           <span class="lbl">開始</span><span class="val">${fmtMd(p.startDate)}</span>
-          <span class="arrow">→</span>
+          <span class="arrow" style="margin:0 1px">→</span>
           <span class="lbl">納期</span><span class="val ${deadlineCls}">${fmtMd(p.deadline)}</span>
         </div>
         <div class="pj-badge ${badgeClass}">${badgeText}</div>
         <button class="pj-gear" data-act="openSettings" data-pid="${p.id}" aria-label="工程設定">⚙</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin:4px 0 2px">
+        <div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden">
+          <div style="height:100%;width:${_cPct}%;border-radius:3px;background:linear-gradient(90deg,${accentCol}aa,${accentCol});transition:width .3s"></div>
+        </div>
+        <span style="font-size:10px;font-weight:700;color:rgba(160,195,255,0.75);white-space:nowrap;flex-shrink:0">${_cPct}%</span>
       </div>
       <div class="pj-steps">${stepsHtml}</div>
     </div>
@@ -1277,51 +1292,98 @@ function renderCalendar(){
   }
   const {y, m} = ui.calMonth;
   const grid = getCalendarGrid(y, m);
-  const todayStr = getTodayStr();
 
-  const BAR_H  = 14;
+  const BAR_H   = 14;
   const GLOSS_H = 5;
-  const R      = 5;
-  const GAP    = 4;
-  const SLOT_H = BAR_H + GAP;
-  const BOT_PAD = 3; // px from bottom of cell
+  const R       = 5;
+  const GAP     = 4;
+  const SLOT_H  = BAR_H + GAP;
+  const BOT_PAD = 3;
+  const TOP_PAD = 22; // date number area height
 
   const dlMap = new Map();
   for (const p of projects) if (!p.isComplete) dlMap.set(p.deadline, p.urgencyColor);
 
-  // Sort: nearest deadline = slot 0 = TOP bar
+  // Active projects sorted by deadline ascending (nearest=index0)
   const activeForBars = projects
     .filter(p => !p.isComplete && p.startDate && p.deadline)
     .sort((a,b) => strToDate(a.deadline) - strToDate(b.deadline));
-  const numSlots = activeForBars.length;
-  const cellH = numSlots > 0 ? 26 + numSlots * SLOT_H : 44;
-
-  // Urgency colors for top-2 deadline
-  function dlUrgency(slot){
-    if (slot === 0) return {border:'rgba(210,52,52,0.95)',text:'rgba(255,110,110,1)',bg:'rgba(90,6,6,0.97)'};
-    if (slot === 1) return {border:'rgba(208,100,18,0.95)',text:'rgba(255,170,60,1)',bg:'rgba(80,36,2,0.97)'};
-    return null;
-  }
 
   function hexRgb(hex){
     const h=(hex||'#6b7280').replace('#','');
     return [parseInt(h.slice(0,2),16)||107, parseInt(h.slice(2,4),16)||114, parseInt(h.slice(4,6),16)||128];
   }
 
-  // Build bar divs: main bar + gloss overlay
-  // isPast=true → darken color (multiply RGB by 0.55, keep alpha)
-  function barDivs(x1pct, wpct, barY, r, g, b, isPast, tl, tr, br, bl){
-    const mult = isPast ? 0.55 : 1.0;
-    const fill = `rgba(${Math.round(r*mult)},${Math.round(g*mult)},${Math.round(b*mult)},0.92)`;
+  function dlUrgency(sortedIdx){
+    if (sortedIdx===0) return {border:'rgba(210,52,52,0.95)',text:'rgba(255,110,110,1)',bg:'rgba(90,6,6,0.97)'};
+    if (sortedIdx===1) return {border:'rgba(208,100,18,0.95)',text:'rgba(255,170,60,1)',bg:'rgba(80,36,2,0.97)'};
+    return null;
+  }
+
+  function makeBarDiv(x1pct, wpct, barY, r,g,b, tl,tr,br,bl){
+    const fill = `rgba(${r},${g},${b},0.92)`;
     const brad = `${tl}px ${tr}px ${br}px ${bl}px`;
-    const bar  = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${fill};border-radius:${brad};box-sizing:border-box"></div>`;
+    const bar   = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${fill};border-radius:${brad};box-sizing:border-box"></div>`;
     const gloss = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${GLOSS_H}px;background:linear-gradient(180deg,rgba(255,255,255,0.25),rgba(255,255,255,0));border-radius:${tl}px ${tr}px 0 0;pointer-events:none"></div>`;
     return bar + gloss;
   }
 
+  // ── 各行のスロット割り当てを事前計算 ──
+  // rowSlotMap[row][barIndex] = slotNumber
+  const rowSlotMap = [];
+  const rowMaxSlots = [];
+
+  for (let row = 0; row < 6; row++){
+    const rowDays  = grid.days.slice(row*7, row*7+7);
+    const rowStart = strToDate(rowDays[0].date);
+    const rowEnd   = strToDate(rowDays[6].date);
+
+    // この行に表示されるバーと列範囲を収集
+    const rowBars = [];
+    activeForBars.forEach((p, gi) => {
+      const ps = strToDate(p.startDate);
+      const pe = strToDate(p.deadline);
+      if (pe < rowStart || ps > rowEnd) return;
+      const isProjStart = ps >= rowStart && ps <= rowEnd;
+      const isProjEnd   = pe >= rowStart && pe <= rowEnd;
+      const colStart = isProjStart ? rowDays.findIndex(d => d.date === p.startDate) : 0;
+      const colEnd   = isProjEnd   ? rowDays.findIndex(d => d.date === p.deadline)  : 6;
+      rowBars.push({gi, p, colStart, colEnd});
+    });
+
+    // 納期が遠い順（降順）にソート → 下スロットから割り当て
+    rowBars.sort((a,b) => strToDate(b.p.deadline) - strToDate(a.p.deadline));
+
+    // 区間スケジューリング: 重ならないバーは同じスロット
+    const slots = []; // slots[k] = [{colStart,colEnd}]
+    const assignment = new Map(); // gi → slotNumber
+    for (const {gi, colStart, colEnd} of rowBars){
+      let placed = false;
+      for (let k = 0; k < slots.length; k++){
+        const overlaps = slots[k].some(s => !(colEnd < s.colStart || colStart > s.colEnd));
+        if (!overlaps){
+          slots[k].push({colStart, colEnd});
+          assignment.set(gi, k);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed){
+        slots.push([{colStart, colEnd}]);
+        assignment.set(gi, slots.length - 1);
+      }
+    }
+
+    rowSlotMap.push(assignment);
+    rowMaxSlots.push(Math.max(1, slots.length));
+  }
+
+  const maxSlots = Math.max(1, ...rowMaxSlots);
+  const cellH = TOP_PAD + maxSlots * SLOT_H + BOT_PAD;
+
   let overlayBars = '';
 
-  activeForBars.forEach((p, slot) => {
+  activeForBars.forEach((p, gi) => {
     const ps = strToDate(p.startDate);
     const pe = strToDate(p.deadline);
     const calStart = strToDate(grid.days[0].date);
@@ -1329,17 +1391,10 @@ function renderCalendar(){
     if (pe < calStart || ps > calEnd) return;
 
     const [r,g,b] = hexRgb(p.color);
-
-    const urg = dlUrgency(slot);
+    const urg = dlUrgency(gi);
     const dlBorderCol = urg ? urg.border : `rgba(${r},${g},${b},0.85)`;
     const dlTextCol   = urg ? urg.text   : `rgba(${Math.min(255,r+80)},${Math.min(255,g+80)},${Math.min(255,b+80)},1)`;
     const dlBgCol     = urg ? urg.bg     : `rgba(${Math.round(r*0.35)},${Math.round(g*0.35)},${Math.round(b*0.35)},0.97)`;
-
-    // barY: stack from bottom of cell, slot0=top, slot(N-1)=bottom
-    // slot(N-1) is at bottom: row*cellH + cellH - BOT_PAD - BAR_H
-    // slot s: row*cellH + cellH - BOT_PAD - BAR_H - (numSlots-1-s)*SLOT_H
-    // → slot0(nearest,top): row*cellH + cellH - BOT_PAD - BAR_H - (numSlots-1)*SLOT_H
-    // → slot(N-1)(farthest,bottom): row*cellH + cellH - BOT_PAD - BAR_H
 
     let titleDone = false;
 
@@ -1354,104 +1409,35 @@ function renderCalendar(){
       const sCol = isProjStart ? rowDays.findIndex(d => d.date === p.startDate) : 0;
       const eCol = isProjEnd   ? rowDays.findIndex(d => d.date === p.deadline)  : 6;
 
-      // この行に表示されるバーのスロット一覧
-      const slotsInRow = activeForBars
-        .map((_p,_s) => ({_p,_s}))
-        .filter(({_p}) => {
-          const _ps = strToDate(_p.startDate);
-          const _pe = strToDate(_p.deadline);
-          return !(_pe < rowStart || _ps > rowEnd);
-        })
-        .map(({_s}) => _s);
-      const rankInRow = slotsInRow.indexOf(slot); // この行内での順位(0=top)
-      const countInRow = slotsInRow.length;
-      // 1本だけ→最下段、複数→下から積み上げ(rank0=top, rankN-1=bottom)
-      const barY = countInRow <= 1
-        ? row * cellH + cellH - BOT_PAD - BAR_H
-        : row * cellH + cellH - BOT_PAD - BAR_H - (countInRow - 1 - rankInRow) * SLOT_H;
+      // スロット番号 → Y座標（slot0=最下段, slot高=上）
+      const rowSlot = rowSlotMap[row].get(gi) ?? 0;
+      const barY = row * cellH + cellH - BOT_PAD - BAR_H - rowSlot * SLOT_H;
 
-      // Find today's column in this row (for past/future split)
-      const todayColInRow = rowDays.findIndex(d => d.date === todayStr);
-
-      // Determine past/present split for this row segment
-      const colStart = isProjStart ? sCol : 0;
-      const colEnd   = isProjEnd ? eCol : 6;
-
-      // Check if today falls within this segment
-      // todayCol < 0 means today not in this row
-      // If entire segment is before today: isPast
-      // If entire segment is after/at today: not past
-      // If split: draw two bars
-
-      const segStartDate = rowDays[colStart]?.date || '';
-      const segEndDate   = rowDays[Math.min(colEnd, 6)]?.date || '';
-
-      // dlX: deadline cell left edge (defined here for title clipping)
+      // 納期セル左端（タイトルclip用）
       const dlX = eCol / 7 * 100;
 
       if (isProjEnd){
-        const dlW  = 1 / 7 * 100;
-        const bx1  = colStart / 7 * 100;
-        const bx2  = dlX;
+        const dlW = 1 / 7 * 100;
+        const bx1 = (isProjStart ? sCol : 0) / 7 * 100;
+        const bx2 = dlX;
 
+        // 本体バー
         if (bx2 > bx1){
-          // Split at today if needed
-          if (todayColInRow >= 0 && todayColInRow > colStart && todayColInRow <= eCol){
-            // Past portion
-            const pastW = (todayColInRow - colStart) / 7 * 100;
-            const tl = isProjStart ? R : 0;
-            overlayBars += barDivs(bx1, pastW, barY, r,g,b, true, tl, 0, 0, tl);
-            // Future portion
-            const futX  = todayColInRow / 7 * 100;
-            const futW  = bx2 - futX;
-            if (futW > 0) overlayBars += barDivs(futX, futW, barY, r,g,b, false, 0, 0, 0, 0);
-          } else {
-            const allPast = segEndDate < todayStr && !isProjEnd || (bx2 > 0 && rowDays[Math.min(eCol-1,6)]?.date < todayStr);
-            const isPast  = todayColInRow < 0 ? (rowDays[6].date < todayStr) : (todayColInRow <= colStart);
-            const tl = isProjStart ? R : 0;
-            overlayBars += barDivs(bx1, bx2-bx1, barY, r,g,b, isPast, tl, 0, 0, tl);
-          }
+          const tl = isProjStart ? R : 0;
+          overlayBars += makeBarDiv(bx1, bx2-bx1, barY, r,g,b, tl,0,0,tl);
         }
-
-        // Deadline cell
-        const dlTl = (isProjStart && sCol === eCol) ? R : 0;
-        overlayBars += `<div style="position:absolute;top:${barY}px;left:${dlX.toFixed(3)}%;width:${dlW.toFixed(3)}%;height:${BAR_H}px;background:${dlBgCol};border-radius:${dlTl}px ${R}px ${R}px ${dlTl}px;border:2px solid ${dlBorderCol};box-sizing:border-box;display:flex;align-items:center;justify-content:center;z-index:10"><span style="font-size:9px;font-weight:800;color:${dlTextCol};letter-spacing:0;line-height:1;text-shadow:0 0 5px rgba(0,0,0,0.7)">納期</span></div>`;
+        // 納期セル
+        const dlTl = (isProjStart && sCol===eCol) ? R : 0;
+        overlayBars += `<div style="position:absolute;top:${barY}px;left:${dlX.toFixed(3)}%;width:${dlW.toFixed(3)}%;height:${BAR_H}px;background:${dlBgCol};border-radius:${dlTl}px ${R}px ${R}px ${dlTl}px;border:2px solid ${dlBorderCol};box-sizing:border-box;display:flex;align-items:center;justify-content:center;z-index:10"><span style="font-size:9px;font-weight:800;color:${dlTextCol};line-height:1;text-shadow:0 0 5px rgba(0,0,0,0.7)">納期</span></div>`;
 
       } else {
-        const bx1 = colStart / 7 * 100;
-        const bx2 = (colEnd + 1) / 7 * 100;
+        const bx1 = (isProjStart ? sCol : 0) / 7 * 100;
+        const bx2 = (eCol+1) / 7 * 100;
         const tl  = isProjStart ? R : 0;
-
-        if (todayColInRow >= 0 && todayColInRow > colStart){
-          // Split at today
-          const pastW = (todayColInRow - colStart) / 7 * 100;
-          overlayBars += barDivs(bx1, pastW, barY, r,g,b, true, tl, 0, 0, tl);
-          const futX = todayColInRow / 7 * 100;
-          const futW = bx2 - futX;
-          if (futW > 0) overlayBars += barDivs(futX, futW, barY, r,g,b, false, 0, 0, 0, 0);
-        } else {
-          const isPast = todayColInRow < 0 ? (rowDays[6].date < todayStr) : (todayColInRow <= colStart);
-          overlayBars += barDivs(bx1, bx2-bx1, barY, r,g,b, isPast, tl, 0, 0, tl);
-        }
+        overlayBars += makeBarDiv(bx1, bx2-bx1, barY, r,g,b, tl,0,0,tl);
       }
 
-      // Title: bar start position, clipped to deadline cell left or row right
-      if (!titleDone){
-        const txLeft = colStart / 7 * 100;
-        // If deadline is in this row: clip right to deadline cell left edge
-        const clipRight = isProjEnd ? `${(dlX).toFixed(3)}%` : '0px';
-        const clipStyle = isProjEnd ? `right:calc(100% - ${(dlX).toFixed(3)}%)` : 'right:0';
-        overlayBars += `<div style="position:absolute;top:${barY}px;left:calc(${txLeft.toFixed(3)}% + 4px);${clipStyle};height:${BAR_H}px;line-height:${BAR_H}px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.92);white-space:nowrap;overflow:hidden;z-index:11;pointer-events:none">${escapeHtml(p.title)}</div>`;
-        titleDone = true;
-      } else if (!isProjEnd && !isProjStart) {
-        // Continuation: show title remainder at left of this row's bar
-        // Use a canvas to estimate how many chars fit – approximate by char count
-        const charsPerRow = Math.floor((eCol + 1 - colStart) / 7 * 100 / 5.8); // ~5.8px per char at 9px
-        // Find how many chars would have shown so far (first row was full width)
-        // Simple approach: show title with ellipsis from beginning on continuation rows
-        const contTitle = '…' + p.title;
-        overlayBars += `<div style="position:absolute;top:${barY}px;left:calc(${(colStart/7*100).toFixed(3)}% + 4px);right:0;height:${BAR_H}px;line-height:${BAR_H}px;font-size:9px;font-weight:600;color:rgba(255,255,255,0.7);white-space:nowrap;overflow:hidden;z-index:11;pointer-events:none">${escapeHtml(contTitle)}</div>`;
-      }
+      titleDone = true; // タイトル非表示
     }
   });
 
@@ -1470,7 +1456,25 @@ function renderCalendar(){
 
   const editToggleHtml = `<button class="cal-edit-toggle ${ui.calEditMode?'on':''}" data-act="toggleCalEditMode"><span class="ic">${ui.calEditMode?'✓':'✏️'}</span><span>${ui.calEditMode?'完了':'編集不可日'}</span></button>`;
   const editBannerHtml = ui.calEditMode ? `<div class="cal-edit-banner"><span class="ic">ⓘ</span><span>日付をタップで編集不可日を切替</span></div>` : '';
-  const ganttHtml = renderGantt(projects, y, m);
+  const ganttHtml = '';
+
+  // 凡例カード（カレンダーの下に表示）
+  const legendHtml = activeForBars.length === 0 ? '' : `
+    <div class="gantt-card" style="margin:8px 8px 0;padding:5px 12px">
+      ${activeForBars.map(p => {
+        const [lr,lg,lb] = hexRgb(p.color);
+        const daysLeft = p.daysToDeadline;
+        const daysStr = daysLeft == null ? '' : daysLeft < 0 ? `${Math.abs(daysLeft)}日超過` : daysLeft === 0 ? '今日' : `残り${daysLeft}日`;
+        const daysColor = daysLeft == null ? 'rgba(140,170,220,0.6)' : daysLeft <= 3 ? 'rgba(255,100,100,1)' : daysLeft <= 7 ? 'rgba(255,170,60,1)' : 'rgba(160,200,255,0.85)';
+        const dlStr = p.deadline ? p.deadline.replace(/^\d{4}-/,'').replace('-','/') : '';
+        const legendBadgeClass = daysLeft == null ? '' : daysLeft < 0 ? 'red' : daysLeft <= 3 ? 'red' : daysLeft <= 7 ? 'orange' : 'silver';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:2px 0;border-bottom:.5px solid rgba(255,255,255,0.05)">
+          <div style="width:14px;height:14px;border-radius:5px;background:rgba(${lr},${lg},${lb},0.92);background-image:linear-gradient(180deg,rgba(255,255,255,0.25),rgba(255,255,255,0));flex-shrink:0"></div>
+          <div style="flex:1;font-size:11px;font-weight:700;color:rgba(200,220,255,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(p.title)}</div>
+          <div class="pj-badge ${legendBadgeClass}">${daysStr}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
 
   main.innerHTML = `
     <div class="cal-header">
@@ -1489,7 +1493,7 @@ function renderCalendar(){
         <div class="cal-bars-layer">${overlayBars}</div>
       </div>
     </div>
-    ${ganttHtml}
+    ${legendHtml}
   `;
 }
 
@@ -1507,8 +1511,8 @@ function renderGantt(projects, year, month){
   const VB_W   = 137;
   const L_PAD  = 5;
   const R_PAD  = 2;
-  const ROW_H  = 13;      // label(~5) + bar(5) + gap(3) = 13 per row
-  const BAR_H  = 5;
+  const ROW_H  = 8;      // label(~5) + bar(5) + gap(3) = 13 per row
+  const BAR_H  = 3;
   const N      = active.length;
   const VB_H   = N * ROW_H + 11; // +11 for axis area
 
@@ -1570,7 +1574,7 @@ function renderGantt(projects, year, month){
     const polyFill = idx===0 ? 'rgba(210,52,52,0.95)' : idx===1 ? 'rgba(208,100,18,0.95)' : lFill;
     barSvg += `<polygon points="${dlX},${py1} ${dlX},${py2} ${pxr},${(py1+py2)/2}" fill="${polyFill}" opacity="0.92"/>`;
 
-    rows += `<text x="${x1}" y="${labelY}" fill="${lFill}" font-size="3.8" font-family="-apple-system" font-weight="700">${escapeHtml(title)}</text>${barSvg}`;
+    rows += barSvg;
   });
 
   // 縦グリッド線（5日ごと）
@@ -1718,11 +1722,7 @@ function openNewProjectSheet(){
           <div class="form-row">
             <span class="form-label">カラー</span>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.25);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:conic-gradient(from 0deg,#ff0080,#ff8c00,#ffcc00,#00cc44,#0088ff,#aa00ff,#ff0080)" title="カスタムカラー">
-                <input type="color" value="${draft.color||'#6b7280'}" id="np-custom-color" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
-              </label>
-              <div style="width:8px;flex-shrink:0"></div>
-              ${allColors().map((c,i)=>`<div data-act="pickNewProjColor" data-color="${c}" data-idx="${i}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${(draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0;touch-action:none" title="${c}"></div>`).join('')}
+              ${PRESET_COLORS.map(c=>`<div data-act="pickNewProjColor" data-color="${c}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${(draft.color||'#6b7280')===c?'2.5px solid #fff':'2px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0"></div>`).join('')}
             </div>
           </div>
           <div class="form-row">
@@ -1852,11 +1852,7 @@ function openProjectSettings(projectId){
           <div class="form-row">
             <span class="form-label">カラー</span>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <label style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.25);overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;background:conic-gradient(from 0deg,#ff0080,#ff8c00,#ffcc00,#00cc44,#0088ff,#aa00ff,#ff0080)" title="カスタムカラー">
-                <input type="color" value="${draft.color||'#6b7280'}" id="ps-custom-color" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
-              </label>
-              <div style="width:8px;flex-shrink:0"></div>
-              ${allColors().map((c,i)=>`<div data-act="pickProjColor" data-color="${c}" data-idx="${i}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${(draft.color||'#6b7280')===c?'2.5px solid #fff':'2.5px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0;touch-action:none" title="${c}"></div>`).join('')}
+              ${PRESET_COLORS.map(c=>`<div data-act="pickProjColor" data-color="${c}" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${(draft.color||'#6b7280')===c?'2.5px solid #fff':'2px solid transparent'};box-shadow:0 0 0 1px ${c};flex-shrink:0"></div>`).join('')}
             </div>
           </div>
           <div class="form-row">
@@ -2047,30 +2043,7 @@ function showToast(msg, duration = 2000){
   showToast._timer = setTimeout(() => t.classList.remove('on'), duration);
 }
 
-// カラーパレット全色（PRESET_COLORS + state.customColors）
-function allColors(){ return [...PRESET_COLORS, ...(state.customColors||[])]; }
 
-// カラーパレットHTML（np=新規プロジェクト用、ps=設定用）
-function colorSwatchesHtml(currentColor, actionPrefix){
-  const colors = allColors();
-  const swatches = colors.map((c,i) => {
-    const sel = (currentColor||'#6b7280')===c;
-    return `<div data-act="${actionPrefix}Color" data-color="${c}" data-idx="${i}"
-      style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;
-      border:${sel?'2.5px solid #fff':'2.5px solid transparent'};
-      box-shadow:0 0 0 1px ${c};flex-shrink:0;touch-action:none"
-      title="${c}"></div>`;
-  }).join('');
-  const rainbow = `<label style="width:22px;height:22px;border-radius:50%;
-    border:1.5px solid rgba(255,255,255,0.25);overflow:hidden;cursor:pointer;
-    flex-shrink:0;position:relative;
-    background:conic-gradient(from 0deg,#ff0080,#ff8c00,#ffcc00,#00cc44,#0088ff,#aa00ff,#ff0080)"
-    title="カスタムカラー">
-    <input type="color" id="${actionPrefix}-custom-color"
-      style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer">
-  </label>`;
-  return rainbow + '<div style="width:6px;flex-shrink:0"></div>' + swatches;
-}
 
 function attachEvents(){
   // Tab switching
@@ -2091,50 +2064,6 @@ function attachEvents(){
 
   // Sheet overlay close
   document.getElementById('sheetOverlay').addEventListener('click', closeSheet);
-
-  // カスタムカラー選択（input type=color）
-  document.addEventListener('input', e => {
-    const id = e.target.id;
-    if (!e.target.type || e.target.type !== 'color') return;
-    const color = e.target.value;
-    if (id === 'np-custom-color'){
-      if (ui.activeNewProjectDraft){ ui.activeNewProjectDraft.color = color; ui.activeNewProjectRerender?.(); }
-    } else if (id === 'ps-custom-color'){
-      if (ui.activeProjectDraft){ ui.activeProjectDraft.color = color; ui.activeProjectRerender?.(); }
-    } else if (id === 'pm-custom-color'){
-      if (ui.pendingPresetDraft){ ui.pendingPresetDraft.color = color; }
-    }
-    // プリセット管理の虹色ボタン（pm-color-input class）
-    if (e.target.classList && e.target.classList.contains('pm-color-input')){
-      const pmIdx = parseInt(e.target.dataset.pmidx, 10);
-      if (!isNaN(pmIdx) && state.presets[pmIdx]){
-        state.presets[pmIdx].color = color;
-        saveState();
-        ui.presetMgrRerender?.();
-      }
-    }
-  });
-
-  // カラーボタン長押しで削除
-  let _colorLongPress = null;
-  document.addEventListener('touchstart', e => {
-    const el = e.target.closest('[data-act$="Color"][data-idx]');
-    if (!el) return;
-    const idx = parseInt(el.dataset.idx, 10);
-    if (idx < PRESET_COLORS.length) return; // 標準色は削除不可
-    _colorLongPress = setTimeout(() => {
-      const customIdx = idx - PRESET_COLORS.length;
-      state.customColors.splice(customIdx, 1);
-      saveState();
-      // 現在のシートを再レンダリング
-      if (ui.activeNewProjectRerender) ui.activeNewProjectRerender();
-      else if (ui.activeProjectRerender) ui.activeProjectRerender();
-      else if (ui.presetMgrRerender) ui.presetMgrRerender();
-      _colorLongPress = null;
-    }, 700);
-  }, { passive: true });
-  document.addEventListener('touchend', () => { clearTimeout(_colorLongPress); }, { passive: true });
-  document.addEventListener('touchmove', () => { clearTimeout(_colorLongPress); }, { passive: true });
 
   // Global delegated click handler
   document.addEventListener('click', handleAction);
