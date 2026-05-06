@@ -432,8 +432,8 @@ input[type="date"]{color-scheme:light}
   display:flex;align-items:center;justify-content:space-between;
   padding:10px 14px;
   background:#eef2ff;
-  border-top:1.5px solid rgba(42,92,189,0.2);
-  border-radius:0 0 12px 12px;
+  border:1px solid rgba(42,92,189,0.2);
+  border-radius:10px;
 }
 .total-row span{font-size:12px;font-weight:700;color:#2a5cbd;letter-spacing:.2px;}
 .total-row .num{font-size:15px;font-weight:700;color:#2a5cbd;}
@@ -1444,13 +1444,11 @@ function openNewProjectSheet(){
         <div class="sheet-section-label">工程 / Production Steps</div>
         <div class="sheet-card">${stepsHtml}</div>
       </div>
+      <div class="total-row" style="margin-top:6px"><span>合計作業時間 / Total</span><span class="num">${total}h</span></div>
       <button class="btn btn-secondary" data-act="addStepNewProj" style="margin-top:8px">＋ 工程を追加 / Add Step</button>
       <button class="btn btn-secondary" data-act="saveAsPreset" style="margin-top:6px">プリセットとして保存 / Save as Preset</button>
       <button class="btn btn-secondary" data-act="openPresetManager" style="margin-top:6px">プリセット管理 / Manage Presets</button>
-      <div class="total-row" style="margin-top:8px;background:rgba(28,32,52,0.5);border-radius:8px;border-top:none">
-        <span>合計作業時間 / Total</span>
-        <span class="num">${total}h</span>
-      </div>
+      
     `;
 
     const footer = `
@@ -1566,10 +1564,7 @@ function openProjectSettings(projectId){
       <div class="sheet-section">
         <div class="sheet-section-label">工程 / Production Steps</div>
         <div class="sheet-card">${stepsHtml}</div>
-        <div class="total-row" style="background:rgba(28,32,52,0.5);border-radius:0 0 10px 10px;margin-top:-1px">
-          <span>合計 / Total</span>
-          <span class="num">${total}h</span>
-        </div>
+
       </div>
       <button class="btn btn-secondary" data-act="addStepProj">＋ 工程を追加 / Add Step</button>
 
@@ -1768,40 +1763,6 @@ function attachEvents(){
 
   // Sheet swipe-down to close
   // Works on handle, header, and content area (excluding inputs, buttons, interactive elements)
-  let _swipeStartY = 0;
-  let _swipeSheet = null;
-  let _swipeActive = false;
-  document.addEventListener('touchstart', e => {
-    const sheet = e.target.closest('.sheet');
-    if (!sheet || !sheet.classList.contains('on')) return;
-    // Exclude interactive elements
-    const excluded = e.target.closest('input,select,textarea,button,.step-drag,.lib-step,.preset-card,.form-input,.form-select,[data-act]');
-    if (excluded) return;
-    _swipeSheet = sheet;
-    _swipeStartY = e.touches[0].clientY;
-    _swipeActive = false;
-  }, {passive:true});
-  document.addEventListener('touchmove', e => {
-    if (!_swipeSheet) return;
-    const dy = e.touches[0].clientY - _swipeStartY;
-    if (dy > 10) {
-      _swipeActive = true;
-      _swipeSheet.style.transform = `translateY(${Math.max(0,dy)}px)`;
-      _swipeSheet.style.transition = 'none';
-    }
-  }, {passive:true});
-  document.addEventListener('touchend', e => {
-    if (!_swipeSheet) return;
-    const dy = e.changedTouches[0].clientY - _swipeStartY;
-    _swipeSheet.style.transition = '';
-    if (_swipeActive && dy > 80) {
-      closeSheet();
-    } else {
-      _swipeSheet.style.transform = '';
-    }
-    _swipeSheet = null;
-    _swipeActive = false;
-  }, {passive:true});
 
   // Global delegated click handler
   document.addEventListener('click', handleAction);
