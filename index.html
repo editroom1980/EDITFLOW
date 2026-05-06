@@ -962,7 +962,7 @@ function renderProjectCard(p){
           <span class="arrow" style="margin:0 1px">→</span>
           <span class="lbl">納期</span><span class="val ${deadlineCls}">${fmtMd(p.deadline)}</span>
         </div>
-        <div style="font-size:11px;font-weight:600;color:rgba(0,0,0,0.45);white-space:nowrap;text-align:right;flex:1">作業時間 合計 ${_cTotal}h${_cAvg!=null?` ｜ 1日平均 ${_cAvg}h`:''}</div>
+        <div style="font-size:10px;font-weight:600;color:rgba(0,0,0,0.4);white-space:nowrap;text-align:right;flex-shrink:0">合計${_cTotal}h${_cAvg!=null?`  平均${_cAvg}h`:''}</div>
         <div class="pj-badge ${badgeClass}">${badgeText}</div>
         <button class="pj-gear" data-act="openSettings" data-pid="${p.id}" aria-label="工程設定">⚙</button>
       </div>
