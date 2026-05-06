@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="EditFlow">
 <style>
 /* ═══════════════════════════════════════════════════════════
-   EditFlow v1.2 — Design System
+   EditFlow v1.3 — Design System
    Metallic dark UI inspired by industrial filmstrip aesthetic
 ═══════════════════════════════════════════════════════════ */
 
@@ -346,13 +346,9 @@ body{
 .sheet-section{
   margin-bottom:14px;
 }
-.sheet-section-label{font-size:11px;font-weight:700;color:#888;letter-spacing:.8px;text-transform:uppercase;margin:14px 0 6px;}
+.sheet-section-label{font-size:11px;font-weight:700;color:#444;letter-spacing:.3px;margin:16px 0 6px;text-transform:none;}
 .sheet-card{background:#f8f9fa;border-radius:12px;overflow:hidden;border:1px solid rgba(0,0,0,0.07);}
-.sheet-subtitle{
-  font:500 11px/1.4 -apple-system,sans-serif;
-  color:var(--tx-mid);
-  padding:0 4px 6px;
-}
+.sheet-subtitle{font-size:18px;font-weight:700;color:#1a1a1a;padding:12px 14px 4px;line-height:1.3;}
 
 /* Form fields */
 .form-row{
@@ -368,7 +364,7 @@ body{
   appearance:none;-webkit-appearance:none;
   cursor:pointer;
 }
-input[type="date"]{color-scheme:dark}
+input[type="date"]{color-scheme:light}
 
 /* Step row in editor */
 .step-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);}
@@ -433,17 +429,14 @@ input[type="date"]{color-scheme:dark}
 }
 
 .total-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:8px 12px;
-  font:600 11px/1.3 -apple-system,sans-serif;
-  color:var(--tx-mid);
-  border-top:.5px solid var(--sep);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  background:#f0f4ff;
+  border-top:1px solid rgba(42,92,189,0.15);
+  border-radius:0 0 12px 12px;
 }
-.total-row .num{
-  color:#a8c0e0;
-  font-weight:700;
-  font-variant-numeric:tabular-nums;
-}
+.total-row span{font-size:12px;font-weight:600;color:#555;}
+.total-row .num{font-size:14px;font-weight:700;color:#2a5cbd;}
 
 /* Preset selector */
 .preset-list{display:flex;flex-direction:column;gap:6px;padding:8px 4px}
@@ -503,15 +496,9 @@ input[type="date"]{color-scheme:dark}
 .sheet-footer{padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid rgba(0,0,0,0.07);display:flex;flex-direction:column;gap:8px;}
 
 /* Add Step modal: choose existing or create new */
-.add-mode-tabs{
-  display:flex;
-  background:rgba(20,22,40,0.6);
-  border-radius:7px;
-  padding:3px;
-  margin-bottom:14px;
-}
-.add-mode-tab{flex:1;padding:8px;background:none;border:none;font:600 12px/1 -apple-system,sans-serif;color:#777;cursor:pointer;border-bottom:2px solid transparent;}
-.add-mode-tab.on{color:#2a5cbd;border-bottom-color:#2a5cbd;}
+.add-mode-tabs{display:flex;background:#f0f0f0;border-radius:8px;padding:3px;margin-bottom:14px;}
+.add-mode-tab{flex:1;padding:7px;background:none;border:none;font:600 12px/1 -apple-system,sans-serif;color:#aaa;cursor:pointer;border-radius:6px;transition:background .15s,color .15s;}
+.add-mode-tab.on{background:#ffffff;color:#2a5cbd;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
 
 .lib-step{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.06);cursor:pointer;}
 .lib-step:last-child{border-bottom:none}
@@ -579,7 +566,7 @@ input[type="date"]{color-scheme:dark}
   <header class="topbar">
     <div class="brand">
       <div class="brand-name">EDIT<em>FLOW</em></div>
-      <div class="brand-version">v1.2</div>
+      <div class="brand-version">v1.3</div>
     </div>
     <nav class="tabs" role="tablist">
       <button class="tab on" data-view="projects" role="tab">PROJECTS</button>
@@ -613,6 +600,7 @@ const APP_VERSION = '1.3';
 // Set to null to use the real current date
 const TODAY_OVERRIDE = null;
 
+const DEFAULT_STEP_CODES = ['SH', 'IG', 'GR', 'RC', 'SC', 'VO', 'FC', 'RV'];
 const DEFAULT_STEP_LIBRARY = [
   { code:'SH', jp:'撮影',                   en:'Shooting',        defaultHours:5 },
   { code:'IG', jp:'素材取り込み',           en:'Ingest',          defaultHours:1 },
@@ -974,6 +962,7 @@ function renderProjectCard(p){
           <span class="arrow" style="margin:0 1px">→</span>
           <span class="lbl">納期</span><span class="val ${deadlineCls}">${fmtMd(p.deadline)}</span>
         </div>
+        <div style="font-size:10px;font-weight:600;color:#999;white-space:nowrap;letter-spacing:.2px">${_cTotal}h</div>
         <div class="pj-badge ${badgeClass}">${badgeText}</div>
         <button class="pj-gear" data-act="openSettings" data-pid="${p.id}" aria-label="工程設定">⚙</button>
       </div>
@@ -1421,7 +1410,7 @@ function openNewProjectSheet(){
 
     const content = `
       <div class="sheet-section">
-        <div class="sheet-section-label">プロジェクト情報</div>
+        <div class="sheet-section-label">プロジェクト情報／PROJECT INFORMATION</div>
         <div class="sheet-card">
           <div class="form-row">
             <span class="form-label">タイトル</span>
@@ -1445,7 +1434,7 @@ function openNewProjectSheet(){
         </div>
       </div>
       <div class="sheet-section">
-        <div class="sheet-section-label">プリセット選択</div>
+        <div class="sheet-section-label">プリセット選択／PRESET SELECTION</div>
         <div class="preset-list">
           ${presetOpts}
           ${customCard}
@@ -1552,7 +1541,7 @@ function openProjectSettings(projectId){
     const content = `
       <div class="sheet-subtitle">${escapeHtml(draft.title)}</div>
       <div class="sheet-section">
-        <div class="sheet-section-label">基本情報</div>
+        <div class="sheet-section-label">プロジェクト情報／PROJECT INFORMATION</div>
         <div class="sheet-card">
           <div class="form-row">
             <span class="form-label">タイトル</span>
@@ -1664,13 +1653,16 @@ function openAddStepSheet(targetMode){
 
   function rerender(){
     const libContent = state.stepLibrary.map((s,i) => `
-      <div class="lib-step" data-act="pickLibStep" data-idx="${i}">
-        <div class="step-code">${escapeHtml(s.code)}</div>
-        <div class="step-names">
-          <div class="step-jp">${escapeHtml(s.jp)}</div>
-          <div class="step-en">${escapeHtml(s.en)}</div>
+      <div class="lib-step" data-act="pickLibStep" data-idx="${i}" style="display:flex;align-items:center">
+        <div style="flex:1;display:flex;align-items:center;gap:10px">
+          <div class="step-code">${escapeHtml(s.code)}</div>
+          <div class="step-names">
+            <div class="step-jp">${escapeHtml(s.jp)}</div>
+            <div class="step-en">${escapeHtml(s.en)}</div>
+          </div>
         </div>
         <span class="arrow">›</span>
+        ${!DEFAULT_STEP_CODES.includes(s.code) ? `<button data-act="deleteLibStep" data-idx="${i}" style="background:none;border:none;color:rgba(200,30,30,0.5);font-size:16px;cursor:pointer;padding:0 4px;margin-left:6px" onclick="event.stopPropagation()">×</button>` : ''}
       </div>
     `).join('');
 
@@ -1773,6 +1765,36 @@ function attachEvents(){
 
   // Sheet overlay close
   document.getElementById('sheetOverlay').addEventListener('click', closeSheet);
+
+  // Sheet swipe-down to close (handle/header area only)
+  let _swipeStartY = 0;
+  let _swipeSheet = null;
+  document.addEventListener('touchstart', e => {
+    const handle = e.target.closest('.sheet-handle, .sheet-header');
+    if (!handle) return;
+    _swipeSheet = handle.closest('.sheet');
+    if (!_swipeSheet) return;
+    _swipeStartY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchmove', e => {
+    if (!_swipeSheet) return;
+    const dy = e.touches[0].clientY - _swipeStartY;
+    if (dy > 0) {
+      _swipeSheet.style.transform = `translateY(${dy}px)`;
+      _swipeSheet.style.transition = 'none';
+    }
+  }, {passive:true});
+  document.addEventListener('touchend', e => {
+    if (!_swipeSheet) return;
+    const dy = e.changedTouches[0].clientY - _swipeStartY;
+    _swipeSheet.style.transition = '';
+    if (dy > 80) {
+      closeSheet();
+    } else {
+      _swipeSheet.style.transform = '';
+    }
+    _swipeSheet = null;
+  }, {passive:true});
 
   // Global delegated click handler
   document.addEventListener('click', handleAction);
@@ -1951,6 +1973,16 @@ function handleAction(e){
       ui.addStepMode = 'create';
       ui.addStepRerender?.();
       break;
+    case 'deleteLibStep':{
+      const libIdx = parseInt(ds.idx, 10);
+      const s = state.stepLibrary[libIdx];
+      if (s && !DEFAULT_STEP_CODES.includes(s.code)){
+        state.stepLibrary.splice(libIdx, 1);
+        saveState();
+        ui.addStepRerender?.();
+      }
+      break;
+    }
     case 'pickLibStep':
       pickLibraryStep(parseInt(ds.idx, 10));
       break;
