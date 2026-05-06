@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EditFlow">
@@ -11,7 +11,8 @@
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon.png">
 <meta name="apple-mobile-web-app-title" content="EditFlow">
-<style>
+<style>@media (orientation:landscape){html{transform:rotate(0deg)}#app{max-width:430px;margin:0 auto;}}
+
 /* ═══════════════════════════════════════════════════════════
    EditFlow v1.4 — Design System
    Metallic dark UI inspired by industrial filmstrip aesthetic
@@ -389,15 +390,8 @@ input[type="date"]{color-scheme:light}
   color:#46527a;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.step-hours{
-  display:flex;align-items:center;gap:3px;
-  background:#ffffff;
-  border:1px solid rgba(0,0,0,0.12);
-  border-radius:6px;
-  padding:0 6px;height:28px;
-  flex-shrink:0;
-}
-.step-hours input{width:32px;background:#ffffff;border:none;border-radius:4px;padding:2px 4px;font-size:13px;color:#1a1a1a;text-align:center;outline:none;}
+.step-hours{display:flex;align-items:center;gap:2px;background:#ffffff;border:1px solid rgba(0,0,0,0.12);border-radius:6px;padding:0 5px;height:28px;flex-shrink:0;}
+.step-hours input{width:24px;background:#ffffff;border:none;border-radius:4px;padding:2px 2px;font-size:13px;color:#1a1a1a;text-align:center;outline:none;}
 .step-hours input::-webkit-outer-spin-button,
 .step-hours input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .step-hours .h-suffix{font-size:12px;color:#888;background:transparent;border:none;padding:0;}
@@ -661,7 +655,12 @@ function calcProgress(p){
   const total = p.steps.reduce((s,st) => s + (st.hours||0), 0);
   const done  = p.steps.filter(st => st.done).reduce((s,st) => s + (st.hours||0), 0);
   const pct   = total > 0 ? Math.round(done / total * 100) : 0;
-  return {total, done, pct};
+  let avgPerDay = null;
+  if (p.startDate && p.deadline){
+    const days = Math.max(1, Math.round((new Date(p.deadline) - new Date(p.startDate)) / 86400000) + 1);
+    avgPerDay = Math.round(total / days * 10) / 10;
+  }
+  return {total, done, pct, avgPerDay};
 }
 
 function makeDemoProjects(){
@@ -946,7 +945,7 @@ function renderProjectCard(p){
   const badgeText = p.isComplete ? '完了' : `残り${p.daysToDeadline}日`;
   const badgeClass = p.isComplete ? 'done' : c;
   const deadlineCls = p.isComplete ? '' : `deadline-${c}`;
-  const {total: _cTotal, pct: _cPct} = calcProgress(p);
+  const {total: _cTotal, pct: _cPct, avgPerDay: _cAvg} = calcProgress(p);
   const progressStr = `${_cTotal}h・${_cPct}%`;
 
   const accentCol = p.color || '#6b7280';
@@ -963,7 +962,7 @@ function renderProjectCard(p){
           <span class="arrow" style="margin:0 1px">→</span>
           <span class="lbl">納期</span><span class="val ${deadlineCls}">${fmtMd(p.deadline)}</span>
         </div>
-        <div style="font-size:12px;font-weight:600;color:rgba(0,0,0,0.45);white-space:nowrap">合計作業時間 ${_cTotal}h</div>
+        <div style="font-size:11px;font-weight:600;color:rgba(0,0,0,0.45);white-space:nowrap;text-align:right;flex:1">作業時間 合計 ${_cTotal}h${_cAvg!=null?` ｜ 1日平均 ${_cAvg}h`:''}</div>
         <div class="pj-badge ${badgeClass}">${badgeText}</div>
         <button class="pj-gear" data-act="openSettings" data-pid="${p.id}" aria-label="工程設定">⚙</button>
       </div>
@@ -1565,12 +1564,12 @@ function openProjectSettings(projectId){
       <div class="sheet-section">
         <div class="sheet-section-label">工程 / Production Steps</div>
         <div class="sheet-card">${stepsHtml}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#eef2ff;border:1px solid rgba(42,92,189,0.2);border-radius:10px;margin-top:4px">
-          <span style="font-size:12px;font-weight:700;color:#2a5cbd">合計作業時間 / Total</span>
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:15px;font-weight:700;color:#2a5cbd">${total}h</span>
-            <span style="font-size:11px;font-weight:600;color:#888">人件費 ¥${(total * 2000).toLocaleString()}</span>
-          </div>
+        <div style="padding:8px 12px;background:#eef2ff;border:1px solid rgba(42,92,189,0.2);border-radius:10px;margin-top:4px;display:flex;align-items:center;justify-content:flex-end;gap:0;flex-wrap:nowrap;overflow:hidden">
+          <span style="font-size:11px;font-weight:600;color:#2a5cbd;white-space:nowrap">作業時間 合計 ${total}h</span>
+          <span style="color:#2a5cbd;margin:0 5px;font-size:11px">｜</span>
+          <span style="font-size:11px;font-weight:600;color:#2a5cbd;white-space:nowrap">1日平均 ${draft.startDate&&draft.deadline?(Math.round(total/Math.max(1,(new Date(draft.deadline)-new Date(draft.startDate))/86400000+1)*10)/10):'—'}h</span>
+          <span style="color:#2a5cbd;margin:0 5px;font-size:11px">｜</span>
+          <span style="font-size:11px;font-weight:600;color:#2a5cbd;white-space:nowrap">人件費 ¥${(total*2000).toLocaleString()}</span>
         </div>
       </div>
       <button class="btn btn-secondary" data-act="addStepProj">＋ 工程を追加 / Add Step</button>
