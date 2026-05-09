@@ -1884,10 +1884,11 @@ function attachEvents(){
     if (!swipeDir && Math.abs(dx) + Math.abs(dy) > 8) {
       swipeDir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
     }
-    if (swipeDir !== 'h') return; // vertical: do nothing, let browser scroll
+    if (swipeDir !== 'h') return; // vertical: browser handles scroll
+    e.preventDefault(); // horizontal confirmed: block vertical scroll
     mainEl.style.transform = `translateX(${dx * 0.4}px)`;
     mainEl.style.opacity = `${1 - Math.abs(dx) / 600}`;
-  }, { passive: true });
+  }, { passive: false });
 
   mainEl.addEventListener('touchend', e => {
     swipeDragging = false;
