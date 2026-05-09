@@ -104,10 +104,7 @@ body{
 /* ═══════════════════════════════════════════════
    PROJECT CARD
 ═══════════════════════════════════════════════ */
-.cards-wrap{
-  padding:10px 12px 6px;
-  display:flex;flex-direction:column;gap:9px;
-}
+.cards-wrap{padding:6px 12px 6px;display:flex;flex-direction:column;}
 .empty-state{
   text-align:center;
   padding:60px 20px 40px;
@@ -123,7 +120,7 @@ body{
   background:#ffffff;
   border:1px solid rgba(0,0,0,0.07);
   box-shadow:0 2px 12px rgba(0,0,0,0.07),0 1px 3px rgba(0,0,0,0.04);
-  margin-bottom:2px;
+  margin-bottom:1px;
 }
 
 .pj-accent{
@@ -233,7 +230,7 @@ body{
 }
 .dh{text-align:center;font-size:10px;font-weight:700;color:rgba(0,0,0,0.35);padding:5px 0 4px;}
 .cal-outer{
-  position:relative;margin:8px 8px 0;
+  position:relative;margin:6px 8px 0;
   border-radius:var(--r);
   background:#ffffff;
   border:1px solid rgba(0,0,0,0.07);
@@ -971,8 +968,10 @@ function renderProjectCard(p){
           <span class="lbl">納期</span><span class="val ${deadlineCls}">${fmtMd(p.deadline)}</span>
         </div>
         <div style="font-size:10px;font-weight:600;color:rgba(0,0,0,0.4);white-space:nowrap;text-align:right;flex-shrink:0">合計${_cTotal}h${_cAvg!=null?`  平均${_cAvg}h`:''}</div>
-        ${p.isComplete
+        ${p.isComplete && !p.completedAt
     ? `<button class="pj-badge done" data-act="completeProject" data-pid="${p.id}" style="cursor:pointer">完了</button>`
+    : p.completedAt
+    ? `<div class="pj-badge done" style="cursor:default">納品済</div>`
     : `<div class="pj-badge ${badgeClass}">${badgeText}</div>`}
         <button class="pj-gear" data-act="openSettings" data-pid="${p.id}" aria-label="工程設定">⚙</button>
       </div>
@@ -1066,9 +1065,8 @@ function renderCalendar(){
     return null;
   }
 
-  function makeBarDiv(x1pct, wpct, barY, r,g,b, tl,tr,br,bl){
-    const opacity = p.completedAt ? 0.4 : 0.75;
-    const fill = `rgba(${r},${g},${b},${opacity})`;
+  function makeBarDiv(x1pct, wpct, barY, r,g,b, tl,tr,br,bl, opacity){
+    const fill = `rgba(${r},${g},${b},${opacity||0.75})`;
     const brad = `${tl}px ${tr}px ${br}px ${bl}px`;
     const bar   = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${fill};border-radius:${brad};box-sizing:border-box"></div>`;
     const gloss = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${GLOSS_H}px;background:linear-gradient(180deg,rgba(255,255,255,0.25),rgba(255,255,255,0));border-radius:${tl}px ${tr}px 0 0;pointer-events:none"></div>`;
@@ -1141,6 +1139,7 @@ function renderCalendar(){
     const [r,g,b] = p.completedAt
       ? [130, 130, 130]
       : hexRgb(p.color || '#6b7280');
+    const barOpacity = p.completedAt ? 0.4 : 0.75;
     const urg = p.completedAt ? null : dlUrgency(gi);
     const dlBorderCol = urg ? urg.border : `rgba(${r},${g},${b},0.85)`;
     const dlTextCol   = urg ? urg.text   : `rgba(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)},1)`;
@@ -1174,7 +1173,7 @@ function renderCalendar(){
         // 本体バー
         if (bx2 > bx1){
           const tl = isProjStart ? R : 0;
-          overlayBars += makeBarDiv(bx1, bx2-bx1, barY, r,g,b, tl,0,0,tl);
+          overlayBars += makeBarDiv(bx1, bx2-bx1, barY, r,g,b, tl,0,0,tl, barOpacity);
         }
         // 納期セル
         const dlTl = (isProjStart && sCol===eCol) ? R : 0;
@@ -1184,7 +1183,7 @@ function renderCalendar(){
         const bx1 = (isProjStart ? sCol : 0) / 7 * 100;
         const bx2 = (eCol+1) / 7 * 100;
         const tl  = isProjStart ? R : 0;
-        overlayBars += makeBarDiv(bx1, bx2-bx1, barY, r,g,b, tl,0,0,tl);
+        overlayBars += makeBarDiv(bx1, bx2-bx1, barY, r,g,b, tl,0,0,tl, barOpacity);
       }
 
       // タイトル非表示
