@@ -32,7 +32,7 @@
   --tx-low:#aaaaaa;
   --tx-faint:#cccccc;
   --red:#d42020; --red-hi:#e63030; --red-glow:rgba(200,40,40,0.25); --red-dim:#fde8e8;
-  --orange:#9a7d00; --orange-hi:#c8a000; --orange-glow:rgba(160,130,0,0.2); --orange-dim:#fefae0;
+  --orange:#c8a000; --orange-hi:#e6b800; --orange-glow:rgba(200,160,0,0.25); --orange-dim:#fefae0;
   --silver:#8a94a6; --silver-hi:#6b7280; --silver-glow:rgba(100,110,130,0.15); --silver-dim:#f3f4f6;
   --accent-blue:#2a5cbd;
   --accent-blue-glow:rgba(60,110,220,0.2);
@@ -104,7 +104,7 @@ body{
 /* ═══════════════════════════════════════════════
    PROJECT CARD
 ═══════════════════════════════════════════════ */
-.cards-wrap{padding:2px 12px 6px;display:flex;flex-direction:column;}
+.cards-wrap{padding:8px 12px 6px;display:flex;flex-direction:column;}
 .empty-state{
   text-align:center;
   padding:60px 20px 40px;
@@ -157,7 +157,7 @@ body{
 .pj-badge{width:54px;padding:0;font-size:10px;font-weight:700;text-align:center;flex-shrink:0;box-sizing:border-box;height:28px;line-height:26px;border-radius:8px;border:1.5px solid;letter-spacing:.2px;}
 .pj-gear{padding:0;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,0.05);border:1.5px solid rgba(0,0,0,0.12);font-size:13px;color:rgba(0,0,0,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pj-badge.red{background:rgba(212,32,32,0.06);color:#d42020;border-color:rgba(210,32,32,0.3);}
-.pj-badge.orange{background:rgba(160,130,0,0.08);color:#7a6200;border-color:rgba(155,125,0,0.3);}
+.pj-badge.orange{background:rgba(200,160,0,0.10);color:#7a6000;border-color:rgba(200,160,0,0.4);}
 .pj-badge.silver{background:rgba(0,0,0,0.03);color:#555e6e;border-color:rgba(0,0,0,0.15);}
 .pj-badge.done{background:rgba(22,163,74,0.06);color:#16a34a;border-color:rgba(22,163,74,0.3);}
 .pj-gear{padding:0;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,0.05);border:1.5px solid rgba(0,0,0,0.12);font-size:13px;color:rgba(0,0,0,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -230,7 +230,7 @@ body{
 }
 .dh{text-align:center;font-size:10px;font-weight:700;color:rgba(0,0,0,0.35);padding:5px 0 4px;}
 .cal-outer{
-  position:relative;margin:2px 8px 0;
+  position:relative;margin:8px 8px 0;
   border-radius:var(--r);
   background:#ffffff;
   border:1px solid rgba(0,0,0,0.07);
@@ -250,7 +250,7 @@ body{
 .cal-day.oth .cal-day-num{color:rgba(0,0,0,0.2);}
 .cal-day.tod .cal-day-num{color:#1a1a1a;font-weight:800;}
 .cal-day.deadline-red .cal-day-num{color:#d42020;font-weight:700;}
-.cal-day.deadline-orange .cal-day-num{color:#9a7d00;font-weight:700;}
+.cal-day.deadline-orange .cal-day-num{color:#c8a000;font-weight:700;}
 .cal-day.deadline-silver .cal-day-num{color:#6b7280;font-weight:600;}
 .cal-day.nonworking::before{content:'';position:absolute;inset:0;background:rgba(210,50,80,0.13);z-index:0;pointer-events:none;}
 .cal-grid-wrap{position:relative}
@@ -280,7 +280,7 @@ body{
 }
 .gantt-toggle:active{opacity:0.7}
 .gantt-card{
-  margin:3px 8px;
+  margin:8px 8px;
   border-radius:var(--r);overflow:hidden;
   background:#ffffff;
   border:1px solid rgba(0,0,0,0.07);
@@ -538,7 +538,8 @@ input[type="date"]{color-scheme:light}
 }
 
 /* ── COMPLETE tab & card ── */
-.pj.completed{filter:grayscale(1);opacity:0.7;}
+.pj.completed{opacity:0.75;}
+.pj.completed .pj-body,.pj.completed .pj-accent{filter:grayscale(1);}
 .stamp-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;pointer-events:none;}
 .stamp-svg{width:120px;height:120px;transform:scale(0) rotate(-25deg);opacity:0;transition:none;}
 .stamp-svg.animate{animation:stampIn .4s cubic-bezier(.25,.46,.45,.94) forwards;}
@@ -955,7 +956,7 @@ function renderProjectCard(p){
 
   const accentCol = p.color || '#6b7280';
   const _days = p.daysToDeadline != null ? p.daysToDeadline : 999;
-  const _endCol = _days <= 3 ? 'rgba(210,52,52,0.95)' : _days <= 7 ? 'rgba(154,125,0,0.95)' : accentCol;
+  const _endCol = _days <= 3 ? 'rgba(210,52,52,0.95)' : _days <= 7 ? 'rgba(200,160,0,0.95)' : accentCol;
   const accentStyle = `background:linear-gradient(90deg,${accentCol} 0%,${_endCol} 100%);box-shadow:none`;
   return `<div class="pj" data-pid="${p.id}">
     <div class="pj-accent" style="${accentStyle}"></div>
@@ -1014,7 +1015,7 @@ function renderComplete(){
     });
     // Add background stamp
     const stampBg = document.createElement('div');
-    stampBg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;opacity:0.08;';
+    stampBg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;opacity:0.15;transform:rotate(-10deg);';
     stampBg.innerHTML = '<svg viewBox="0 0 120 120" width="110" height="110"><circle cx="60" cy="60" r="54" fill="none" stroke="#cc0000" stroke-width="6" stroke-dasharray="4,3"/><circle cx="60" cy="60" r="46" fill="none" stroke="#cc0000" stroke-width="3"/><text x="60" y="52" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" font-weight="700" fill="#cc0000" letter-spacing="2">DELIVERED</text><text x="60" y="75" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="26" font-weight="900" fill="#cc0000">納品</text></svg>';
     el.style.position = 'relative';
     el.insertBefore(stampBg, el.firstChild);
@@ -1320,7 +1321,7 @@ function renderGantt(projects, year, month){
     const py1 = barY - 0.5;
     const py2 = barY + BAR_H + 0.5;
     const pxr = dlX + (dlX + 3.7 <= VB_W - R_PAD ? 3.7 : 0);
-    const polyFill = idx===0 ? 'rgba(210,52,52,0.95)' : idx===1 ? 'rgba(154,125,0,0.95)' : lFill;
+    const polyFill = idx===0 ? 'rgba(210,52,52,0.95)' : idx===1 ? 'rgba(200,160,0,0.95)' : lFill;
     barSvg += `<polygon points="${dlX},${py1} ${dlX},${py2} ${pxr},${(py1+py2)/2}" fill="${polyFill}" opacity="0.92"/>`;
 
     rows += barSvg;
@@ -1871,20 +1872,26 @@ function attachEvents(){
     swipeStartX = e.touches[0].clientX;
     swipeStartY = e.touches[0].clientY;
     swipeDragging = true;
+    swipeDir = null;
   }, { passive: true });
 
+  let swipeDir = null; // 'h' | 'v' | null
   mainEl.addEventListener('touchmove', e => {
     if (!swipeDragging || ui.sheetOpen) return;
     const dx = e.touches[0].clientX - swipeStartX;
     const dy = e.touches[0].clientY - swipeStartY;
-    if (Math.abs(dy) > Math.abs(dx)) return; // vertical scroll takes priority
-    // Follow finger in real time
+    // Determine direction once after 8px movement
+    if (!swipeDir && Math.abs(dx) + Math.abs(dy) > 8) {
+      swipeDir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+    if (swipeDir !== 'h') return; // vertical: do nothing, let browser scroll
     mainEl.style.transform = `translateX(${dx * 0.4}px)`;
     mainEl.style.opacity = `${1 - Math.abs(dx) / 600}`;
   }, { passive: true });
 
   mainEl.addEventListener('touchend', e => {
     swipeDragging = false;
+    swipeDir = null;
     if (ui.sheetOpen) return;
     const dx = e.changedTouches[0].clientX - swipeStartX;
     const dy = e.changedTouches[0].clientY - swipeStartY;
