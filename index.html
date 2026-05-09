@@ -99,7 +99,7 @@ body{
 .tab.on::after{content:'';position:absolute;bottom:0;left:15%;right:15%;height:2px;border-radius:1px;background:rgba(0,0,0,0.8);}
 
 /* ───── Main scroll area ───── */
-.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + env(safe-area-inset-bottom));position:relative;padding-top:calc(96px + env(safe-area-inset-top));}
+.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + env(safe-area-inset-bottom));position:relative;padding-top:calc(84px + env(safe-area-inset-top));}
 
 /* ═══════════════════════════════════════════════
    PROJECT CARD
@@ -119,8 +119,8 @@ body{
   overflow:hidden;
   background:#ffffff;
   border:1px solid rgba(0,0,0,0.07);
-  box-shadow:0 2px 12px rgba(0,0,0,0.07),0 1px 3px rgba(0,0,0,0.04);
-  margin-bottom:2px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.07);
+  margin-bottom:8px;
 }
 
 .pj-accent{
@@ -955,7 +955,7 @@ function renderProjectCard(p){
 
   const accentCol = p.color || '#6b7280';
   const _days = p.daysToDeadline != null ? p.daysToDeadline : 999;
-  const _endCol = _days <= 3 ? 'rgba(210,52,52,0.95)' : _days <= 7 ? 'rgba(208,100,18,0.95)' : accentCol;
+  const _endCol = _days <= 3 ? 'rgba(210,52,52,0.95)' : _days <= 7 ? 'rgba(154,125,0,0.95)' : accentCol;
   const accentStyle = `background:linear-gradient(90deg,${accentCol} 0%,${_endCol} 100%);box-shadow:none`;
   return `<div class="pj" data-pid="${p.id}">
     <div class="pj-accent" style="${accentStyle}"></div>
@@ -1320,7 +1320,7 @@ function renderGantt(projects, year, month){
     const py1 = barY - 0.5;
     const py2 = barY + BAR_H + 0.5;
     const pxr = dlX + (dlX + 3.7 <= VB_W - R_PAD ? 3.7 : 0);
-    const polyFill = idx===0 ? 'rgba(210,52,52,0.95)' : idx===1 ? 'rgba(208,100,18,0.95)' : lFill;
+    const polyFill = idx===0 ? 'rgba(210,52,52,0.95)' : idx===1 ? 'rgba(154,125,0,0.95)' : lFill;
     barSvg += `<polygon points="${dlX},${py1} ${dlX},${py2} ${pxr},${(py1+py2)/2}" fill="${polyFill}" opacity="0.92"/>`;
 
     rows += barSvg;
@@ -2446,9 +2446,28 @@ function render(){
 /* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
+function adjustMainPadding(){
+  const topbar = document.querySelector('.topbar');
+  const main   = document.getElementById('main');
+  if (topbar && main){
+    main.style.paddingTop = (topbar.offsetHeight + 2) + 'px';
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   attachEvents();
   render();
+  adjustMainPadding();
+  // Recalculate if screen size changes
+  window.addEventListener('resize', adjustMainPadding);
+  // topbarの実際の高さに合わせてmainのpadding-topを動的に設定
+  requestAnimationFrame(() => {
+    const topbar = document.querySelector('.topbar');
+    const main   = document.getElementById('main');
+    if (topbar && main) {
+      main.style.paddingTop = topbar.offsetHeight + 2 + 'px';
+    }
+  });
 
   // 納期通知バナー
   setTimeout(() => {
