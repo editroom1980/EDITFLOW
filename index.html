@@ -11,7 +11,7 @@
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon.png">
 <meta name="apple-mobile-web-app-title" content="EditFlow">
-<style>@media (orientation:landscape){html{transform:rotate(0deg)}#app{max-width:430px;margin:0 auto;}}
+<style>@media (orientation:landscape){html{transform:rotate(0deg)}#app{display:flex;flex-direction:column;height:100%;overflow:hidden;}}
 
 /* ═══════════════════════════════════════════════════════════
    EditFlow v1.4 — Design System
@@ -99,7 +99,7 @@ body{
 .tab.on::after{content:'';position:absolute;bottom:0;left:15%;right:15%;height:2px;border-radius:1px;background:rgba(0,0,0,0.8);}
 
 /* ───── Main scroll area ───── */
-.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + env(safe-area-inset-bottom));position:relative;padding-top:88px;}
+.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + env(safe-area-inset-bottom));position:relative;padding-top:calc(96px + env(safe-area-inset-top));}
 
 /* ═══════════════════════════════════════════════
    PROJECT CARD
@@ -925,7 +925,7 @@ function colorForUrgency(urg, isNW){
 }
 
 function renderProjects(){
-  const projects = computeSchedule();
+  const projects = computeSchedule().filter(p => !p.completedAt);
   const main = document.getElementById('main');
 
   if (projects.length === 0){
@@ -1005,7 +1005,21 @@ function renderComplete(){
     const cp = cs.find(q=>q.id===p.id)||{...p,urgencyColor:'silver',daysToDeadline:0,isComplete:true,totalHours:p.steps.reduce((s,st)=>s+(st.hours||0),0),remainingHours:0};
     return renderProjectCard(cp);
   }).join('')}</div>`;
-  main.querySelectorAll('.pj').forEach(el=>el.classList.add('completed'));
+  // Apply completed styling
+  main.querySelectorAll('.pj').forEach(el => {
+    el.classList.add('completed');
+    // Disable step buttons
+    el.querySelectorAll('.pj-step').forEach(btn => {
+      btn.disabled = true;
+      btn.style.pointerEvents = 'none';
+    });
+    // Add background stamp
+    const stampBg = document.createElement('div');
+    stampBg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;opacity:0.08;';
+    stampBg.innerHTML = '<svg viewBox="0 0 120 120" width="110" height="110"><circle cx="60" cy="60" r="54" fill="none" stroke="#cc0000" stroke-width="6" stroke-dasharray="4,3"/><circle cx="60" cy="60" r="46" fill="none" stroke="#cc0000" stroke-width="3"/><text x="60" y="52" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" font-weight="700" fill="#cc0000" letter-spacing="2">DELIVERED</text><text x="60" y="75" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="26" font-weight="900" fill="#cc0000">納品</text></svg>';
+    el.style.position = 'relative';
+    el.insertBefore(stampBg, el.firstChild);
+  });
 }
 
 function renderCalendar(){
@@ -1035,9 +1049,9 @@ function renderCalendar(){
   const activeForBars = projects
     .filter(p => p.startDate && p.deadline)
     .sort((a,b) => {
-      // Incomplete first, then completed
-      if (!a.isComplete && b.isComplete) return -1;
-      if (a.isComplete && !b.isComplete) return 1;
+      // Non-completed first, then completed
+      if (!a.completedAt && b.completedAt) return -1;
+      if (a.completedAt && !b.completedAt) return 1;
       return strToDate(a.deadline) - strToDate(b.deadline);
     });
 
@@ -1053,7 +1067,7 @@ function renderCalendar(){
   }
 
   function makeBarDiv(x1pct, wpct, barY, r,g,b, tl,tr,br,bl){
-    const opacity = p.isComplete ? 0.4 : 0.75;
+    const opacity = p.completedAt ? 0.4 : 0.75;
     const fill = `rgba(${r},${g},${b},${opacity})`;
     const brad = `${tl}px ${tr}px ${br}px ${bl}px`;
     const bar   = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${fill};border-radius:${brad};box-sizing:border-box"></div>`;
@@ -1124,10 +1138,10 @@ function renderCalendar(){
     if (pe < calStart || ps > calEnd) return;
 
     // Completed projects: monochrome gray
-    const [r,g,b] = p.isComplete
+    const [r,g,b] = p.completedAt
       ? [130, 130, 130]
-      : hexRgb(p.color);
-    const urg = p.isComplete ? null : dlUrgency(gi);
+      : hexRgb(p.color || '#6b7280');
+    const urg = p.completedAt ? null : dlUrgency(gi);
     const dlBorderCol = urg ? urg.border : `rgba(${r},${g},${b},0.85)`;
     const dlTextCol   = urg ? urg.text   : `rgba(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)},1)`;
     const dlBgCol     = urg ? urg.bg     : `rgba(${Math.round(r*0.85)},${Math.round(g*0.85)},${Math.round(b*0.85)},0.22)`;
@@ -1887,7 +1901,7 @@ function attachEvents(){
       return;
     }
 
-    const views = ['projects','calendar'];
+    const views = ['projects','calendar','complete'];
     const cur = views.indexOf(ui.view);
     let nextView = null;
     if (dx < 0 && cur < views.length-1) nextView = views[cur+1];
@@ -2156,22 +2170,14 @@ function triggerCompletion(pid){
     card.appendChild(overlay);
     requestAnimationFrame(() => svgEl.classList.add('animate'));
 
-    // After stamp animation, slide card to COMPLETE tab
+    // After stamp animation, remove card from projects view
     setTimeout(() => {
       card.classList.add('card-exit');
       setTimeout(() => {
-        ui.view = 'complete';
-        document.querySelectorAll('.tab').forEach(t => {
-          t.classList.toggle('on', t.dataset.view === 'complete');
-        });
-        render();
+        render(); // re-render current view (projects) - card will be gone
       }, 500);
     }, 900);
   } else {
-    ui.view = 'complete';
-    document.querySelectorAll('.tab').forEach(t => {
-      t.classList.toggle('on', t.dataset.view === 'complete');
-    });
     render();
   }
 }
