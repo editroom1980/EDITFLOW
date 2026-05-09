@@ -32,7 +32,7 @@
   --tx-low:#aaaaaa;
   --tx-faint:#cccccc;
   --red:#d42020; --red-hi:#e63030; --red-glow:rgba(200,40,40,0.25); --red-dim:#fde8e8;
-  --orange:#c06000; --orange-hi:#e07800; --orange-glow:rgba(180,100,0,0.2); --orange-dim:#fef3e2;
+  --orange:#9a7d00; --orange-hi:#c8a000; --orange-glow:rgba(160,130,0,0.2); --orange-dim:#fefae0;
   --silver:#8a94a6; --silver-hi:#6b7280; --silver-glow:rgba(100,110,130,0.15); --silver-dim:#f3f4f6;
   --accent-blue:#2a5cbd;
   --accent-blue-glow:rgba(60,110,220,0.2);
@@ -65,14 +65,7 @@ body{
 #app{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 
 /* ───── Top Bar ───── */
-.topbar{
-  position:sticky;top:0;z-index:100;
-  background:var(--bg-deepest);
-  border-bottom:1px solid rgba(0,0,0,0.07);
-  box-shadow:0 1px 4px rgba(0,0,0,0.05);
-  padding:env(safe-area-inset-top) 0 0;
-  margin-top:0;
-}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--bg-deepest);border-bottom:1px solid rgba(0,0,0,0.07);box-shadow:0 1px 4px rgba(0,0,0,0.05);padding:env(safe-area-inset-top) 0 0;}
 .topbar::after{
   content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
   background:linear-gradient(90deg,transparent,rgba(180,210,255,0.32) 50%,transparent);
@@ -106,14 +99,7 @@ body{
 .tab.on::after{content:'';position:absolute;bottom:0;left:15%;right:15%;height:2px;border-radius:1px;background:rgba(0,0,0,0.8);}
 
 /* ───── Main scroll area ───── */
-.main{
-  flex:1;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  padding-bottom:calc(80px + env(safe-area-inset-bottom));
-  position:relative;
-}
+.main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + env(safe-area-inset-bottom));position:relative;padding-top:88px;}
 
 /* ═══════════════════════════════════════════════
    PROJECT CARD
@@ -137,7 +123,7 @@ body{
   background:#ffffff;
   border:1px solid rgba(0,0,0,0.07);
   box-shadow:0 2px 12px rgba(0,0,0,0.07),0 1px 3px rgba(0,0,0,0.04);
-  margin-bottom:3px;
+  margin-bottom:2px;
 }
 
 .pj-accent{
@@ -158,7 +144,7 @@ body{
 }
 
 .pj-body{padding:14px 14px 12px;}
-.pj-title{font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:6px;line-height:1.3;}
+.pj-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:4px;line-height:1.3;}
 .pj-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;}
 .pj-dates{display:flex;align-items:center;gap:3px;flex:1;min-width:0;font-size:12px;}
 .pj-dates .lbl{color:rgba(0,0,0,0.45);font-weight:600;flex-shrink:0;}
@@ -174,7 +160,7 @@ body{
 .pj-badge{width:54px;padding:0;font-size:10px;font-weight:700;text-align:center;flex-shrink:0;box-sizing:border-box;height:28px;line-height:26px;border-radius:8px;border:1.5px solid;letter-spacing:.2px;}
 .pj-gear{padding:0;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,0.05);border:1.5px solid rgba(0,0,0,0.12);font-size:13px;color:rgba(0,0,0,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pj-badge.red{background:rgba(212,32,32,0.06);color:#d42020;border-color:rgba(210,32,32,0.3);}
-.pj-badge.orange{background:rgba(192,96,0,0.06);color:#c06000;border-color:rgba(190,96,0,0.3);}
+.pj-badge.orange{background:rgba(160,130,0,0.08);color:#7a6200;border-color:rgba(155,125,0,0.3);}
 .pj-badge.silver{background:rgba(0,0,0,0.03);color:#555e6e;border-color:rgba(0,0,0,0.15);}
 .pj-badge.done{background:rgba(22,163,74,0.06);color:#16a34a;border-color:rgba(22,163,74,0.3);}
 .pj-gear{padding:0;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,0.05);border:1.5px solid rgba(0,0,0,0.12);font-size:13px;color:rgba(0,0,0,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -267,7 +253,7 @@ body{
 .cal-day.oth .cal-day-num{color:rgba(0,0,0,0.2);}
 .cal-day.tod .cal-day-num{color:#1a1a1a;font-weight:800;}
 .cal-day.deadline-red .cal-day-num{color:#d42020;font-weight:700;}
-.cal-day.deadline-orange .cal-day-num{color:#c06000;font-weight:700;}
+.cal-day.deadline-orange .cal-day-num{color:#9a7d00;font-weight:700;}
 .cal-day.deadline-silver .cal-day-num{color:#6b7280;font-weight:600;}
 .cal-day.nonworking::before{content:'';position:absolute;inset:0;background:rgba(210,50,80,0.13);z-index:0;pointer-events:none;}
 .cal-grid-wrap{position:relative}
@@ -553,6 +539,23 @@ input[type="date"]{color-scheme:light}
 @media (pointer:coarse){
   .pj-step{min-width:32px;height:28px;font-size:10px}
 }
+
+/* ── COMPLETE tab & card ── */
+.pj.completed{filter:grayscale(1);opacity:0.7;}
+.stamp-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;pointer-events:none;}
+.stamp-svg{width:120px;height:120px;transform:scale(0) rotate(-25deg);opacity:0;transition:none;}
+.stamp-svg.animate{animation:stampIn .4s cubic-bezier(.25,.46,.45,.94) forwards;}
+@keyframes stampIn{
+  0%{transform:scale(2.5) rotate(-25deg);opacity:0;}
+  60%{transform:scale(0.9) rotate(-8deg);opacity:1;}
+  80%{transform:scale(1.05) rotate(-10deg);opacity:1;}
+  100%{transform:scale(1) rotate(-10deg);opacity:1;}
+}
+.card-exit{animation:cardExit .5s ease-in forwards;}
+@keyframes cardExit{
+  0%{transform:translateX(0);opacity:1;max-height:200px;}
+  100%{transform:translateX(110%);opacity:0;max-height:0;margin:0;padding:0;}
+}
 </style>
 </head>
 <body>
@@ -565,6 +568,7 @@ input[type="date"]{color-scheme:light}
     <nav class="tabs" role="tablist">
       <button class="tab on" data-view="projects" role="tab">PROJECTS</button>
       <button class="tab" data-view="calendar" role="tab">CALENDAR</button>
+      <button class="tab" data-view="complete" role="tab">COMPLETE</button>
     </nav>
   </header>
   <main class="main" id="main"></main>
@@ -820,12 +824,16 @@ function computeSchedule(){
 
   // Assign urgency colors based on order (only for incomplete)
   let colorIdx = 0;
+  let lastDeadline = null;
   for (const p of projects){
     if (p.isComplete){
       p.urgencyColor = 'silver';
     } else {
+      // 同じ納期日は全員同じcolor（最近納期グループは全員red）
+      // Advance colorIdx only when deadline changes
+      if (lastDeadline !== null && p.deadline !== lastDeadline) colorIdx++;
       p.urgencyColor = colorIdx === 0 ? 'red' : (colorIdx === 1 ? 'orange' : 'silver');
-      colorIdx++;
+      lastDeadline = p.deadline;
     }
   }
 
@@ -963,7 +971,9 @@ function renderProjectCard(p){
           <span class="lbl">納期</span><span class="val ${deadlineCls}">${fmtMd(p.deadline)}</span>
         </div>
         <div style="font-size:10px;font-weight:600;color:rgba(0,0,0,0.4);white-space:nowrap;text-align:right;flex-shrink:0">合計${_cTotal}h${_cAvg!=null?`  平均${_cAvg}h`:''}</div>
-        <div class="pj-badge ${badgeClass}">${badgeText}</div>
+        ${p.isComplete
+    ? `<button class="pj-badge done" data-act="completeProject" data-pid="${p.id}" style="cursor:pointer">完了</button>`
+    : `<div class="pj-badge ${badgeClass}">${badgeText}</div>`}
         <button class="pj-gear" data-act="openSettings" data-pid="${p.id}" aria-label="工程設定">⚙</button>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin:4px 0 2px">
@@ -980,6 +990,24 @@ function renderProjectCard(p){
 /* ═══════════════════════════════════════════════
    VIEW: CALENDAR
 ═══════════════════════════════════════════════ */
+function renderComplete(){
+  const main = document.getElementById('main');
+  const completed = state.projects.filter(p => p.completedAt);
+  if (completed.length === 0){
+    main.innerHTML = `<div class="empty-state">
+      <div class="empty-state-title">完了したプロジェクトはありません</div>
+      <div class="empty-state-text">完了したプロジェクトがここに表示されます</div>
+    </div>`;
+    return;
+  }
+  const cs = computeSchedule();
+  main.innerHTML = `<div class="cards-wrap">${completed.map(p => {
+    const cp = cs.find(q=>q.id===p.id)||{...p,urgencyColor:'silver',daysToDeadline:0,isComplete:true,totalHours:p.steps.reduce((s,st)=>s+(st.hours||0),0),remainingHours:0};
+    return renderProjectCard(cp);
+  }).join('')}</div>`;
+  main.querySelectorAll('.pj').forEach(el=>el.classList.add('completed'));
+}
+
 function renderCalendar(){
   const projects = computeSchedule();
   const main = document.getElementById('main');
@@ -1003,9 +1031,15 @@ function renderCalendar(){
   for (const p of projects) if (!p.isComplete) dlMap.set(p.deadline, p.urgencyColor);
 
   // Active projects sorted by deadline ascending (nearest=index0)
+  // Include completed projects in calendar (shown in monochrome)
   const activeForBars = projects
-    .filter(p => !p.isComplete && p.startDate && p.deadline)
-    .sort((a,b) => strToDate(a.deadline) - strToDate(b.deadline));
+    .filter(p => p.startDate && p.deadline)
+    .sort((a,b) => {
+      // Incomplete first, then completed
+      if (!a.isComplete && b.isComplete) return -1;
+      if (a.isComplete && !b.isComplete) return 1;
+      return strToDate(a.deadline) - strToDate(b.deadline);
+    });
 
   function hexRgb(hex){
     const h=(hex||'#6b7280').replace('#','');
@@ -1019,7 +1053,8 @@ function renderCalendar(){
   }
 
   function makeBarDiv(x1pct, wpct, barY, r,g,b, tl,tr,br,bl){
-    const fill = `rgba(${r},${g},${b},0.75)`;
+    const opacity = p.isComplete ? 0.4 : 0.75;
+    const fill = `rgba(${r},${g},${b},${opacity})`;
     const brad = `${tl}px ${tr}px ${br}px ${bl}px`;
     const bar   = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${BAR_H}px;background:${fill};border-radius:${brad};box-sizing:border-box"></div>`;
     const gloss = `<div style="position:absolute;top:${barY}px;left:${x1pct.toFixed(3)}%;width:${wpct.toFixed(3)}%;height:${GLOSS_H}px;background:linear-gradient(180deg,rgba(255,255,255,0.25),rgba(255,255,255,0));border-radius:${tl}px ${tr}px 0 0;pointer-events:none"></div>`;
@@ -1088,8 +1123,11 @@ function renderCalendar(){
     const calEnd   = strToDate(grid.days[41].date);
     if (pe < calStart || ps > calEnd) return;
 
-    const [r,g,b] = hexRgb(p.color);
-    const urg = dlUrgency(gi);
+    // Completed projects: monochrome gray
+    const [r,g,b] = p.isComplete
+      ? [130, 130, 130]
+      : hexRgb(p.color);
+    const urg = p.isComplete ? null : dlUrgency(gi);
     const dlBorderCol = urg ? urg.border : `rgba(${r},${g},${b},0.85)`;
     const dlTextCol   = urg ? urg.text   : `rgba(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)},1)`;
     const dlBgCol     = urg ? urg.bg     : `rgba(${Math.round(r*0.85)},${Math.round(g*0.85)},${Math.round(b*0.85)},0.22)`;
@@ -1901,6 +1939,9 @@ function handleAction(e){
   const ds = target.dataset;
 
   switch(act){
+    case 'completeProject':
+      triggerCompletion(ds.pid);
+      break;
     case 'toggleStep':
       toggleStep(ds.pid, ds.code);
       break;
@@ -2069,6 +2110,69 @@ function handleAction(e){
       }
       break;
     }
+  }
+}
+
+function triggerCompletion(pid){
+  const proj = state.projects.find(p => p.id === pid);
+  if (!proj) return;
+
+  // Record completion
+  proj.completedAt = new Date().toISOString();
+  saveState();
+
+  // Play stamp sound via Web Audio
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++){
+      const t = i / ctx.sampleRate;
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 18) * 0.8
+              + Math.sin(2 * Math.PI * 180 * t) * Math.exp(-t * 25) * 0.4;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start();
+  } catch(e) {}
+
+  // Find card element and animate
+  const card = document.querySelector(`[data-pid="${pid}"]`)?.closest('.pj');
+  if (card) {
+    // Add stamp overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'stamp-overlay';
+    const svgEl = document.createElement('div');
+    svgEl.className = 'stamp-svg';
+    svgEl.innerHTML = `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="60" cy="60" r="54" fill="none" stroke="#cc0000" stroke-width="6" stroke-dasharray="4,3"/>
+  <circle cx="60" cy="60" r="46" fill="none" stroke="#cc0000" stroke-width="3"/>
+  <text x="60" y="52" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" font-weight="700" fill="#cc0000" letter-spacing="2">DELIVERED</text>
+  <text x="60" y="75" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="26" font-weight="900" fill="#cc0000">納品</text>
+</svg>`;
+    overlay.appendChild(svgEl);
+    card.style.position = 'relative';
+    card.appendChild(overlay);
+    requestAnimationFrame(() => svgEl.classList.add('animate'));
+
+    // After stamp animation, slide card to COMPLETE tab
+    setTimeout(() => {
+      card.classList.add('card-exit');
+      setTimeout(() => {
+        ui.view = 'complete';
+        document.querySelectorAll('.tab').forEach(t => {
+          t.classList.toggle('on', t.dataset.view === 'complete');
+        });
+        render();
+      }, 500);
+    }, 900);
+  } else {
+    ui.view = 'complete';
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('on', t.dataset.view === 'complete');
+    });
+    render();
   }
 }
 
@@ -2329,6 +2433,8 @@ function render(){
     renderProjects();
   } else if (ui.view === 'calendar'){
     renderCalendar();
+  } else if (ui.view === 'complete'){
+    renderComplete();
   }
 }
 
