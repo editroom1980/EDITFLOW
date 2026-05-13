@@ -242,7 +242,7 @@ body{
 .cal-day{
   position:relative;display:flex;align-items:flex-start;justify-content:center;
   padding-top:5px;background:transparent;cursor:default;overflow:hidden;
-  border-right:.5px solid rgba(0,0,0,0.05);border-bottom:.5px solid rgba(0,0,0,0.05);
+  border-right:.5px solid rgba(0,0,0,0.14);border-bottom:.5px solid rgba(0,0,0,0.14);
 }
 .cal-day.editable{cursor:pointer}
 .cal-day.editable:active{background:rgba(120,160,220,0.12)}
@@ -1047,19 +1047,19 @@ function renderCalendar(){
   // Active projects sorted by deadline ascending (nearest=index0)
   // Include completed projects in calendar (shown in monochrome)
   const activeForBars = projects
-    .filter(p => p.startDate && p.deadline)
-    .sort((a,b) => {
-      // Non-completed first, then completed
-      if (!a.completedAt && b.completedAt) return -1;
-      if (a.completedAt && !b.completedAt) return 1;
-      return strToDate(a.deadline) - strToDate(b.deadline);
-    });
+    .filter(p => p.startDate && p.deadline && !p.completedAt)
+    .sort((a,b) => strToDate(a.deadline) - strToDate(b.deadline));
 
   function hexRgb(hex){
     const h=(hex||'#6b7280').replace('#','');
     return [parseInt(h.slice(0,2),16)||107, parseInt(h.slice(2,4),16)||114, parseInt(h.slice(4,6),16)||128];
   }
 
+  function urgencyFromColor(uc){
+    if (uc==='red')    return {border:'rgba(210,52,52,0.9)',text:'rgba(180,20,20,1)',bg:'rgba(255,230,230,0.9)'};
+    if (uc==='orange') return {border:'rgba(190,96,0,0.9)',text:'rgba(160,72,0,1)',bg:'rgba(255,243,220,0.9)'};
+    return null;
+  }
   function dlUrgency(sortedIdx){
     if (sortedIdx===0) return {border:'rgba(210,52,52,0.9)',text:'rgba(180,20,20,1)',bg:'rgba(255,230,230,0.9)'};
     if (sortedIdx===1) return {border:'rgba(190,96,0,0.9)',text:'rgba(160,72,0,1)',bg:'rgba(255,243,220,0.9)'};
@@ -1141,7 +1141,7 @@ function renderCalendar(){
       ? [130, 130, 130]
       : hexRgb(p.color || '#6b7280');
     const barOpacity = p.completedAt ? 0.4 : 0.75;
-    const urg = p.completedAt ? null : dlUrgency(gi);
+    const urg = urgencyFromColor(p.urgencyColor);
     const dlBorderCol = urg ? urg.border : `rgba(${r},${g},${b},0.85)`;
     const dlTextCol   = urg ? urg.text   : `rgba(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)},1)`;
     const dlBgCol     = urg ? urg.bg     : `rgba(${Math.round(r*0.85)},${Math.round(g*0.85)},${Math.round(b*0.85)},0.22)`;
@@ -1626,6 +1626,7 @@ function openProjectSettings(projectId){
       </div>
       <button class="btn btn-secondary" data-act="addStepProj">＋ 工程を追加 / Add Step</button>
 
+      <button class="btn btn-secondary" data-act="duplicateProject">このプロジェクトを複製 / Duplicate</button>
       <button class="btn btn-danger" data-act="deleteProject">このプロジェクトを削除</button>
     `;
 
@@ -2037,6 +2038,24 @@ function handleAction(e){
     case 'saveProject':
       saveProjectChanges();
       break;
+    case 'duplicateProject':{
+      const src = state.projects.find(p => p.id === ui.editingProjectId);
+      if (src){
+        const dup = {
+          ...src,
+          id: 'proj_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          title: src.title + ' (複製)',
+          completedAt: null,
+          steps: src.steps.map(s => ({...s, done:false}))
+        };
+        state.projects.push(dup);
+        saveState();
+        closeSheet();
+        render();
+        showToast('プロジェクトを複製しました');
+      }
+      break;
+    }
     case 'deleteProject':
       confirmDeleteProject();
       break;
