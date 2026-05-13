@@ -626,6 +626,7 @@ const DEFAULT_PRESETS = [
     id:'preset_shisou',
     name:'しそうトピックス',
     description:'しそうチャンネル',
+    titleTemplate:'しそうトピックス「{cursor}」',
     color:'#2a9d8f',
     steps: DEFAULT_STEP_LIBRARY.map(s => makeStepInstance(s))
   },
@@ -633,6 +634,7 @@ const DEFAULT_PRESETS = [
     id:'preset_kagayaite',
     name:'いま、輝いてます。',
     description:'WINK姫路ケーブルテレビ',
+    titleTemplate:'いま、輝いてます。「{cursor}」',
     color:'#9b5de5',
     steps: DEFAULT_STEP_LIBRARY.map(s => makeStepInstance(s))
   },
@@ -1427,8 +1429,8 @@ function openNewProjectSheet(){
     startDate: today,
     deadline: defaultDeadline,
     color: state.presets[0] ? (state.presets[0].color||'#6b7280') : '#6b7280',
-    presetId: state.presets[0]?.id || null,
-    steps: state.presets[0] ? state.presets[0].steps.map(s => ({...s, done:false})) : []
+    presetId: null,
+    steps: []
   };
 
   function rerender(){
@@ -1488,8 +1490,8 @@ function openNewProjectSheet(){
       <div class="sheet-section">
         <div class="sheet-section-label">プリセット選択／Preset Selection</div>
         <div class="preset-list">
-          ${presetOpts}
           ${customCard}
+          ${presetOpts}
         </div>
       </div>
       <div class="sheet-section">
@@ -1627,7 +1629,7 @@ function openProjectSettings(projectId){
       <button class="btn btn-secondary" data-act="addStepProj">＋ 工程を追加 / Add Step</button>
 
       <button class="btn btn-secondary" data-act="duplicateProject">このプロジェクトを複製 / Duplicate</button>
-      <button class="btn btn-danger" data-act="deleteProject">このプロジェクトを削除</button>
+      <button class="btn btn-danger" data-act="deleteProject">このプロジェクトを削除 / Delete Project</button>
     `;
 
     const footer = `
@@ -2140,6 +2142,7 @@ function handleAction(e){
           id: 'preset_'+Date.now(),
           name: pn,
           description: pd.programInfo || '',
+          titleTemplate: ui.pendingPresetTitleTemplate || '',
           color: pd.color||'#6b7280',
           steps: pd.steps.map(s=>({code:s.code,jp:s.jp,en:s.en,hours:s.hours,done:false}))
         };
@@ -2242,6 +2245,21 @@ function selectPreset(presetId){
       draft.presetId = presetId;
       draft.color = preset.color || '#6b7280';
       draft.steps = preset.steps.map(s => ({...s, done:false}));
+      // タイトルテンプレート自動入力
+      if (preset.titleTemplate && !draft.title){
+        const tmpl = preset.titleTemplate;
+        const cursorPos = tmpl.indexOf('{cursor}');
+        draft.title = tmpl.replace('{cursor}', '');
+        // DOMのinputにも反映してカーソル位置を設定
+        requestAnimationFrame(() => {
+          const inp = document.getElementById('np-title');
+          if (inp){
+            inp.value = draft.title;
+            if (cursorPos >= 0) inp.setSelectionRange(cursorPos, cursorPos);
+            inp.focus();
+          }
+        });
+      }
     }
   }
   ui.activeNewProjectRerender?.();
@@ -2393,7 +2411,9 @@ function saveCurrentProjectAsPreset(){
   if (!d) return;
   const name = prompt('プリセット名を入力\n(例: しそうトピックス)', d.title);
   if (!name) return;
+  const tmpl = prompt('タイトルテンプレート（省略可）\n{cursor} でカーソル位置を指定\n例: しそうトピックス「{cursor}」', '');
   ui.pendingPresetName = name.trim();
+  ui.pendingPresetTitleTemplate = tmpl && tmpl.trim() ? tmpl.trim() : '';
   ui.pendingPresetDraft = d;
   openColorPickerSheet();
 }
