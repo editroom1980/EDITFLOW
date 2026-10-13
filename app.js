@@ -326,6 +326,15 @@ function ハッシュで開く() {
   if (m && S.読めた) { EF.開く('締切', decodeURIComponent(m[1])); history.replaceState(null, '', location.pathname); }
 }
 window.addEventListener('hashchange', ハッシュで開く);
+/* iOS 26 のホーム画面アプリで、画面の高さが短く計られるとき（下のタブの下に空きが出る）。短ければホームバーの分の余白を外す（タブを隠さない安全な直し方）*/
+function 画面の短さを測る() {
+  const 立 = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const 縦 = window.innerHeight > window.innerWidth;
+  const 差 = screen.height - window.innerHeight;
+  document.documentElement.classList.toggle('vp-short', !!(立 && 縦 && 差 > 20 && 差 <= 150));
+}
+['resize', 'orientationchange', 'pageshow'].forEach(e => window.addEventListener(e, () => setTimeout(画面の短さを測る, 50)));
+画面の短さを測る();
 /* Mac の通知：新しく出た「間に合わない」「過ぎた締切」だけを1回ずつ。最初の1回は知らせずに覚える */
 function 新しい問題を知らせる() {
   if (!Mac || S.画面外) return;
@@ -1325,7 +1334,11 @@ function シートを描く() {
     body = `<div class="sec"><div class="sec-label">見た目</div><div class="panel-card"><div class="form-row"><span class="form-label">色</span><div class="seg">
         <button class="${今の === '黒' ? 'on' : ''}" data-act="theme" data-t="黒">黒地（v1.0）</button><button class="${今の === '明るい' ? 'on' : ''}" data-act="theme" data-t="明るい">明るい色（v1.4）</button></div>
         <span class="hint">${Mac ? 'EDITFLOW設定.json に覚える' : 'この iPhone に覚える'}</span></div></div></div>
-      ${iPhone ? `<div class="sec"><div class="sec-label">Mac とのつなぎ</div><div class="panel-card"><div class="list-row"><div class="grow"><div class="t1">${esc(GH.repo())}</div><div class="t2">${GH.token() ? 'トークンは覚えてある' : 'トークンがまだ無い'}</div></div><button class="btn btn-secondary btn-small" data-act="phonePrefs">つなぎ方を直す</button></div></div></div>` : ''}
+      ${iPhone ? `<div class="sec"><div class="sec-label">Mac とのつなぎ</div><div class="panel-card"><div class="list-row"><div class="grow"><div class="t1">${esc(GH.repo())}</div><div class="t2">${GH.token() ? 'トークンは覚えてある' : 'トークンがまだ無い'}</div></div><button class="btn btn-secondary btn-small" data-act="phonePrefs">つなぎ方を直す</button></div></div></div>
+        ${(() => { const st = 通知の状態(); if (!st) return ''; return `<div class="sec"><div class="sec-label">通知</div><div class="panel-card"><div class="list-row" style="flex-wrap:wrap">
+          <div class="grow"><div class="t1">${st.済 ? 'この iPhone で受け取っている' : 'この iPhone で通知を受け取る'}</div>
+          <div class="t2">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の締め。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div>
+          ${st.済 ? '<button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>' : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 && GH.token() ? '' : 'disabled'}>受け取る</button>`}</div></div></div>`; })()}` : ''}
       ${Mac ? `<div class="sec"><div class="sec-label">表示</div><div class="panel-card"><div class="form-row"><span class="form-label">メニューバー</span><button class="btn btn-small ${st.メニューバーに出す !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefMenubar">${st.メニューバーに出す !== false ? '✓ 小窓を出す' : '小窓を出す'}</button><span class="hint">今の作業・残り時間・次の予定の3行</span></div>
         <div class="form-row"><span class="form-label">自動の反映</span><button class="btn btn-small ${st.自動で反映 !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefAuto">${st.自動で反映 !== false ? '✓ 自動でカレンダーへ反映する' : '自動でカレンダーへ反映する'}</button><span class="hint">毎朝5:30と、直して3分後。窓を閉じても裏で続ける（止めるのはメニューバーの「終わる」）</span></div></div></div>` : ''}
       <div class="sec"><div class="sec-label">プリセット</div><div class="panel-card">${(st.プリセット || []).map((p, i) => `<div class="list-row"><div class="grow"><div class="t1">${esc(p.名前)}</div><div class="t2">${esc(p.工程.map(x => x.記号).join(' ・ '))}</div></div><button class="icon-btn del" data-act="presetDel" data-i="${i}" title="このプリセットを消す（⌘Z で戻せる）">✕</button></div>`).join('')}</div></div>
@@ -1701,6 +1714,7 @@ EF.書き出しの場面 = 名 => {
   if (v === 'phone' && 添 === 'edit') { const u = 単位を探す(ui.sel); ui.view = 'projects'; if (u) 次の工程を済み(u); setTimeout(描く, 300); return true; }
   if (v === 'detail') { ui.view = 'projects'; ui.詳細を開く = true; 描く(); return true; }
   if (v === 'prefs') { ui.view = 'today'; 描く(); シートを開く({ kind: iPhone ? 'phone' : 'prefs' }); return true; }
+  if (v === 'settings') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); return true; }
   ui.詳細を開く = false;
   if (v === 'palette') { ui.view = 'today'; 描く(); 命令窓を開く(); ui.pal.q = ''; 命令窓を描く(); return true; }
   if (v === 'new') { ui.view = 'projects'; 描く(); 新しい案件を開く(); return true; }

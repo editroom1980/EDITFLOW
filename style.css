@@ -706,3 +706,16 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
   .stale{font-size:12px}
   .timer-bar .btn:first-of-type{margin-left:0}
 }
+
+/* iPhone：設定などのシートを画面の中に収める（上がステータスバーに潜らない）。見出しは常に見える（2026-10-13） */
+@media (max-width:760px){
+  .sheet{max-height:calc(100dvh - env(safe-area-inset-top) - 24px)}
+  .sheet-header{position:sticky;top:0;z-index:2;background:inherit;border-radius:20px 20px 0 0}
+  .sheet-back{font-size:15px;padding:6px 4px}
+  /* 画面が短く計られているとき：ホームバーの分の余白を外す */
+  html.vp-short .nav{height:62px;padding-bottom:4px}
+  html.vp-short .statusbar{bottom:62px}
+  html.vp-short .main{bottom:92px}
+  html.vp-short .sheet{padding-bottom:0}
+  html.vp-short .toast{bottom:100px}
+}
