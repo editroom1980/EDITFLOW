@@ -726,3 +726,14 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
 .tl-item.k-作業 .t b,.tl-item .n{word-break:break-all}
 .tl-note{font-size:11px;color:var(--tx-mid);margin:-2px 0 6px;padding-left:2px}
 .tl-mark{pointer-events:none}
+/* この先の段取り */
+.agenda{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.ag-day{background:var(--bg-elev1,rgba(255,255,255,.04));border-radius:10px;padding:10px 12px}
+.ag-head{font-weight:800;margin-bottom:6px;display:flex;gap:8px;align-items:baseline}.ag-head.we{color:#c46808}
+.ag-row{display:flex;gap:8px;font-size:12px;padding:3px 4px;border-left:3px solid rgba(140,146,158,.5);margin:2px 0;border-radius:3px}
+.ag-row.editable{cursor:pointer}.ag-row.editable:hover{background:rgba(112,107,255,.12)}
+.ag-t{width:92px;flex:none;font-variant-numeric:tabular-nums;color:var(--tx-mid)}.ag-n{flex:1;word-break:break-all}
+.ag-row.k-作業{border-color:#706BFF}.ag-row.k-時間外{border-color:#ff9210}.ag-row.k-深夜{border-color:#dc2828}
+.ag-row.k-食事{border-color:#3fa66a}.ag-row.k-予定{border-color:#8a8f99}.ag-row.k-移動{border-color:#b9bec8}.ag-row.k-用事{border-color:#3aa0d8}
+.ag-row.k-区切り{border-color:transparent;color:var(--tx-mid);font-size:11px}
+html[data-theme="light"] .ag-day{background:#fff}

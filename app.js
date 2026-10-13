@@ -789,7 +789,8 @@ function 今日を描く() {
     <button class="btn btn-secondary btn-small" data-act="dayShift" data-n="${ず + 1}" ${ず >= 20 ? 'disabled title="3週間先まで"' : ''}>次の日 ›</button></span></div>
     <div class="legend">${['作業', '時間外', '深夜', '予定', '移動', '食事', '用事'].map(k => `<span><i class="k-${k}"></i>${k}</span>`).join('')}</div>
     <div class="days">${時間軸(t, 呼び名(t))}${時間軸(明, 呼び名(明))}</div>
-    <div class="hint" style="margin-top:6px">札を押すと直せる（予定・作業・食事・買い物）。3週間先まで「次の日 ›」か、3週間の画面で日を選ぶ</div></div>`;
+    <div class="hint" style="margin-top:6px">札を押すと直せる（予定・作業・食事・買い物）</div></div>`;
+  h += この先の段取り(足す日(明, 1));
   return h;
 }
 function 問題の札(q) {
@@ -878,6 +879,24 @@ function 次にやることを描く(p) {
     <div class="nowcell go"><div class="k">LEAVE　出発</div><div class="v">${出 ? `出発 ${hm(出.t)}` : '出発の予定なし'}</div>
       <div class="s">${出 ? `${mdw(ds(出.t))}・${esc(出.行き先)}・あと ${あと(出.t - now)}` : '3日先まで'}</div></div>
   </div>`;
+}
+/* この先（時間軸の2日のあと〜3週間）の段取りを、日ごとの一覧で全部出す */
+function この先の段取り(始) {
+  const p = P(); if (!p) return '';
+  const 日々 = Object.keys(p.日).filter(d => d >= 始 && d <= 足す日(今日(), 21)).sort();
+  const 行 = 日々.map(d => {
+    const xs = 今日の段取り(d);
+    const 作 = xs.filter(x => x.種 === '作業').reduce((a, x) => a + (x.e - x.s) / 3600000, 0);
+    const 札 = xs.map(x => {
+      const 押せる = !!(x.予定表 || (x.種 === '作業' && x.ラベル) || x.食事 || x.買い物);
+      const 時 = x.種 === '区切り' ? '' : `${hm(x.s)}〜${hm(x.e)}`;
+      return `<div class="ag-row k-${区分(x)} ${押せる ? 'editable' : ''}" ${押せる ? `data-act="tlItem" data-d="${d}" data-s="${esc(x.始)}" data-t="${esc(x.題)}"` : ''}>
+        <span class="ag-t">${時}</span><span class="ag-n">${esc(x.種 === '区切り' && x.題.startsWith('今日の作業はここまで') ? hm(x.s) + ' で作業は終わり' : x.題)}</span></div>`;
+    }).join('');
+    const w = 日(d).getDay();
+    return `<div class="ag-day"><div class="ag-head ${w === 0 || w === 6 ? 'we' : ''}">${mdw(d)}<span class="hint">作業 ${時間(作)}</span></div>${札 || '<div class="hint">段取りなし</div>'}</div>`;
+  }).join('');
+  return `<div class="sec"><div class="sec-label">AHEAD<span class="jp">この先の段取り（3週間先まで全部）</span><span class="right hint">押すと直せる</span></div><div class="agenda">${行}</div></div>`;
 }
 function 時間軸(d, 名) {
   const xs = 今日の段取り(d);
