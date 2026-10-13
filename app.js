@@ -768,6 +768,9 @@ function 今日を描く() {
   if (過.length) {
     h += `<div class="sec"><div class="sec-label">PAST DUE<span class="jp">過ぎた締切（渡したか確かめる）</span><span class="right hint">渡したなら「渡した」、まだなら締切を動かす。どちらかにするまで割り振りから外している</span></div><div class="issues">${過.map(過ぎた札).join('')}</div></div>`;
   }
+  // カレンダーの予定どうしが被っている日
+  const 重 = (p.重なり || []);
+  if (重.length) h += `<div class="sec"><div class="sec-label">OVERLAP<span class="jp">カレンダーの予定が重なっている</span><span class="right hint">どちらかをカレンダー（または時間軸の札）で動かす</span></div><div class="issues">${重.map(x => `<div class="issue orange"><div class="issue-head"><span class="lamp orange"></span><span class="issue-title">${mdw(x.日付)}　${esc(x.一)} と ${esc(x.二)}</span></div></div>`).join('')}</div></div>`;
   // 間に合わない欄（今日以降の全部の締切が対象。エンジンの 問題）
   const 問 = (p.問題 || []);
   h += `<div class="sec"><div class="sec-label">RESOLVE<span class="jp">間に合わない作業</span><span class="right hint">今日以降の締切を全部見て、ふだんの時間で足りないものだけ出す</span></div>`;
@@ -1276,7 +1279,11 @@ function 撮影を描く() {
   const 未 = 生きている.filter(x => !取材日(x));
   if (!ui.shootSel || !S.撮影.some(x => x.フォルダ === ui.shootSel)) ui.shootSel = (先[0] || 未[0] || {}).フォルダ;
   const 名 = x => x.相対.replace(/^.*?\/([^/]+)\/回\//, '$1 ／ ').replace(/進行中_|済_/g, '');
-  let h = `<div class="sec"><div class="sec-label">SHOOTS<span class="jp">撮影の予定（映像制作 の 04_取材計画.json を読むだけ）</span></div><div class="seg">
+  const カ撮 = ((P() || {}).撮影 || []);
+  let h = `<div class="sec"><div class="sec-label">CALENDAR<span class="jp">カレンダーの「撮影」の予定（今日から）</span><span class="right hint">押すとその日の段取りを開く。案件＝同じ日に撮影日のある案件</span></div><div class="panel-card">
+    ${カ撮.map(x => `<div class="list-row" ${x.日付 <= 足す日(今日(), 21) ? `data-act="shootDay" data-d="${x.日付}" style="cursor:pointer"` : ''}><div class="grow"><div class="t1">${mdw(x.日付)}　${x.始 ? x.始 + '〜' + x.終 : '終日（時刻未定・8〜18時をふさぐ）'}　${esc(x.題)}</div>
+      <div class="t2">${x.案件 ? '案件：' + esc(x.案件) : '案件なし（編集があれば「＋ 新しい案件」で撮影日を入れると結びつく）'}</div></div></div>`).join('') || '<div class="list-row hint">カレンダーに今日からの撮影が無い</div>'}</div></div>`;
+  h += `<div class="sec"><div class="sec-label">SHOOTS<span class="jp">撮影の予定（映像制作 の 04_取材計画.json を読むだけ）</span></div><div class="seg">
     ${先.map(x => `<button class="${ui.shootSel === x.フォルダ ? 'on' : ''}" data-act="shootSel" data-f="${esc(x.フォルダ)}">${mdw(取材日(x))} ${esc(名(x))}</button>`).join('')}
     ${未.map(x => `<button class="${ui.shootSel === x.フォルダ ? 'on' : ''}" data-act="shootSel" data-f="${esc(x.フォルダ)}">取材日未定 ${esc(名(x))}</button>`).join('')}
     ${!先.length && !未.length ? '<span class="hint">今日以降の取材計画は無い</span>' : ''}</div></div>`;
@@ -1527,7 +1534,8 @@ function 案件を作る() {
   const 新 = { 名前: 名, 締切: [締], 残り編集時間: null, 状態: d.撮影日 ? '撮影前' : '未着手' };
   if (d.着手できる日 && d.着手できる日 > 今日()) 新.着手できる日 = d.着手できる日;
   if (d.撮影日) 新.撮影日 = d.撮影日;
-  if (d.撮影日 && d.撮影始) 新.撮影の時刻 = [d.撮影始, d.撮影終];
+  // 時刻を入れたら EDITFLOW の時刻を正にする（その日のカレンダーに撮影があれば、そちらをこの時刻に直す）
+  if (d.撮影日 && d.撮影始) { 新.撮影の時刻 = [d.撮影始, d.撮影終]; 新.撮影を動かした = true; }
   if (d.撮影の場所) 新.撮影の場所 = d.撮影の場所;
   if (d.撮影の移動 != null) 新.撮影の移動 = d.撮影の移動;
   if (d.工程.length) 新.工程 = d.工程.map(x => ({ 記号: x.記号, 名前: x.名前, 英名: x.英名, 見込み: x.見込み, 済: false }));
@@ -1705,6 +1713,7 @@ document.addEventListener('click', e => {
     case 'thisMonth': ui.calMonth = null; 描く(); break;
     case 'planTab': ui.planTab = d.t; 描く(); break;
     case 'pickDay': ui.週の日 = d.d; 描く(); break;
+    case 'shootDay': ui.週の日 = d.d; 画面へ('weeks'); break;
     case 'tlItem': { const x = 段取りの札(d.d, d.s, d.t); if (!x) break; if (x.予定表) 予定を開く(d.d, x); else 作業を開く(d.d, x); break; }
     case 'tlNew': 予定を開く(d.d, null); break;
     case 'evSave': 予定を保存(false); break;
