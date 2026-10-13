@@ -737,3 +737,4 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
 .ag-row.k-食事{border-color:#3fa66a}.ag-row.k-予定{border-color:#8a8f99}.ag-row.k-移動{border-color:#b9bec8}.ag-row.k-用事{border-color:#3aa0d8}
 .ag-row.k-区切り{border-color:transparent;color:var(--tx-mid);font-size:11px}
 html[data-theme="light"] .ag-day{background:#fff}
+.lib-group{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--tx-mid);padding:8px 12px 2px}

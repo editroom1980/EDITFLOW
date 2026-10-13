@@ -1398,7 +1398,7 @@ function シートを描く() {
   } else if (s.kind === 'addstep') {
     head = `<button class="sheet-back" data-act="${s.戻り ? 'sheetBack' : 'closeSheet'}">⟨ 戻る</button><div class="sheet-title">ADD STEP　工程を足す</div><span style="width:50px"></span>`;
     body = `<div class="tabs2"><button class="${s.mode !== 'create' ? 'on' : ''}" data-act="asMode" data-m="lib">ライブラリから選択</button><button class="${s.mode === 'create' ? 'on' : ''}" data-act="asMode" data-m="create">新規作成</button></div>`;
-    if (s.mode !== 'create') body += `<div class="panel-card">${(st.工程の一覧 || []).map((l, i) => `<div class="lib-step" data-act="asPick" data-i="${i}"><div class="step-code">${esc(l.記号)}</div><div class="step-names"><div class="step-jp">${esc(l.名前)}</div><div class="step-en">${esc(l.英名)}・${h字(l.標準時間)}</div></div><span class="hint">›</span></div>`).join('')}</div>`;
+    if (s.mode !== 'create') body += `<div class="panel-card">${区分ごと(st.工程の一覧 || [], (l, i) => `<div class="lib-step" data-act="asPick" data-i="${i}"><div class="step-code">${esc(l.記号)}</div><div class="step-names"><div class="step-jp">${esc(l.名前)}</div><div class="step-en">${esc(l.英名)}・${h字(l.標準時間)}</div></div><span class="hint">›</span></div>`)}</div>`;
     else { body += `<div class="panel-card"><div class="form-row"><span class="form-label">日本語名</span><input class="in" style="flex:1" id="as-jp" placeholder="工程名を入力…"></div>
       <div class="form-row"><span class="form-label">英語名</span><input class="in" style="flex:1" id="as-en" placeholder="English name…"></div>
       <div class="form-row"><span class="form-label">略号(2〜3字)</span><input class="in" id="as-code" maxlength="3" placeholder="XX" style="width:70px"></div>
@@ -1429,8 +1429,8 @@ function シートを描く() {
           <button class="btn btn-small ${方 === 'ならす' ? 'btn-primary' : 'btn-secondary'}" data-act="prefAlloc" data-m="ならす">${方 === 'ならす' ? '✓ ' : ''}日ごとにならす</button></div>
         <div class="form-row"><span class="form-label">1日の上限</span><input class="in" type="number" min="2" max="12" step="0.5" style="width:70px" id="pref-cap" value="${上}" ${方 === 'ならす' ? '' : 'disabled title="「日ごとにならす」のときだけ使う"'}><span class="hint">時間。ならすときの、ふだんの作業の1日の目安</span></div>
         <div class="form-row"><span class="hint">1本ずつ続けて：締切の近い順に、今日から前へ詰める（1本が仕上がるまで続けて入る。後ろに余裕が残る）。<br>日ごとにならす：締切までの日に均等に分け、1日の上限を超えないように置く（日ごとの量は揃うが、締切の近くまで作業が残る）。どちらも、足りなければ上限を超え、それでも足りなければ時間外・深夜を使う。</span></div></div></div>`; })()}
-      <div class="sec"><div class="sec-label">プリセット</div><div class="panel-card">${(st.プリセット || []).map((p, i) => `<div class="list-row"><div class="grow"><div class="t1">${esc(p.名前)}</div><div class="t2">${esc(p.工程.map(x => x.記号).join(' ・ '))}</div></div><button class="icon-btn del" data-act="presetDel" data-i="${i}" title="このプリセットを消す（⌘Z で戻せる）">✕</button></div>`).join('')}</div></div>
-      <div class="sec"><div class="sec-label">工程の一覧（ライブラリ）</div><div class="panel-card">${(st.工程の一覧 || []).map(l => `<div class="lib-step"><div class="step-code">${esc(l.記号)}</div><div class="step-names"><div class="step-jp">${esc(l.名前)}</div><div class="step-en">${esc(l.英名)}・${h字(l.標準時間)}</div></div></div>`).join('')}</div></div>
+      <div class="sec"><div class="sec-label">プリセット<span class="right"><button class="btn btn-primary btn-small" data-act="presetNew">＋ 新しいプリセット</button></span></div><div class="panel-card">${(st.プリセット || []).map((p, i) => `<div class="list-row"><div class="grow"><div class="t1">${esc(p.名前)}</div><div class="t2">${esc(p.工程.map(x => x.記号).join(' ・ '))}・${h字(p.工程.reduce((a, x) => a + (Number(x.見込み) || 0), 0))}</div></div><button class="btn btn-secondary btn-small" data-act="presetEdit" data-i="${i}">直す</button><button class="icon-btn del" data-act="presetDel" data-i="${i}" title="このプリセットを消す（⌘Z で戻せる）">✕</button></div>`).join('')}</div></div>
+      <div class="sec"><div class="sec-label">工程の一覧（ライブラリ）<span class="right hint">撮影そのものはカレンダーの予定で数える</span></div><div class="panel-card">${区分ごと(st.工程の一覧 || [], l => `<div class="lib-step"><div class="step-code">${esc(l.記号)}</div><div class="step-names"><div class="step-jp">${esc(l.名前)}</div><div class="step-en">${esc(l.英名)}・${h字(l.標準時間)}</div></div></div>`)}</div></div>
       <div class="hint">休みと空き時間はカレンダーから、1日の時間はエンジンの設定（しそチャンNET_進行.json の 設定）から。前の EDITFLOW の「編集不可日」と「1日の上限」は使わない。</div>`;
   }
   if (s.kind === 'event') {
@@ -1445,6 +1445,18 @@ function シートを描く() {
       <div class="form-row"><span class="form-label">場所</span><input class="in" style="flex:1" id="ev-place" value="${esc(d.場所 || '')}" placeholder="任意"></div>
       <div class="form-row"><span class="hint">保存するとカレンダーに入り（iPhone のカレンダーにも出る）、すぐ計算し直して作業を組み直す。繰り返しの予定は、この回だけ直す</span></div></div>`;
     foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel" ${iPhone ? 'disabled' : ''}>この予定を消す</button>`}<button class="btn btn-primary btn-wide" data-act="evSave" ${iPhone ? 'disabled' : ''}>${新 ? 'カレンダーに入れる' : '保存'}</button>`;
+  }
+  if (s.kind === 'preset') {
+    const 新 = s.i == null;
+    const total = d.工程.reduce((a, x) => a + (Number(x.見込み) || 0), 0);
+    head = `<button class="sheet-back" data-act="${s.戻り ? 'sheetBack' : 'closeSheet'}">⟨ 戻る</button><div class="sheet-title">${新 ? 'NEW PRESET　プリセットを作る' : 'PRESET　プリセットを直す'}</div><span style="width:50px"></span>`;
+    body = `<div class="panel-card">
+      <div class="form-row"><span class="form-label">名前</span><input class="in" style="flex:1" id="pr-name" value="${esc(d.名前)}" placeholder="例：イベント記録（3〜5分）"></div>
+      <div class="form-row"><span class="form-label">説明</span><input class="in" style="flex:1" id="pr-desc" value="${esc(d.説明)}" placeholder="どんな仕事に使うか（任意）"></div></div>
+      <div class="sec"><div class="sec-label">工程 / Production Steps<span class="right hint">↑ で並べ替え・− ＋ で見込み時間</span></div><div class="panel-card">${d.工程.map((x, i) => 工程の行(x, i)).join('') || '<div class="list-row hint">工程がありません。「工程を追加」を押す</div>'}</div>
+      <div class="total-row" style="border-radius:0 0 10px 10px"><span>合計作業時間 / Total</span><span class="num">${h字(total)}</span></div></div>
+      <button class="btn btn-secondary btn-wide" data-act="dAddStep">＋ 工程を追加 / Add Step</button>`;
+    foot = `<button class="btn btn-primary btn-wide" data-act="presetSave">${新 ? 'プリセットを作る' : '保存'}</button>`;
   }
   if (s.kind === 'meal') {
     const 名 = { 朝: '朝食', 昼: '昼食', 夜: '夕食' }[s.区分];
@@ -1491,6 +1503,8 @@ function シートを描く() {
 function 下書きを読む() {
   const d = ui.下書き; const g = id => document.getElementById(id);
   if (g('np-title')) d.名前 = g('np-title').value;
+  if (g('pr-name')) d.名前 = g('pr-name').value;
+  if (g('pr-desc')) d.説明 = g('pr-desc').value;
   if (g('np-start')) d.着手できる日 = g('np-start').value;
   if (g('np-deadline')) d.納期 = g('np-deadline').value;
   if (g('np-time')) d.時刻 = g('np-time').value;
@@ -1592,6 +1606,28 @@ function 作業を固定する(外す) {
   直す('編集案件.json', [後.length ? { 道: u.道.concat(['固定']), 値: 後 } : { 道: u.道.concat(['固定']), 消す: true }],
     外す ? `${s.ラベル}：${mdw(s.元.日付)} ${s.元.始} の固定を外した` : `${s.ラベル}：${mdw(新.日付)} ${新.始}〜${新.終} に固定した`);
   シートを閉じる();
+}
+function 区分ごと(一覧, 行) {
+  const 組 = []; for (const [i, l] of 一覧.entries()) { const k = l.区分 || 'そのほか'; let g = 組.find(g => g.k === k); if (!g) 組.push(g = { k, xs: [] }); g.xs.push([l, i]); }
+  return 組.map(g => `<div class="lib-group">${esc(g.k)}</div>` + g.xs.map(([l, i]) => 行(l, i)).join('')).join('');
+}
+function プリセットを開く(i) {
+  const p = i == null ? null : 設定().プリセット[i];
+  ui.下書き = { 名前: p ? p.名前 : '', 説明: p ? (p.説明 || '') : '', 工程: p ? clone(p.工程) : [] };
+  ui.sheet = { kind: 'preset', i, 戻り: ui.sheet && ui.sheet.kind === 'prefs' ? ui.sheet : null };
+  $('#overlay').classList.add('on'); $('#sheet').classList.add('on'); シートを描く();
+}
+function プリセットを保存() {
+  下書きを読む(); const d = ui.下書き; const s = ui.sheet;
+  const 名 = (d.名前 || '').trim();
+  if (!名) return 知らせを出す('プリセットの名前を入れてください');
+  if (!d.工程.length) return 知らせを出す('工程を1つ以上入れてください');
+  const 一覧 = 設定().プリセット || [];
+  if (一覧.some((p, j) => p.名前 === 名 && j !== s.i)) return 知らせを出す('同じ名前のプリセットがもうある');
+  const 中 = { id: s.i == null ? 'preset_' + Date.now() : 一覧[s.i].id, 名前: 名, 説明: (d.説明 || '').trim(),
+    工程: d.工程.map(x => Object.assign({ 記号: x.記号, 名前: x.名前, 英名: x.英名, 見込み: Number(x.見込み) || 0 }, x.締切 ? { 締切: x.締切 } : {})) };
+  直す('EDITFLOW設定.json', [s.i == null ? { 道: ['プリセット'], 足す: 中 } : { 道: ['プリセット', s.i], 値: 中 }], `プリセット「${名}」を${s.i == null ? '作った' : '直した'}`, { 計算: false });
+  if (s.戻り) { ui.sheet = s.戻り; シートを描く(); } else シートを閉じる();
 }
 function 撮影の誤り(d) {
   if ((d.撮影始 || d.撮影終) && !d.撮影日) return '撮影の時刻を入れるときは撮影日も入れてください';
@@ -1777,6 +1813,9 @@ document.addEventListener('click', e => {
     case 'settings': if (u) 設定を開く(u); break;
     case 'presetSheet': シートを開く({ kind: 'preset', u: d.u }); break;
     case 'presetApply': { const p = 設定().プリセット.find(p => p.id === d.p); if (u && p) { 工程を置く(u, clone(p.工程).map(x => Object.assign(x, { 済: false })), `${u.名前}：プリセット「${p.名前}」の工程を入れた`); シートを閉じる(); } break; }
+    case 'presetNew': プリセットを開く(null); break;
+    case 'presetEdit': プリセットを開く(i); break;
+    case 'presetSave': プリセットを保存(); break;
     case 'presetDel': { const p = 設定().プリセット[i]; 直す('EDITFLOW設定.json', [{ 道: ['プリセット', i], 消す: true }], `プリセット「${p.名前}」を消した`, { 計算: false }); break; }
     case 'saveAsPreset': { const n = prompt('プリセット名を入力\n（例：しそうチャンネル番組）', u.名前); if (n) 直す('EDITFLOW設定.json', [{ 道: ['プリセット'], 足す: { id: 'preset_' + Date.now(), 名前: n.trim(), 説明: '', 工程: 工程(u).map(s => ({ 記号: 記号(s), 名前: s.名前, 英名: 英名(s), 見込み: s.見込み })) } }], `プリセット「${n}」を保存した`, { 計算: false }); break; }
     case 'addStep': if (u) { ui.下書き = null; シートを開く({ kind: 'addstep', u: u.id, mode: 'lib' }); } break;
@@ -1987,6 +2026,7 @@ EF.書き出しの場面 = 名 => {
   if (v === 'settings') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); return true; }
   ui.詳細を開く = false;
   if (v === 'weeks' && 添) { ui.週の日 = 足す日(今日(), Number(添)); ui.view = 'weeks'; 描く(); return true; }
+  if (v === 'preset') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); プリセットを開く(添 === 'new' ? null : 4); if (添 === 'add') { ui.sheet = { kind: 'addstep', mode: 'lib', 戻り: ui.sheet }; シートを描く(); } return true; }
   if (v === 'meal') { ui.view = 'today'; 描く(); const d = 足す日(今日(), 1); const x = 今日の段取り(d).find(x => x.食事 === '夜'); if (x) 食事を開く(d, x); return true; }
   if (v === 'today' && 添 && /^\d+$/.test(添)) { ui.日ずらし = Number(添); ui.view = 'today'; 描く(); return true; }
   if (v === 'event' || v === 'work') {
