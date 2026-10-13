@@ -207,7 +207,7 @@ const ファイル名 = ['進行.json', '編集案件.json', '食事の予定.js
 const S = { f: {}, 撮影: [], python: '', 写し: false, 画面外: false, 読めた: false, 読めない: [], 待ち: [], 同期: null, 同期誤り: null, トークンなし: false };
 const ui = {
   view: 'today', sel: null, 詳細: true, calMonth: null, 計算中: null, 未計算: false, もう一度: false,
-  要点: [], 誤り: null, 最後の計算: null, planTab: '朝', reviewIdx: 0, shootSel: null, 動かす: {}, 印: null,
+  要点: [], 誤り: null, 最後の計算: null, planTab: '朝', 週の日: null, reviewIdx: 0, shootSel: null, 動かす: {}, 印: null,
   pal: { open: false, q: '', idx: 0 }, sheet: null, 下書き: null
 };
 const 戻す列 = [], 進む列 = [];
@@ -894,15 +894,16 @@ function 時間軸(d, 名) {
   for (const x of 並) {
     const k = 区分(x); const top = y(時(x.s)); const ht = Math.max(18, (時(x.e) - 時(x.s)) * 一 - 2);
     const i = 列.get(x); const いま = x.s <= now && now < x.e;
+    const 押せる = !!(x.予定表 || (x.種 === '作業' && x.ラベル));
     const 幅 = n > 1 ? `left:calc(58px + (100% - 66px) * ${i / n});right:auto;width:calc((100% - 66px) / ${n} - 3px);` : '';
-    h += `<div class="tl-item k-${k} ${いま ? 'now' : ''}" style="top:${top}px;height:${ht}px;${幅}" title="${esc(x.題 + (x.材料 ? '\n材料：' + x.材料 : ''))}">
+    h += `<div class="tl-item k-${k} ${いま ? 'now' : ''} ${押せる ? 'editable' : ''}" style="top:${top}px;height:${ht}px;${幅}" ${押せる ? `data-act="tlItem" data-d="${d}" data-s="${esc(x.始)}" data-t="${esc(x.題)}"` : ''} title="${esc(x.題 + (x.材料 ? '\n材料：' + x.材料 : '') + (押せる ? '\n押すと直せる' : ''))}">
       <div class="t">${hm(x.s)}〜${hm(x.e)}${ht < 36 ? '　<b>' + esc(x.題) + '</b>' : ''}</div>${ht >= 36 ? `<div class="n">${esc(x.題)}</div>` : ''}${ht >= 56 && x.材料 ? `<div class="m">材料：${esc(x.材料)}</div>` : ''}</div>`;
   }
   for (const x of xs.filter(x => x.種 === '区切り')) h += `<div class="tl-mark" style="top:${y(時(x.s))}px">${esc(x.題)}</div>`;
   const nh = 時(now);
   if (nh >= 始 && nh <= 終) h += `<div class="tl-now" style="top:${y(nh)}px"><span>いま ${hm(now)}</span></div>`;
   const 作 = xs.filter(x => x.種 === '作業').reduce((a, x) => a + (x.e - x.s) / 3600000, 0);
-  return `<div class="tl"><div class="tl-head">${名} ${mdw(d)}<span class="hint">作業 ${時間(作)}</span></div>
+  return `<div class="tl"><div class="tl-head">${名} ${mdw(d)}<span class="hint">作業 ${時間(作)}</span><button class="btn btn-secondary btn-small tl-add" data-act="tlNew" data-d="${d}" title="この日に予定を入れる（カレンダーに入る）">＋ 予定</button></div>
     <div class="tl-body" style="height:${(終 - 始) * 一 + 8}px">${xs.length ? h : '<div class="empty">段取りなし</div>'}</div></div>`;
 }
 
@@ -1135,19 +1136,29 @@ function 三週間を描く() {
   const ラベル色 = {}; const us = 単位();
   for (const u of us) for (const k of u.締切) { const e = 進行の締切(k.id); if (e) ラベル色[e.ラベル] = 急ぎ(u); }
   const 色 = { red: 'rgba(205,50,50,0.9)', orange: 'rgba(205,100,16,0.9)', silver: 'rgba(140,146,158,0.85)' };
+  const 日々 = days.map(([d]) => d);
+  const 選 = 日々.includes(ui.週の日) ? ui.週の日 : p.今日;
+  const i選 = 日々.indexOf(選);
+  const 名 = 選 === p.今日 ? '今日' : 選 === 足す日(p.今日, 1) ? '明日' : '';
+  const 前 = 日々[i選 - 1], 次 = 日々[i選 + 1];
+  const 上 = `<div class="sec"><div class="sec-label">DAY<span class="jp">その日の段取り</span><span class="right">
+    <button class="btn btn-secondary btn-small" data-act="pickDay" data-d="${前 || ''}" ${前 ? '' : 'disabled title="これより前の計算は無い"'}>‹ 前の日</button>
+    <button class="btn btn-secondary btn-small" data-act="pickDay" data-d="${p.今日}" ${選 === p.今日 ? 'disabled' : ''}>今日</button>
+    <button class="btn btn-secondary btn-small" data-act="pickDay" data-d="${次 || ''}" ${次 ? '' : 'disabled title="これより先の計算は無い（3週間まで）"'}>次の日 ›</button></span></div>
+    <div class="days one">${時間軸(選, 名)}</div></div>`;
   const rows = days.map(([d, v]) => {
-    const 通 = (v.割当 || []).filter(a => a.種類 === '通常'), 外 = (v.割当 || []).filter(a => a.種類 !== '通常');
+    const 通 = (v.割当 || []).filter(a => a.種類 === '通常' || a.種類 === '固定'), 外 = (v.割当 || []).filter(a => a.種類 === '外' || a.種類 === '深夜');
     let x = 0, segs = '';
     for (const a of 通) { const w = 長(a) / 最大 * 100; segs += `<div class="wk-seg" style="left:${x}%;width:${w}%;background:${色[ラベル色[a.名前] || 'silver']}" title="${esc(a.名前)} ${時間(長(a))}"></div>`; x += w; }
     x = Math.max(x, (v.使える || 0) / 最大 * 100);
     for (const a of 外) { const w = 長(a) / 最大 * 100; segs += `<div class="wk-seg ${a.種類}" style="left:${x}%;width:${w}%;background:${色[ラベル色[a.名前] || 'silver']};opacity:.8" title="${a.種類 === '深夜' ? '深夜' : '時間外'}：${esc(a.名前)} ${時間(長(a))}"></div>`; x += w; }
     const 計 = (v.割当 || []).reduce((s, a) => s + 長(a), 0);
     const w = 日(d).getDay();
-    return `<div class="wk-row"><div class="wk-date ${w === 0 || w === 6 ? 'we' : ''} ${d === p.今日 ? 'tod' : ''}">${mdw(d)}</div>
+    return `<div class="wk-row ${d === 選 ? 'sel' : ''}" data-act="pickDay" data-d="${d}" title="この日の段取りを上に出す"><div class="wk-date ${w === 0 || w === 6 ? 'we' : ''} ${d === p.今日 ? 'tod' : ''}">${mdw(d)}</div>
       <div class="wk-track"><div class="wk-free" style="width:${(v.使える || 0) / 最大 * 100}%"></div>${segs}</div>
       <div class="wk-sum">使える ${時間(v.使える)}・割当 ${時間(計)}</div></div>`;
   }).join('');
-  return `<div class="sec"><div class="sec-label">3 WEEKS<span class="jp">日ごとの使える時間と割り振り</span><span class="right hint">灰の帯＝ふだんの時間で使える分・色＝案件の急ぎ・枠の橙＝時間外・赤＝深夜</span></div>${rows}</div>`;
+  return 上 + `<div class="sec"><div class="sec-label">3 WEEKS<span class="jp">日ごとの使える時間と割り振り</span><span class="right hint">行を押すと、その日の段取りを上に出す。灰の帯＝ふだんの時間で使える分・色＝案件の急ぎ・枠の橙＝時間外・赤＝深夜</span></div>${rows}</div>`;
 }
 
 /* ═══ 朝の計画・夜の締め（Sunsama） ═══ */
@@ -1338,9 +1349,11 @@ function シートを描く() {
     body = `<div class="sec"><div class="sec-label">プロジェクト情報</div><div class="panel-card">
       <div class="form-row"><span class="form-label">名前</span><input class="in" style="flex:1" id="np-title" placeholder="案件の名前…" value="${esc(d.名前)}" ${!新 && s.回 ? 'disabled' : ''}></div>
       <div class="form-row"><span class="form-label">着手できる日</span>${欄('date', d.着手できる日, 'id="np-start"')}<span class="hint">空なら今日から</span></div>
-      ${新 ? `<div class="form-row"><span class="form-label">納期</span>${欄('date', d.納期, 'id="np-deadline"')}${欄('time', d.時刻, 'id="np-time" style="width:90px"')}<span class="hint">時刻は任意</span></div>
-      <div class="form-row"><span class="form-label">撮影日</span>${欄('date', d.撮影日, 'id="np-shoot"', 'なし')}<span class="hint">あれば、その日の帰りから割り振る</span></div>` :
+      ${新 ? `<div class="form-row"><span class="form-label">納期</span>${欄('date', d.納期, 'id="np-deadline"')}${欄('time', d.時刻, 'id="np-time" style="width:90px"')}<span class="hint">時刻は任意</span></div>` :
         `<div class="form-row"><span class="form-label">締切</span><span class="hint">締切の日付は右の詳細の欄の「締切を動かす」で</span></div>`}
+      ${s.回 ? '' : `<div class="form-row"><span class="form-label">撮影日</span>${欄('date', d.撮影日, 'id="np-shoot"', 'なし')}${欄('time', d.撮影始, 'id="np-shoot-s" style="width:90px"', '始まり')}<span class="hint">〜</span>${欄('time', d.撮影終, 'id="np-shoot-e" style="width:90px"', '終わり')}</div>
+      <div class="form-row"><span class="form-label">撮影の場所</span><input class="in" style="flex:1" id="np-place" placeholder="場所（任意）" value="${esc(d.撮影の場所 || '')}"><span class="hint">移動 片道</span><input class="in" type="number" min="0" step="5" style="width:70px" id="np-move" placeholder="60" value="${d.撮影の移動 ?? ''}"><span class="hint">分</span></div>
+      <div class="form-row"><span class="hint">時刻まで入れると、カレンダーの「撮影」に入れて、移動を含めたその時間に作業を入れない。カレンダーで動かすと、こちらも合わせて直る。移動が空なら設定の値（撮影 ${(しそ設定().移動 || {}).撮影?.前 ?? 60}分）</span></div>`}
       ${!新 && !s.回 ? '<div class="form-row"><span class="hint">名前を変えると、カレンダーの締切は反映のときに入れ直される</span></div>' : ''}</div></div>`;
     if (新) body += `<div class="sec"><div class="sec-label">プリセット選択</div><div class="preset-list">${(st.プリセット || []).map(p => `<div class="preset-card ${d.プリセット === p.id ? 'on' : ''}" data-act="dPreset" data-p="${esc(p.id)}"><div class="preset-radio"></div><div class="preset-info"><div class="preset-name">${esc(p.名前)}</div><div class="preset-desc">${esc(p.説明 || '')}</div></div><div class="preset-meta">${p.工程.length}工程・${h字(p.工程.reduce((a, x) => a + x.見込み, 0))}</div></div>`).join('')}
       <div class="preset-card ${d.プリセット === '' ? 'on' : ''}" data-act="dPreset" data-p=""><div class="preset-radio"></div><div class="preset-info"><div class="preset-name">カスタム</div><div class="preset-desc">空の工程から作成</div></div><div class="preset-meta">—</div></div></div></div>`;
@@ -1375,9 +1388,37 @@ function シートを描く() {
           ${st.済 ? '<button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>' : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 ? '' : 'disabled'}>受け取る</button>`}</div></div></div>`; })()}` : ''}
       ${Mac ? `<div class="sec"><div class="sec-label">表示</div><div class="panel-card"><div class="form-row"><span class="form-label">メニューバー</span><button class="btn btn-small ${st.メニューバーに出す !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefMenubar">${st.メニューバーに出す !== false ? '✓ 小窓を出す' : '小窓を出す'}</button><span class="hint">今の作業・残り時間・次の予定の3行</span></div>
         <div class="form-row"><span class="form-label">自動の反映</span><button class="btn btn-small ${st.自動で反映 !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefAuto">${st.自動で反映 !== false ? '✓ 自動でカレンダーへ反映する' : '自動でカレンダーへ反映する'}</button><span class="hint">毎朝5:30と、直して3分後。窓を閉じても裏で続ける（止めるのはメニューバーの「終わる」）</span></div></div></div>` : ''}
+      ${(() => { const w = st.割り振り || {}; const 方 = w.割り振り方 || '続けて'; const 上 = w['1日の作業の上限'] ?? 6;
+        return `<div class="sec"><div class="sec-label">割り振り</div><div class="panel-card">
+        <div class="form-row" style="flex-wrap:wrap"><span class="form-label">割り振り方</span>
+          <button class="btn btn-small ${方 === '続けて' ? 'btn-primary' : 'btn-secondary'}" data-act="prefAlloc" data-m="続けて">${方 === '続けて' ? '✓ ' : ''}1本ずつ続けて</button>
+          <button class="btn btn-small ${方 === 'ならす' ? 'btn-primary' : 'btn-secondary'}" data-act="prefAlloc" data-m="ならす">${方 === 'ならす' ? '✓ ' : ''}日ごとにならす</button></div>
+        <div class="form-row"><span class="form-label">1日の上限</span><input class="in" type="number" min="2" max="12" step="0.5" style="width:70px" id="pref-cap" value="${上}" ${方 === 'ならす' ? '' : 'disabled title="「日ごとにならす」のときだけ使う"'}><span class="hint">時間。ならすときの、ふだんの作業の1日の目安</span></div>
+        <div class="form-row"><span class="hint">1本ずつ続けて：締切の近い順に、今日から前へ詰める（1本が仕上がるまで続けて入る。後ろに余裕が残る）。<br>日ごとにならす：締切までの日に均等に分け、1日の上限を超えないように置く（日ごとの量は揃うが、締切の近くまで作業が残る）。どちらも、足りなければ上限を超え、それでも足りなければ時間外・深夜を使う。</span></div></div></div>`; })()}
       <div class="sec"><div class="sec-label">プリセット</div><div class="panel-card">${(st.プリセット || []).map((p, i) => `<div class="list-row"><div class="grow"><div class="t1">${esc(p.名前)}</div><div class="t2">${esc(p.工程.map(x => x.記号).join(' ・ '))}</div></div><button class="icon-btn del" data-act="presetDel" data-i="${i}" title="このプリセットを消す（⌘Z で戻せる）">✕</button></div>`).join('')}</div></div>
       <div class="sec"><div class="sec-label">工程の一覧（ライブラリ）</div><div class="panel-card">${(st.工程の一覧 || []).map(l => `<div class="lib-step"><div class="step-code">${esc(l.記号)}</div><div class="step-names"><div class="step-jp">${esc(l.名前)}</div><div class="step-en">${esc(l.英名)}・${h字(l.標準時間)}</div></div></div>`).join('')}</div></div>
       <div class="hint">休みと空き時間はカレンダーから、1日の時間はエンジンの設定（しそチャンNET_進行.json の 設定）から。前の EDITFLOW の「編集不可日」と「1日の上限」は使わない。</div>`;
+  }
+  if (s.kind === 'event') {
+    const 新 = !s.元;
+    const 名 = (しそ設定().数える予定表 || []).filter(n => !n.includes('@')).concat(['撮影']).filter((n, i, a) => a.indexOf(n) === i);
+    head = `<button class="sheet-back" data-act="closeSheet">キャンセル</button><div class="sheet-title">${新 ? 'NEW EVENT　予定を入れる' : 'EVENT　予定を直す'}</div><span style="width:50px"></span>`;
+    body = `${iPhone ? '<div class="stale orange"><b>iPhone からはカレンダーを直せない</b><span>iPhone ではカレンダーアプリで直す。直した分は Mac の EDITFLOW が読み直して、割り振りを組み直す</span></div>' : ''}
+      <div class="panel-card">
+      <div class="form-row"><span class="form-label">題</span><input class="in" style="flex:1" id="ev-title" value="${esc(d.題 || '')}" placeholder="予定の名前"></div>
+      <div class="form-row"><span class="form-label">カレンダー</span><select class="in" id="ev-cal">${名.map(n => `<option ${n === d.予定表 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><span class="hint">外に出る予定は、カレンダーごとの移動の時間を前後に足して数える</span></div>
+      <div class="form-row"><span class="form-label">日付</span>${欄('date', d.日付, 'id="ev-date"')}${欄('time', d.始, 'id="ev-s" style="width:90px"')}<span class="hint">〜</span>${欄('time', d.終, 'id="ev-e" style="width:90px"')}</div>
+      <div class="form-row"><span class="form-label">場所</span><input class="in" style="flex:1" id="ev-place" value="${esc(d.場所 || '')}" placeholder="任意"></div>
+      <div class="form-row"><span class="hint">保存するとカレンダーに入り（iPhone のカレンダーにも出る）、すぐ計算し直して作業を組み直す。繰り返しの予定は、この回だけ直す</span></div></div>`;
+    foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel" ${iPhone ? 'disabled' : ''}>この予定を消す</button>`}<button class="btn btn-primary btn-wide" data-act="evSave" ${iPhone ? 'disabled' : ''}>${新 ? 'カレンダーに入れる' : '保存'}</button>`;
+  }
+  if (s.kind === 'work') {
+    head = `<button class="sheet-back" data-act="closeSheet">キャンセル</button><div class="sheet-title">WORK　作業の時刻を決める</div><span style="width:50px"></span>`;
+    body = `<div class="panel-card">
+      <div class="form-row"><span class="form-label">作業</span><span class="t1">${esc(s.ラベル)}</span></div>
+      <div class="form-row"><span class="form-label">日付</span>${欄('date', d.日付, 'id="wk-date"')}${欄('time', d.始, 'id="wk-s" style="width:90px"')}<span class="hint">〜</span>${欄('time', d.終, 'id="wk-e" style="width:90px"')}</div>
+      <div class="form-row"><span class="hint">${s.固定 ? 'この作業は時刻を固定してある。' : 'いまは自動で割り振った時刻。'}「この時刻に固定する」を押すと、この時間は必ずこの作業になり、残りの時間だけを自動で割り振り直す。カレンダーで作業の予定を動かしても、同じように固定になる</span></div></div>`;
+    foot = `${s.固定 ? '<button class="btn btn-secondary" data-act="wkUnpin">固定を外す</button>' : ''}<button class="btn btn-primary btn-wide" data-act="wkPin">この時刻に固定する</button>`;
   }
   if (s.kind === 'phone') {
     head = `<button class="sheet-back" data-act="closeSheet">閉じる</button><div class="sheet-title">iPhone の設定</div><span style="width:50px"></span>`;
@@ -1401,14 +1442,77 @@ function 下書きを読む() {
   if (g('np-deadline')) d.納期 = g('np-deadline').value;
   if (g('np-time')) d.時刻 = g('np-time').value;
   if (g('np-shoot')) d.撮影日 = g('np-shoot').value;
+  if (g('np-shoot-s')) d.撮影始 = g('np-shoot-s').value;
+  if (g('np-shoot-e')) d.撮影終 = g('np-shoot-e').value;
+  if (g('np-place')) d.撮影の場所 = g('np-place').value.trim();
+  if (g('np-move')) d.撮影の移動 = g('np-move').value === '' ? null : Number(g('np-move').value);
+}
+function 時分(t) { return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`; }
+function 段取りの札(d, 始, 題) { return 今日の段取り(d).find(x => x.始 === 始 && x.題 === 題) || null; }
+function 予定を開く(d, x) {
+  if (x && x.予定表) {
+    ui.下書き = { 題: x.元題, 予定表: x.予定表, 日付: d, 始: 時分(x.s), 終: 時分(x.e), 場所: '' };
+    シートを開く({ kind: 'event', 元: { 予定表: x.予定表, 題: x.元題, 始: x.始, 終: x.終 } });
+  } else {
+    ui.下書き = { 題: '', 予定表: 'プライベート', 日付: d, 始: '', 終: '', 場所: '' };
+    シートを開く({ kind: 'event' });
+  }
+}
+function 作業を開く(d, x) {
+  ui.下書き = { 日付: d, 始: 時分(x.s), 終: 時分(x.e) };
+  シートを開く({ kind: 'work', ラベル: x.ラベル, 固定: !!x.固定, 元: { 日付: d, 始: 時分(x.s) } });
+}
+async function 予定を保存(消す) {
+  const s = ui.sheet; const g = id => document.getElementById(id);
+  const d = { 題: g('ev-title').value.trim(), 予定表: g('ev-cal').value, 日付: g('ev-date').value, 始: g('ev-s').value, 終: g('ev-e').value, 場所: g('ev-place').value.trim() };
+  if (!消す) {
+    if (!d.題) return 知らせを出す('題を入れてください');
+    if (!d.日付 || !d.始 || !d.終) return 知らせを出す('日付と始まり・終わりの時刻を入れてください');
+    if (d.終 <= d.始) return 知らせを出す('終わりは始まりより後にしてください（日をまたぐ予定はカレンダーアプリで）');
+  }
+  const r = await 頼む('予定', { 操作: 消す ? '消す' : (s.元 ? '直す' : '作る'), 予定表: d.予定表, 題: d.題, 始: d.日付 + 'T' + d.始, 終: d.日付 + 'T' + d.終, 場所: d.場所, 元: s.元 || null });
+  if (!r || !r.ok) return 誤りを出す((r && r.エラー) || 'カレンダーに書けなかった');
+  シートを閉じる();
+  知らせを出す(消す ? `「${s.元.題}」を消した。組み直している` : `「${d.題}」を${s.元 ? '直した' : 'カレンダーに入れた'}。組み直している`);
+  計算(true);
+}
+function 作業の単位(ラベル) {
+  const k = ((P() && P().締切) || []).find(k => k.ラベル === ラベル);
+  return k ? 単位().find(u => u.締切.some(x => x.id === k.id)) : null;
+}
+function 作業を固定する(外す) {
+  const s = ui.sheet; const g = id => document.getElementById(id);
+  const u = 作業の単位(s.ラベル); if (!u) return 知らせを出す('この作業の案件が見つからない');
+  const 新 = { 日付: g('wk-date').value, 始: g('wk-s').value, 終: g('wk-e').value };
+  if (!外す) {
+    if (!新.日付 || !新.始 || !新.終) return 知らせを出す('日付と始まり・終わりの時刻を入れてください');
+    if (新.終 <= 新.始) return 知らせを出す('終わりは始まりより後にしてください');
+    const 締 = u.締切.filter(k => !k.済).map(k => k.日付).sort().pop();
+    if (締 && 新.日付 > 締) return 知らせを出す(`締切（${mdw(締)}）より後には固定できない`);
+  }
+  // 固定を動かすときは元の固定を外してから入れる
+  const 前 = (u.元.固定 || []).filter(x => !(s.固定 && x.日付 === s.元.日付 && x.始 <= s.元.始 && s.元.始 < x.終));
+  const 後 = 外す ? 前 : 前.concat([新]).sort((a, b) => (a.日付 + a.始 < b.日付 + b.始 ? -1 : 1));
+  直す('編集案件.json', [後.length ? { 道: u.道.concat(['固定']), 値: 後 } : { 道: u.道.concat(['固定']), 消す: true }],
+    外す ? `${s.ラベル}：${mdw(s.元.日付)} ${s.元.始} の固定を外した` : `${s.ラベル}：${mdw(新.日付)} ${新.始}〜${新.終} に固定した`);
+  シートを閉じる();
+}
+function 撮影の誤り(d) {
+  if ((d.撮影始 || d.撮影終) && !d.撮影日) return '撮影の時刻を入れるときは撮影日も入れてください';
+  if (!!d.撮影始 !== !!d.撮影終) return '撮影の始まりと終わりを両方入れてください';
+  if (d.撮影始 && d.撮影終 <= d.撮影始) return '撮影の終わりは始まりより後にしてください';
+  if (d.撮影の移動 != null && !(d.撮影の移動 >= 0 && d.撮影の移動 <= 300)) return '移動は0〜300分で入れてください';
+  return '';
 }
 function 新しい案件を開く() {
   const st = 設定(); const p0 = (st.プリセット || [])[0];
-  ui.下書き = { 名前: '', 着手できる日: 今日(), 納期: 足す日(今日(), 14), 時刻: '', 撮影日: '', プリセット: p0 ? p0.id : '', 工程: p0 ? clone(p0.工程).map(x => Object.assign(x, { 済: false })) : [] };
+  ui.下書き = { 名前: '', 着手できる日: 今日(), 納期: 足す日(今日(), 14), 時刻: '', 撮影日: '', 撮影始: '', 撮影終: '', 撮影の場所: '', 撮影の移動: null, プリセット: p0 ? p0.id : '', 工程: p0 ? clone(p0.工程).map(x => Object.assign(x, { 済: false })) : [] };
   シートを開く({ kind: 'new' });
 }
 function 設定を開く(u) {
-  ui.下書き = { 名前: u.種 === '案件' ? u.名前 : u.名前, 着手できる日: u.元.着手できる日 || '', 工程: clone(工程(u)) };
+  const 時 = u.元.撮影の時刻 || [];
+  ui.下書き = { 名前: u.名前, 着手できる日: u.元.着手できる日 || '', 工程: clone(工程(u)),
+    撮影日: u.元.撮影日 || '', 撮影始: 時[0] || '', 撮影終: 時[1] || '', 撮影の場所: u.元.撮影の場所 || '', 撮影の移動: u.元.撮影の移動 ?? null };
   シートを開く({ kind: 'settings', u: u.id, 回: u.種 !== '案件' });
 }
 function 案件を作る() {
@@ -1418,10 +1522,14 @@ function 案件を作る() {
   if (!d.納期) return 知らせを出す('納期を入れてください');
   if (d.着手できる日 && d.納期 < d.着手できる日) return 知らせを出す('納期は着手できる日より後にしてください');
   if ((A().案件 || []).some(a => a.名前 === 名)) return 知らせを出す('同じ名前の案件がもうある');
+  const 撮誤 = 撮影の誤り(d); if (撮誤) return 知らせを出す(撮誤);
   const 締 = { 日付: d.納期, 種類: '納期' }; if (d.時刻) 締.時刻 = d.時刻;
   const 新 = { 名前: 名, 締切: [締], 残り編集時間: null, 状態: d.撮影日 ? '撮影前' : '未着手' };
   if (d.着手できる日 && d.着手できる日 > 今日()) 新.着手できる日 = d.着手できる日;
   if (d.撮影日) 新.撮影日 = d.撮影日;
+  if (d.撮影日 && d.撮影始) 新.撮影の時刻 = [d.撮影始, d.撮影終];
+  if (d.撮影の場所) 新.撮影の場所 = d.撮影の場所;
+  if (d.撮影の移動 != null) 新.撮影の移動 = d.撮影の移動;
   if (d.工程.length) 新.工程 = d.工程.map(x => ({ 記号: x.記号, 名前: x.名前, 英名: x.英名, 見込み: x.見込み, 済: false }));
   直す('編集案件.json', [{ 道: ['案件'], 足す: 新 }], `${名} を作った`);
   ui.sel = '案件:' + 名; シートを閉じる(); ui.view = 'projects'; 描く();
@@ -1436,6 +1544,16 @@ function 設定を保存() {
   }
   const 道 = u.種 === '案件' && 名 && 名 !== u.名前 ? ['案件', { 名前: 名 }] : u.道;
   if ((d.着手できる日 || '') !== (u.元.着手できる日 || '')) ops.push(d.着手できる日 ? { 道: 道.concat(['着手できる日']), 値: d.着手できる日 } : { 道: 道.concat(['着手できる日']), 消す: true });
+  if (u.種 === '案件') {
+    const 撮誤 = 撮影の誤り(d); if (撮誤) return 知らせを出す(撮誤);
+    const 元 = u.元, 新時 = d.撮影日 && d.撮影始 ? [d.撮影始, d.撮影終] : null;
+    const 置く = (k, v) => { if (JSON.stringify(v ?? null) !== JSON.stringify(元[k] ?? null)) ops.push(v == null || v === '' ? { 道: 道.concat([k]), 消す: true } : { 道: 道.concat([k]), 値: v }); };
+    const 前 = ops.length;
+    置く('撮影日', d.撮影日 || null); 置く('撮影の時刻', 新時);
+    // 日付か時刻を変えたら、カレンダーの撮影をこちらに合わせて入れ直す（付けないとカレンダーの時刻に戻される）
+    if (ops.length > 前 && 新時) ops.push({ 道: 道.concat(['撮影を動かした']), 値: true });
+    置く('撮影の場所', d.撮影の場所 || null); 置く('撮影の移動', d.撮影の移動);
+  }
   if (JSON.stringify(d.工程) !== JSON.stringify(工程(u))) ops.push(d.工程.length ? { 道: 道.concat(['工程']), 値: d.工程 } : { 道: 道.concat(['工程']), 消す: true });
   if (ops.length) 直す('編集案件.json', ops, `${名 || u.名前}：設定を保存した`);
   if (名 && 名 !== u.名前) ui.sel = '案件:' + 名;
@@ -1586,6 +1704,13 @@ document.addEventListener('click', e => {
     case 'nextMonth': ui.calMonth.m++; if (ui.calMonth.m > 11) { ui.calMonth.m = 0; ui.calMonth.y++; } 描く(); break;
     case 'thisMonth': ui.calMonth = null; 描く(); break;
     case 'planTab': ui.planTab = d.t; 描く(); break;
+    case 'pickDay': ui.週の日 = d.d; 描く(); break;
+    case 'tlItem': { const x = 段取りの札(d.d, d.s, d.t); if (!x) break; if (x.予定表) 予定を開く(d.d, x); else 作業を開く(d.d, x); break; }
+    case 'tlNew': 予定を開く(d.d, null); break;
+    case 'evSave': 予定を保存(false); break;
+    case 'evDel': if (confirm(`「${ui.sheet.元.題}」をカレンダーから消す（繰り返しの予定はこの回だけ）`)) 予定を保存(true); break;
+    case 'wkPin': 作業を固定する(false); break;
+    case 'wkUnpin': 作業を固定する(true); break;
     case 'toggleDone': ui.済も出す = !ui.済も出す; 描く(); break;
     case 'reviewNext': ui.reviewIdx++; 描く(); break;
     case 'reviewPrev': ui.reviewIdx = Math.max(0, ui.reviewIdx - 1); 描く(); break;
@@ -1598,6 +1723,9 @@ document.addEventListener('click', e => {
       頼む('チェックリスト', { フォルダ: d.f }).then(r => { ui.印 = { f: d.f, t: r && r.ok ? (r.出力 || '').trim().split('\n').pop() : '失敗：' + ((r && (r.エラー || r.出力)) || '').trim().split('\n').pop() }; 描く(); }); break;
     case 'stock': 在庫を直す(d.k, Number(d.d)); break;
     case 'stockUnknown': 直す('食事の予定.json', [{ 道: ['在庫', d.k], 値: null }], `在庫：${d.k} を「量が分からない」にした`); break;
+    case 'prefAlloc': { const w = Object.assign({}, 設定().割り振り || {}, { 割り振り方: d.m }); const c = document.getElementById('pref-cap');
+      if (c && c.value) w['1日の作業の上限'] = Math.min(12, Math.max(2, Number(c.value)));
+      直す('EDITFLOW設定.json', [{ 道: ['割り振り'], 値: w }], `割り振り方を「${d.m === 'ならす' ? '日ごとにならす' : '1本ずつ続けて'}」にした`); シートを描く(); break; }
     case 'prefAuto': 直す('EDITFLOW設定.json', [{ 道: ['自動で反映'], 値: 設定().自動で反映 === false }], `自動の反映を${設定().自動で反映 === false ? '入れた' : '止めた'}`, { 計算: false }); シートを描く(); break;
     case 'prefMenubar': 直す('EDITFLOW設定.json', [{ 道: ['メニューバーに出す'], 値: 設定().メニューバーに出す === false }], 'メニューバーの小窓を切り替えた', { 計算: false }); 小窓を送る(); break;
   }
@@ -1612,6 +1740,8 @@ document.addEventListener('change', e => {
   const t = e.target; const d = t.dataset || {};
   const u = d.u ? 単位を探す(d.u) : null;
   if (d.chg === 'startDate' && u) 着手できる日を置く(u, t.value || null);
+  if (t.id === 'pref-cap' && t.value) { const w = Object.assign({}, 設定().割り振り || {}, { '1日の作業の上限': Math.min(12, Math.max(2, Number(t.value))) });
+    直す('EDITFLOW設定.json', [{ 道: ['割り振り'], 値: w }], `ならすときの1日の上限を ${w['1日の作業の上限']}時間にした`); }
   if (d.chg === 'contact') 直す('撮影メモ.json', [{ 道: ['撮影', d.f, '連絡先'], 値: t.value, 作る: true }], '連絡先を残した', { 計算: false });
 });
 document.addEventListener('keydown', e => {
@@ -1750,6 +1880,13 @@ EF.書き出しの場面 = 名 => {
   if (v === 'prefs') { ui.view = 'today'; 描く(); シートを開く({ kind: iPhone ? 'phone' : 'prefs' }); return true; }
   if (v === 'settings') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); return true; }
   ui.詳細を開く = false;
+  if (v === 'weeks' && 添) { ui.週の日 = 足す日(今日(), Number(添)); ui.view = 'weeks'; 描く(); return true; }
+  if (v === 'event' || v === 'work') {
+    ui.view = 'weeks';
+    for (let i = 0; i < 21; i++) { const d = 足す日(今日(), i); const x = 今日の段取り(d).find(x => v === 'event' ? x.予定表 : x.ラベル);
+      if (x) { ui.週の日 = d; 描く(); if (v === 'event') 予定を開く(d, x); else 作業を開く(d, x); return true; } }
+    描く(); return true;
+  }
   if (v === 'palette') { ui.view = 'today'; 描く(); 命令窓を開く(); ui.pal.q = ''; 命令窓を描く(); return true; }
   if (v === 'new') { ui.view = 'projects'; 描く(); 新しい案件を開く(); return true; }
   if (v === 'plan') ui.planTab = 添 === 'night' ? '夜' : '朝';

@@ -306,6 +306,7 @@ input[type="date"],input[type="time"]{color-scheme:dark}
 
 /* 3週間 */
 .wk-row{display:grid;grid-template-columns:96px 1fr 190px;align-items:center;gap:10px;height:26px}
+.days.one{grid-template-columns:1fr}.wk-row{cursor:pointer;border-radius:6px}.wk-row:hover{background:rgba(255,255,255,.04)}.wk-row.sel{background:rgba(112,107,255,.16);outline:1px solid rgba(112,107,255,.5)}
 .wk-date{font-weight:700;color:var(--tx-mid);font-variant-numeric:tabular-nums}
 .wk-date.we{color:#8a90c8}.wk-date.tod{color:#fff}
 .wk-track{position:relative;height:16px;border-radius:4px;background:rgba(255,255,255,0.03)}
@@ -719,3 +720,7 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
   html.vp-short .sheet{padding-bottom:0}
   html.vp-short .toast{bottom:100px}
 }
+/* 時間軸から直す */
+.tl-item.editable{cursor:pointer}.tl-item.editable:hover{filter:brightness(1.15);outline:1px solid rgba(112,107,255,.6)}
+.tl-head .tl-add{margin-left:auto;align-self:center}
+.tl-item.k-作業 .t b,.tl-item .n{word-break:break-all}
