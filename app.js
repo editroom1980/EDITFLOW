@@ -103,7 +103,7 @@ async function トークンを覚える() {
 async function 通知を受け取る() {
   try {
     const st = 通知の状態(); if (!st || !st.可) return 誤りを出す(st ? st.字 : 'Mac では使わない');
-    // トークンの欄に貼っただけで、まだ「覚えて読み直す」を押していなければ、先に覚える
+    // トークンの欄に貼っただけで、まだ「保存して再読み込み」を押していなければ、先に覚える
     const 欄 = document.getElementById('ph-token');
     if (欄 && 欄.value.trim()) {
       const t = 欄.value.replace(/\s+/g, ''), 誤 = await トークンを確かめる(t, GH.repo());
@@ -380,7 +380,7 @@ function 新しい問題を知らせる() {
   if (見た) {
     for (const [k, q] of Object.entries(今の)) {
       if (見た[k]) continue;
-      if (k.startsWith('過:')) 頼む('通知', { 題: '締切を過ぎた：渡したか入れる', 本文: `${q.ラベル}（${mdw(q.日付)}${q.時刻 ? ' ' + q.時刻 : ''}）`, 開く: q.id });
+      if (k.startsWith('過:')) 頼む('通知', { 題: '締切を過ぎました：提出状況を入力', 本文: `${q.ラベル}（${mdw(q.日付)}${q.時刻 ? ' ' + q.時刻 : ''}）`, 開く: q.id });
       else 頼む('通知', { 題: q.重さ === '時間外' ? `時間外 ${時間(q.時間外)} が要る` : (q.重さ === '深夜' ? `徹夜になる（深夜 ${時間(q.深夜)}）` : `間に合わない（${時間(q.足りない)} 足りない）`),
         本文: `${q.ラベル}　締切 ${mdw(q.日付)}${q.時刻 ? ' ' + q.時刻 : ''}`, 開く: q.id });
     }
@@ -523,6 +523,15 @@ function 開始日(u) {
 }
 
 /* ───────── 案件の操作（よく使うものは1手）───────── */
+function 撮影完了(u) {
+  if (!u) return;
+  const ops = [];
+  const 工 = 工程(u);
+  if (工.some(x => 記号(x) === 'SH' && !x.済)) ops.push({ 道: u.道.concat(['工程']), 値: 工.map(x => 記号(x) === 'SH' ? Object.assign({}, x, { 済: true }) : x) });
+  if (u.元.状態 === '撮影前') ops.push({ 道: u.道.concat(['状態']), 値: '作業中' });
+  if (!ops.length) return 知らせを出す('もう撮影完了になっている');
+  直す('編集案件.json', ops, `${u.名前}：撮影完了。編集の割り振りを始める`);
+}
 function 工程を置く(u, 新, 説明) {
   if (u.種 === '回を作る') { 誤りを出す('先に「この月の回を作る」を押す'); return; }
   const ops = 新.length ? [{ 道: u.道.concat(['工程']), 値: 新 }] : [{ 道: u.道.concat(['工程']), 消す: true }];
@@ -536,7 +545,7 @@ function 工程を切り替える(u, i) {
 function 次の工程を済み(u) {
   if (!u) return 誤りを出す('先に案件を選ぶ');
   const i = 工程(u).findIndex(s => !s.済);
-  if (i < 0) return 知らせを出す('済んでいない工程が無い');
+  if (i < 0) return 知らせを出す('未完了の工程が無い');
   工程を切り替える(u, i);
 }
 function 状態を変える(u, s) {
@@ -544,7 +553,7 @@ function 状態を変える(u, s) {
   const ops = [{ 道: u.道.concat(['状態']), 値: s }];
   直す('編集案件.json', ops, `${u.名前}：状態を「${s}」にした`);
 }
-function 明日へ送る(u) {
+function 明日に回す(u) {
   if (!u) return 誤りを出す('先に案件を選ぶ');
   const 明 = 足す日(今日(), 1);
   直す('編集案件.json', [{ 道: u.道.concat(['着手できる日']), 値: 明 }], `${u.名前}：明日（${mdw(明)}）から始める`);
@@ -554,7 +563,7 @@ function 最優先にする(u, on = true) {
   const ops = on ? [{ 道: u.道.concat(['最優先']), 値: true }] : [{ 道: u.道.concat(['最優先']), 消す: true }];
   直す('編集案件.json', ops, `${u.名前}：${on ? '最優先にした（締切の順より先に割り振る）' : '最優先を外した'}`);
 }
-function 締切を動かす(u, 種類, 日付, 時刻) {
+function 締切を変更(u, 種類, 日付, 時刻) {
   if (u.種 !== '案件') return 誤りを出す('定例の回の締切は、まだ動かせない（エンジンが未対応）');
   if (!日付) return 誤りを出す('日付を入れる');
   const 道 = ['案件', { 名前: u.名前 }, '締切', { 種類 }];
@@ -569,12 +578,12 @@ function 渡した(u, 種類) {
     const 残 = (u.元.締切 || []).filter(k => k.種類 !== 種類 && !k.済);
     const ops = [{ 道: ['案件', { 名前: u.名前 }, '締切', { 種類 }, '済'], 値: true }];
     if (!残.length) ops.push({ 道: u.道.concat(['状態']), 値: '納品済' });
-    return 直す('編集案件.json', ops, `${u.名前}：${種類} を渡した${残.length ? '' : '（納品済にした）'}`);
+    return 直す('編集案件.json', ops, `${u.名前}：${種類} を提出済みにした${残.length ? '' : '（納品済にした）'}`);
   }
   if (u.種 === '回') return 直す('編集案件.json', [{ 道: u.道.concat(['状態']), 値: '納品済' }], `${u.名前} を納品済にした`);
   if (u.種 === '回を作る') return 直す('編集案件.json', [{ 道: u.道, 足す: { 月: u.月, 状態: '納品済' } }], `${u.名前} を納品済にした`);
 }
-function 時間外を認める(q) {
+function 時間外を許可(q) {
   直す('EDITFLOW設定.json', [{ 道: ['時間外を認めた', q.id], 値: { 時間外: q.時間外, 深夜: q.深夜, 日: 今日() }, 作る: true }],
     `${q.ラベル}：時間外 ${時間(q.時間外)}${q.深夜 ? '・深夜 ' + 時間(q.深夜) : ''} を認めた`, { 計算: false });
 }
@@ -602,7 +611,7 @@ function 計測を止める(記録する = true) {
   if (!記録する) return;
   const u = 単位を探す(m.案件);
   if (u && m.工程 != null && 工程(u)[m.工程]) return 実績を足す(u, m.工程, 時);
-  // 工程が無いときは、その日の実績だけ残す（夜の締めに出る）
+  // 工程が無いときは、その日の実績だけ残す（夜の振り返りに出る）
   const 今 = 今日(), 前 = Number(((設定().日々の実績 || {})[今] || {})[m.名前]) || 0;
   直す('EDITFLOW設定.json', [{ 道: ['日々の実績', 今, m.名前], 値: Math.round((前 + 時) * 10) / 10, 作る: true }], `${m.名前}：${時間(時)} を記録した`, { undo: false, 計算: false });
 }
@@ -611,14 +620,14 @@ function 計測の帯() {
   const 分 = Math.max(0, Math.floor((今() - new Date(m.始め)) / 60000));
   return `<div class="timer-bar"><span class="rec"></span><b>計測中</b><span>${esc(m.名前)}${m.工程名 ? '：' + esc(m.工程名) : ''}</span>
     <span class="num">${Math.floor(分 / 60)}:${String(分 % 60).padStart(2, '0')}</span>
-    <button class="btn btn-primary btn-small" data-act="timerStop">■ 止めて記録する</button>
+    <button class="btn btn-primary btn-small" data-act="timerStop">■ 計測を終了して記録</button>
     <button class="btn btn-secondary btn-small" data-act="timerCancel" title="記録せずにやめる">やめる</button></div>`;
 }
 function 実績を足す(u, i, d) {
   const 新 = clone(工程(u)); if (!新[i]) return;
   const v = Math.max(0, Math.round(((Number(新[i].実績) || 0) + d) * 10) / 10);
   新[i].実績 = v;
-  // 夜の締めのために、今日の分も 設定 に残す（エンジンは使わない）
+  // 夜の振り返りのために、今日の分も 設定 に残す（エンジンは使わない）
   const 今 = 今日();
   const 日々 = (設定().日々の実績 || {})[今] || {};
   const 前 = Number(日々[u.名前]) || 0;
@@ -717,16 +726,16 @@ function 左を描く() {
   const 品 = (v) => `<button class="nav-item ${ui.view === v ? 'on' : ''}" data-act="view" data-v="${v}">${画面[v].en}${札[v] ? `<span class="badge">${札[v]}</span>` : ''}<span class="jp">${画面[v].jp}</span></button>`;
   return 品('today') + 品('projects') + 品('calendar') + 品('deadlines') + 品('weeks') +
     '<div class="nav-sep"></div>' + 品('plan') + 品('review') + '<div class="nav-sep"></div>' + 品('shoot') +
-    `<div class="nav-sep"></div><div class="nav-foot">⌘1〜9 で画面<br>⌘K 命令窓　⌘N 新しい案件<br>スペース 次の工程を済み<br>↑↓ 案件を選ぶ　⌘Z 戻す${撮 ? `<br><br>撮影の予定 ${撮}件` : ''}</div>`;
+    `<div class="nav-sep"></div><div class="nav-foot">⌘1〜9 で画面<br>⌘K 命令窓　⌘N 新しい案件<br>スペース 次の工程を完了<br>↑↓ 案件を選ぶ　⌘Z 戻す${撮 ? `<br><br>撮影の予定 ${撮}件` : ''}</div>`;
 }
 function 帯を描く() {
   const p = P(), s = 設定();
   let 次 = '';
   if (ui.計算中) 次 = `<span class="busy"><span class="spin"></span> ${ui.計算中 === '反映' ? '反映中…（カレンダーとリマインダーへ。1分ほど）' : ui.計算中 === 'iPhone' ? 'iPhone で直したことを取り込んで計算中…' : '計算中…（カレンダーを読むので30秒〜1分）'}　<span class="num">${Math.floor((Date.now() - ui.計算の始め) / 1000)}秒</span></span>`;
-  else if (ui.未計算) 次 = '<span class="busy">直した分は、まもなく自動で計算し直す</span>';
+  else if (ui.未計算) 次 = '<span class="busy">変更は、まもなく自動で再計算されます</span>';
   else if (ui.誤り) 次 = `<span class="err">計算できなかった：${esc(ui.誤り)}</span>`;
-  else if (!p) 次 = '<span class="next">次に：「計算し直す」を押す</span>';
-  else if (p.今日 !== 今日()) 次 = '<span class="next">次に：日付が変わった。「計算し直す」を押す</span>';
+  else if (!p) 次 = '<span class="next">次に：「再計算」を押す</span>';
+  else if (p.今日 !== 今日()) 次 = '<span class="next">次に：日付が変わった。「再計算」を押す</span>';
   else {
     const 問 = (p.問題 || []).filter(q => !認めたか(q)).length;
     const 未反映 = !s.最後の反映 || p.作成 > s.最後の反映;
@@ -756,18 +765,22 @@ function 帯を描く() {
 /* ═══ 今日 ═══ */
 function 今日を描く() {
   const p = P();
-  if (!p) return '<div class="empty"><b>進行.json がまだ無い</b>「計算し直す」を押す</div>';
+  if (!p) return '<div class="empty"><b>進行.json がまだ無い</b>「再計算」を押す</div>';
   let h = '';
   // 計算が古い（Mac の EDITFLOW が止まっていた・iPhone で Mac の計算を待っている）
   const 古 = 計算の古さ(p);
   if (古) h += `<div class="stale ${古.時間 >= 24 ? 'red' : 'orange'}"><b>計算が ${古.字} 前のまま</b>
-    <span>${!Mac ? 'Mac の EDITFLOW が動いていないかもしれない。Mac で EDITFLOW を開く' : '下の予定や割り振りは古い。「計算し直す」を押す'}</span>
-    ${!Mac ? '' : '<button class="btn btn-primary btn-small" data-act="calc">計算し直す</button>'}</div>`;
+    <span>${!Mac ? 'Mac の EDITFLOW が動いていないかもしれない。Mac で EDITFLOW を開く' : '下の予定や割り振りは古い。「再計算」を押す'}</span>
+    ${!Mac ? '' : '<button class="btn btn-primary btn-small" data-act="calc">再計算</button>'}</div>`;
   // 過ぎた締切（渡したかを聞く）
   const 過 = (p.過ぎた || []);
   if (過.length) {
-    h += `<div class="sec"><div class="sec-label">PAST DUE<span class="jp">過ぎた締切（渡したか確かめる）</span><span class="right hint">渡したなら「渡した」、まだなら締切を動かす。どちらかにするまで割り振りから外している</span></div><div class="issues">${過.map(過ぎた札).join('')}</div></div>`;
+    h += `<div class="sec"><div class="sec-label">PAST DUE<span class="jp">期限を過ぎた締切（提出状況を確認）</span><span class="right hint">提出済みなら「提出済みにする」、未提出なら「締切を変更」。どちらかを選ぶまで割り振りから外します</span></div><div class="issues">${過.map(過ぎた札).join('')}</div></div>`;
   }
+  // 撮影の終了予定を過ぎた案件：終わったかを確かめる
+  const 撮確 = (p.撮影の確認 || []).filter(x => new Date(x.終わった時刻) <= 今());
+  if (撮確.length) h += `<div class="sec"><div class="sec-label">SHOOT CHECK<span class="jp">撮影は終わりましたか</span><span class="right hint">「撮影完了」で撮影の工程を完了にし、状態を作業中にする</span></div><div class="issues">${撮確.map(x => `<div class="issue orange"><div class="issue-head"><span class="lamp orange"></span><span class="issue-title">${esc(x.名前)}</span><span class="tag">撮影 ${mdw(x.日付)} ${x.始}〜${x.終}</span></div>
+    <div class="issue-acts"><button class="btn btn-primary btn-small" data-act="shootDone" data-u="${esc('案件:' + x.名前)}">撮影完了</button><button class="btn btn-secondary btn-small" data-act="settings" data-u="${esc('案件:' + x.名前)}">撮影日を変更</button></div></div>`).join('')}</div></div>`;
   // カレンダーの予定どうしが被っている日
   const 重 = (p.重なり || []);
   if (重.length) h += `<div class="sec"><div class="sec-label">OVERLAP<span class="jp">カレンダーの予定が重なっている</span><span class="right hint">どちらかをカレンダー（または時間軸の札）で動かす</span></div><div class="issues">${重.map(x => `<div class="issue orange"><div class="issue-head"><span class="lamp orange"></span><span class="issue-title">${mdw(x.日付)}　${esc(x.一)} と ${esc(x.二)}</span></div></div>`).join('')}</div></div>`;
@@ -789,7 +802,7 @@ function 今日を描く() {
     <button class="btn btn-secondary btn-small" data-act="dayShift" data-n="${ず + 1}" ${ず >= 20 ? 'disabled title="3週間先まで"' : ''}>次の日 ›</button></span></div>
     <div class="legend">${['作業', '時間外', '深夜', '予定', '移動', '食事', '用事'].map(k => `<span><i class="k-${k}"></i>${k}</span>`).join('')}</div>
     <div class="days">${時間軸(t, 呼び名(t))}${時間軸(明, 呼び名(明))}</div>
-    <div class="hint" style="margin-top:6px">札を押すと直せる（予定・作業・食事・買い物）</div></div>`;
+    <div class="hint" style="margin-top:6px">項目を押すと編集できます（予定・作業・食事・買い物）</div></div>`;
   h += この先の段取り(足す日(明, 1));
   return h;
 }
@@ -802,27 +815,27 @@ function 問題の札(q) {
   const 開 = ui.動かす[q.id];
   const 動かす理由 = !u ? 'この締切の案件が編集案件.json に見つからない' : (回 ? '定例の回の締切は、まだ動かせない（エンジンが未対応）' : '');
   const 最理由 = !u ? 'この締切の案件が見つからない' : (u.元.最優先 ? 'もう最優先にしてある' : '');
-  const 認理由 = q.足りない > 0 ? '時間外を足しても足りない。締切を動かすか、最優先にする' : (認 ? 'もう認めた' : '');
+  const 認理由 = q.足りない > 0 ? '時間外を足しても足りない。締切を変更か、最優先にする' : (認 ? 'もう認めた' : '');
   const k = u && u.締切.find(k => k.id === q.id);
   return `<div class="issue ${色}">
     <div class="issue-head"><span class="lamp ${色 === 'ok' ? 'silver' : 色}"></span><span class="issue-title">${esc(q.ラベル)}</span>
       <span class="tag ${n <= 1 ? 'red' : ''}">締切 ${mdw(q.日付)}${q.時刻 ? ' ' + q.時刻 : ''}・${n <= 0 ? '今日' : 'あと' + n + '日'}</span>
       ${q.最優先 ? '<span class="tag violet">★ 最優先</span>' : ''}</div>
     <div class="issue-nums">
-      ${q.足りない > 0 ? `<span class="tag red">足りない ${時間(q.足りない)}</span>` : ''}
+      ${q.足りない > 0 ? `<span class="tag red">不足 ${時間(q.足りない)}</span>` : ''}
       ${q.深夜 > 0 ? `<span class="tag red">深夜（徹夜） ${時間(q.深夜)}</span>` : ''}
       ${q.時間外 > 0 ? `<span class="tag orange">時間外 ${時間(q.時間外)}</span>` : ''}
       ${認 ? `<span class="tag green">時間外を認めた（${md((設定().時間外を認めた[q.id] || {}).日)}）</span>` : ''}
     </div>
     <div class="issue-acts">
-      <div class="act"><button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}" ${動かす理由 ? 'disabled' : ''} title="${esc(動かす理由 || '締切の日付と時刻を変えて、計算し直す')}">締切を動かす</button>${動かす理由 ? `<span class="why">${esc(動かす理由)}</span>` : ''}</div>
+      <div class="act"><button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}" ${動かす理由 ? 'disabled' : ''} title="${esc(動かす理由 || '締切の日付と時刻を変えて再計算する')}">締切を変更</button>${動かす理由 ? `<span class="why">${esc(動かす理由)}</span>` : ''}</div>
       <div class="act"><button class="btn btn-secondary btn-small" data-act="priority" data-u="${esc(u ? u.id : '')}" ${最理由 ? 'disabled' : ''} title="${esc(最理由 || '締切の順より先に、この案件から割り振る')}">この案件を最優先にする</button>${最理由 ? `<span class="why">${esc(最理由)}</span>` : ''}</div>
-      <div class="act"><button class="btn ${q.足りない > 0 ? 'btn-secondary' : 'btn-orange'} btn-small" data-act="allowOT" data-id="${esc(q.id)}" ${認理由 ? 'disabled' : ''} title="${esc(認理由 || 'この時間外を予定どおりやると決める。時間が増えたらまた聞く')}">時間外を認める</button>${認理由 ? `<span class="why">${esc(認理由)}</span>` : ''}</div>
+      <div class="act"><button class="btn ${q.足りない > 0 ? 'btn-secondary' : 'btn-orange'} btn-small" data-act="allowOT" data-id="${esc(q.id)}" ${認理由 ? 'disabled' : ''} title="${esc(認理由 || 'この時間外を予定どおりやると決める。時間が増えたらまた聞く')}">時間外を許可</button>${認理由 ? `<span class="why">${esc(認理由)}</span>` : ''}</div>
       ${u ? `<div class="act"><button class="btn btn-secondary btn-small" data-act="select" data-u="${esc(u.id)}">詳細を見る</button></div>` : ''}
     </div>
     ${開 && k ? `<div class="move-box"><span class="hint">${esc(k.種類)}を</span>
       ${欄('date', k.日付, `id="mv-d-${esc(q.id)}"`)}${欄('time', k.時刻, `id="mv-t-${esc(q.id)}" style="width:84px"`)}
-      <button class="btn btn-primary btn-small" data-act="moveDo" data-id="${esc(q.id)}" data-u="${esc(u.id)}" data-k="${esc(k.種類)}">この日時に動かす</button>
+      <button class="btn btn-primary btn-small" data-act="moveDo" data-id="${esc(q.id)}" data-u="${esc(u.id)}" data-k="${esc(k.種類)}">この日時に変更</button>
       <button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}">やめる</button></div>` : ''}
   </div>`;
 }
@@ -844,13 +857,13 @@ function 過ぎた札(q) {
       <span class="tag">締切 ${mdw(q.日付)}${q.時刻 ? ' ' + q.時刻 : ''}・${n <= 0 ? '今日' : n + '日前'}</span>
       ${q.残り ? `<span class="tag">残りの見込み ${時間(q.残り)}</span>` : ''}</div>
     <div class="issue-acts">
-      <div class="act"><button class="btn btn-primary btn-small" data-act="delivered" data-u="${esc(u ? u.id : '')}" data-k="${esc(k ? k.種類 : '')}" ${u ? '' : 'disabled'} title="この締切は渡した。割り振りから外す（⌘Z で戻せる）">渡した</button></div>
-      <div class="act"><button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}" ${動理由 ? 'disabled' : ''} title="${esc(動理由 || 'まだ渡していない。新しい締切を入れて計算し直す')}">締切を動かす</button>${動理由 ? `<span class="why">${esc(動理由)}</span>` : ''}</div>
+      <div class="act"><button class="btn btn-primary btn-small" data-act="delivered" data-u="${esc(u ? u.id : '')}" data-k="${esc(k ? k.種類 : '')}" ${u ? '' : 'disabled'} title="この締切を提出済みにして、割り振りから外す（⌘Z で戻せる）">提出済みにする</button></div>
+      <div class="act"><button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}" ${動理由 ? 'disabled' : ''} title="${esc(動理由 || '未提出。新しい締切を入れて再計算する')}">締切を変更</button>${動理由 ? `<span class="why">${esc(動理由)}</span>` : ''}</div>
       ${u ? `<div class="act"><button class="btn btn-secondary btn-small" data-act="select" data-u="${esc(u.id)}">詳細を見る</button></div>` : ''}
     </div>
     ${開 && k ? `<div class="move-box"><span class="hint">${esc(k.種類)}を</span>
       ${欄('date', 今日(), `id="mv-d-${esc(q.id)}"`)}${欄('time', k.時刻, `id="mv-t-${esc(q.id)}" style="width:84px"`)}
-      <button class="btn btn-primary btn-small" data-act="moveDo" data-id="${esc(q.id)}" data-u="${esc(u.id)}" data-k="${esc(k.種類)}">この日時に動かす</button>
+      <button class="btn btn-primary btn-small" data-act="moveDo" data-id="${esc(q.id)}" data-u="${esc(u.id)}" data-k="${esc(k.種類)}">この日時に変更</button>
       <button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}">やめる</button></div>` : ''}
   </div>`;
 }
@@ -870,9 +883,9 @@ function 次にやることを描く(p) {
   // いまの作業ブロックの案件（題に締切のラベルか案件名が入っている）
   const 中の案件 = 中 && 中.種 === '作業' ? 単位().find(u => u.締切.some(k => { const e = 進行の締切(k.id); return e && 中.題.includes(e.ラベル); }) || 中.題.includes(u.名前)) : null;
   const m = 計測中();
-  const 計 = 中の案件 && !m ? `<button class="btn btn-primary btn-small now-btn" data-act="timerStart" data-u="${esc(中の案件.id)}" title="止めたときに実績へ足す">▶ この作業を計る</button>` : '';
+  const 計 = 中の案件 && !m ? `<button class="btn btn-primary btn-small now-btn" data-act="timerStart" data-u="${esc(中の案件.id)}" title="止めたときに実績へ足す">▶ 計測開始</button>` : '';
   return `<div class="nowbar">
-    <div class="nowcell"><div class="k">NOW　いまの作業</div><div class="v">${中 ? esc(中.題) : '段取りの入っていない時間'}</div>
+    <div class="nowcell"><div class="k">NOW　現在の作業</div><div class="v">${中 ? esc(中.題) : '予定なし'}</div>
       <div class="s">${中 ? `${hm(中.s)}〜${hm(中.e)}・残り ${あと(中.e - now)}` : (次 ? `次は ${hm(次.s)} から（あと ${あと(次.s - now)}）：${esc(次.題)}` : '')}</div>${計}</div>
     <div class="nowcell"><div class="k">NEXT　次の予定</div><div class="v">${次予 ? esc(次予.題) : 'なし'}</div>
       <div class="s">${次予 ? `${mdw(ds(次予.s))} ${hm(次予.s)}・あと ${あと(次予.s - now)}` : ''}</div></div>
@@ -891,12 +904,12 @@ function この先の段取り(始) {
       const 押せる = !!(x.予定表 || (x.種 === '作業' && x.ラベル) || x.食事 || x.買い物);
       const 時 = x.種 === '区切り' ? '' : `${hm(x.s)}〜${hm(x.e)}`;
       return `<div class="ag-row k-${区分(x)} ${押せる ? 'editable' : ''}" ${押せる ? `data-act="tlItem" data-d="${d}" data-s="${esc(x.始)}" data-t="${esc(x.題)}"` : ''}>
-        <span class="ag-t">${時}</span><span class="ag-n">${esc(x.種 === '区切り' && x.題.startsWith('今日の作業はここまで') ? hm(x.s) + ' で作業は終わり' : x.題)}</span></div>`;
+        <span class="ag-t">${時}</span><span class="ag-n">${esc(x.種 === '区切り' && /^(今日の作業はここまで|本日の作業終了)/.test(x.題) ? hm(x.s) + ' 作業終了' : x.題)}</span></div>`;
     }).join('');
     const w = 日(d).getDay();
     return `<div class="ag-day"><div class="ag-head ${w === 0 || w === 6 ? 'we' : ''}">${mdw(d)}<span class="hint">作業 ${時間(作)}</span></div>${札 || '<div class="hint">段取りなし</div>'}</div>`;
   }).join('');
-  return `<div class="sec"><div class="sec-label">AHEAD<span class="jp">この先の段取り（3週間先まで全部）</span><span class="right hint">押すと直せる</span></div><div class="agenda">${行}</div></div>`;
+  return `<div class="sec"><div class="sec-label">AHEAD<span class="jp">この先の段取り（3週間先まで全部）</span><span class="right hint">押して編集</span></div><div class="agenda">${行}</div></div>`;
 }
 function 時間軸(d, 名) {
   const xs = 今日の段取り(d);
@@ -933,7 +946,7 @@ function 時間軸(d, 名) {
   if (nh >= 始 && nh <= 終) h += `<div class="tl-now" style="top:${y(nh)}px"><span>いま ${hm(now)}</span></div>`;
   const 作 = xs.filter(x => x.種 === '作業').reduce((a, x) => a + (x.e - x.s) / 3600000, 0);
   return `<div class="tl"><div class="tl-head">${名} ${mdw(d)}<span class="hint">作業 ${時間(作)}</span><button class="btn btn-secondary btn-small tl-add" data-act="tlNew" data-d="${d}" title="この日に予定を入れる（カレンダーに入る）">＋ 予定</button></div>
-    ${印.map(x => `<div class="tl-note">${x.題.startsWith('今日の作業はここまで') ? `${hm(x.s)} で作業は終わり。「夜の締め」で進みを入れて休む` : esc(x.題)}</div>`).join('')}
+    ${印.map(x => `<div class="tl-note">${/^(今日の作業はここまで|本日の作業終了)/.test(x.題) ? `${hm(x.s)} 作業終了。「夜の振り返り」で進捗を入力` : esc(x.題)}</div>`).join('')}
     <div class="tl-body" style="height:${(終 - 始) * 一 + 8}px">${xs.length ? h : '<div class="empty">段取りなし</div>'}</div></div>`;
 }
 
@@ -947,7 +960,7 @@ function 案件を描く() {
   });
   const 作る = us.filter(u => u.種 === '回を作る');
   const 済 = us.filter(u => 状態(u) === '納品済');
-  let h = `<div class="sec"><div class="sec-label">PROJECTS<span class="jp">進んでいる案件 ${並べ.length}件</span><span class="right hint">札を押すと工程が済み／未に切り替わる・スペースで選んだ案件の次の工程を済みに</span></div>
+  let h = `<div class="sec"><div class="sec-label">PROJECTS<span class="jp">進んでいる案件 ${並べ.length}件</span><span class="right hint">押すと工程の完了／未完了を切り替え・スペースで選んだ案件の次の工程を完了</span></div>
     <div class="cards">${並べ.map(案件カード).join('')}</div></div>`;
   if (作る.length) h += `<div class="sec"><div class="sec-label">REGULAR<span class="jp">定例の先の月（回がまだ書いてない。定例の 残り編集時間 で数えている）</span></div>
     <div class="panel-card">${作る.map(u => `<div class="list-row"><div class="grow"><div class="t1">${esc(u.名前)}</div><div class="t2">納期 ${mdw(u.締切[0].日付)}・${時間((進行の締切(u.締切[0].id) || {}).残り)}</div></div>
@@ -1012,15 +1025,15 @@ function 詳細を描く() {
   for (const k of u.締切) {
     if (k.済) {
       // 渡した締切：動かさない。⌘Z か「戻す」で元に戻せる
-      h += `<div class="form-row"><span class="form-label">${esc(k.種類)}</span><span class="tag green">渡した ✓　${mdw(k.日付)}${k.時刻 ? ' ' + k.時刻 : ''}</span>
-        <button class="btn btn-secondary btn-small" data-act="undeliver" data-u="${esc(u.id)}" data-k="${esc(k.種類)}" title="渡していなかった。割り振りに戻す">渡していない</button></div>`;
+      h += `<div class="form-row"><span class="form-label">${esc(k.種類)}</span><span class="tag green">提出済み ✓　${mdw(k.日付)}${k.時刻 ? ' ' + k.時刻 : ''}</span>
+        <button class="btn btn-secondary btn-small" data-act="undeliver" data-u="${esc(u.id)}" data-k="${esc(k.種類)}" title="未提出に戻し、割り振りに戻す">未提出に戻す</button></div>`;
       continue;
     }
     const e = 進行の締切(k.id); const j = 判定(e);
     h += `<div class="form-row" style="flex-wrap:wrap"><span class="form-label">${esc(k.種類)}</span>
       ${欄('date', k.日付, `style="width:132px" id="dl-d-${esc(k.id)}" ${u.種 !== '案件' ? 'disabled' : ''}`)}
       ${欄('time', k.時刻, `style="width:84px" id="dl-t-${esc(k.id)}" ${u.種 !== '案件' ? 'disabled' : ''}`)}
-      <button class="btn btn-secondary btn-small" data-act="moveDl" data-u="${esc(u.id)}" data-k="${esc(k.種類)}" data-id="${esc(k.id)}" ${u.種 !== '案件' ? 'disabled' : ''} title="${u.種 !== '案件' ? '定例の回の締切は、まだ動かせない（エンジンが未対応）' : '日付・時刻を変えてから押す。計算し直し、反映するとカレンダーも直る'}">締切を動かす</button>
+      <button class="btn btn-secondary btn-small" data-act="moveDl" data-u="${esc(u.id)}" data-k="${esc(k.種類)}" data-id="${esc(k.id)}" ${u.種 !== '案件' ? 'disabled' : ''} title="${u.種 !== '案件' ? '定例の回の締切は、まだ動かせない（エンジンが未対応）' : '日付・時刻を変えてから押す。計算し直し、反映するとカレンダーも直る'}">締切を変更</button>
       ${e ? `<div style="width:100%;padding-left:92px" class="hint"><span class="lamp ${j === 'ok' ? 'green' : j}"></span>残り ${時間(e.残り)}・使える ${時間(e.使える)}・${esc(e.見込み)}</div>` : ''}
       ${u.種 !== '案件' ? '<div class="why" style="padding-left:92px">定例の回の締切は、まだ動かせない（エンジンが未対応）</div>' : ''}</div>`;
   }
@@ -1028,7 +1041,7 @@ function 詳細を描く() {
   // 工程
   const 工 = 工程(u);
   const 種 = u.締切.map(k => k.種類);
-  h += `<div class="sec"><div class="sec-label">STEPS<span class="jp">工程・見込み・実績</span><span class="right hint">見込みは済んでいない分だけ残りに数える。実績は記録だけ</span></div><div class="panel-card">`;
+  h += `<div class="sec"><div class="sec-label">STEPS<span class="jp">工程・見込み・実績</span><span class="right hint">見込みは未完了の分だけ残りに数える。実績は記録だけ</span></div><div class="panel-card">`;
   if (!工.length) h += `<div class="list-row"><span class="hint">工程なし。いまは ${残りの説明(u)} で数えている</span></div>`;
   工.forEach((s, i) => {
     h += `<div class="step-row ${s.済 ? 'is-done' : ''}" draggable="true" data-drag="${i}" data-u="${esc(u.id)}" data-ctx="step" data-i="${i}">
@@ -1043,14 +1056,14 @@ function 詳細を描く() {
       <span class="hint">実績</span><div title="実績（実際にかかった時間。残りの計算には使わない）" class="stepper dim"><button data-act="act" data-u="${esc(u.id)}" data-i="${i}" data-d="-0.5" ${s.実績 > 0 ? '' : 'disabled'}>−</button><span class="v">${s.実績 ? h字(s.実績) : '—'}</span><button data-act="act" data-u="${esc(u.id)}" data-i="${i}" data-d="0.5">＋</button></div>
       ${種.length > 1 ? `<button class="btn btn-secondary btn-small" data-act="stepDl" data-u="${esc(u.id)}" data-i="${i}" title="この工程をどの締切までに済ませるか（押すと切り替わる）">→ ${esc(s.締切 || 種[0])}</button>` : ''}</div></div>`;
   });
-  if (工.length) h += `<div class="total-row"><span>合計 ${h字(合計(u))}・済んでいない ${h字(残り(u))}</span><span class="num">実績 ${h字(実績(u))}</span></div>`;
-  h += `</div><div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-secondary btn-small" data-act="addStep" data-u="${esc(u.id)}">＋ 工程を足す</button>
-    <button class="btn btn-secondary btn-small" data-act="presetSheet" data-u="${esc(u.id)}">プリセットから入れる</button>
-    <button class="btn btn-secondary btn-small" data-act="nextStep" data-u="${esc(u.id)}" ${工.some(s => !s.済) ? '' : 'disabled'} title="${工.some(s => !s.済) ? 'スペースでも同じ' : '済んでいない工程が無い'}">次の工程を済みに</button></div></div>`;
+  if (工.length) h += `<div class="total-row"><span>合計 ${h字(合計(u))}・未完了 ${h字(残り(u))}</span><span class="num">実績 ${h字(実績(u))}</span></div>`;
+  h += `</div><div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-secondary btn-small" data-act="addStep" data-u="${esc(u.id)}">＋ 工程を追加</button>
+    <button class="btn btn-secondary btn-small" data-act="presetSheet" data-u="${esc(u.id)}">プリセットから追加</button>
+    <button class="btn btn-secondary btn-small" data-act="nextStep" data-u="${esc(u.id)}" ${工.some(s => !s.済) ? '' : 'disabled'} title="${工.some(s => !s.済) ? 'スペースでも同じ' : '未完了の工程が無い'}">次の工程を完了にする</button></div></div>`;
   // 版と指摘
   const vs = 版(u);
   h += `<div class="sec"><div class="sec-label">VERSIONS<span class="jp">版と直しの指摘</span><span class="right hint">確認用 v1 → 直し1 → 確認用 v2 …</span></div><div class="panel-card">`;
-  if (!vs.length) h += `<div class="list-row"><span class="hint">版はまだ無い。確認用を書き出したら「版を足す」</span></div>`;
+  if (!vs.length) h += `<div class="list-row"><span class="hint">版はまだ無い。確認用を書き出したら「版を追加」</span></div>`;
   vs.forEach((v, vi) => {
     const 指 = v.指摘 || [];
     h += `<div class="ver"><div class="ver-head"><span class="ver-name">${esc(v.名前)}</span><span class="hint">${mdw(v.日付)}</span>
@@ -1060,7 +1073,7 @@ function 詳細を描く() {
       ${指.map((n, ni) => `<div class="note ${n.済 ? 'is-done' : ''}"><button class="step-done-check ${n.済 ? 'on' : ''}" data-act="noteToggle" data-u="${esc(u.id)}" data-v="${vi}" data-n="${ni}" title="直したら押す"></button><span class="txt">${esc(n.内容)}</span></div>`).join('')}
       <div class="note"><input class="in" style="flex:1" placeholder="指摘を足す（return）" data-chg="note" data-u="${esc(u.id)}" data-v="${vi}"></div></div>`;
   });
-  h += `</div><button class="btn btn-secondary btn-small" style="margin-top:6px" data-act="addVer" data-u="${esc(u.id)}">＋ 版を足す（${!vs.length || vs[vs.length - 1].名前.startsWith('直し') ? '確認用' : '直し'}）</button></div>`;
+  h += `</div><button class="btn btn-secondary btn-small" style="margin-top:6px" data-act="addVer" data-u="${esc(u.id)}">＋ 版を追加（${!vs.length || vs[vs.length - 1].名前.startsWith('直し') ? '確認用' : '直し'}）</button></div>`;
   // その他の操作
   // リンク（Frame.io の共有・FCP のライブラリ・資料・メールなど。押すと開く）
   const 輪 = u.元.リンク || [];
@@ -1070,17 +1083,17 @@ function 詳細を描く() {
       <button class="btn btn-secondary btn-small" data-act="openLink" data-u="${esc(u.id)}" data-i="${i}">開く</button>
       <button class="icon-btn del" data-act="delLink" data-u="${esc(u.id)}" data-i="${i}" title="このリンクを外す（⌘Z で戻せる）">✕</button></div>`).join('')}
     ${!u.元.フォルダ && !輪.length ? '<div class="list-row hint">まだ無い</div>' : ''}
-    <div class="list-row"><button class="btn btn-secondary btn-small" data-act="addLink" data-u="${esc(u.id)}" ${u.種 === '回を作る' ? 'disabled' : ''}>＋ リンクを足す</button>
-      ${Mac && u.種 === '案件' ? `<button class="btn btn-secondary btn-small" data-act="setFolder" data-u="${esc(u.id)}" title="書類フォルダからの道（例：映像制作/テレビ番組/…）">${u.元.フォルダ ? 'フォルダを直す' : 'フォルダを決める'}</button>` : ''}</div></div></div>`;
+    <div class="list-row"><button class="btn btn-secondary btn-small" data-act="addLink" data-u="${esc(u.id)}" ${u.種 === '回を作る' ? 'disabled' : ''}>＋ リンクを追加</button>
+      ${Mac && u.種 === '案件' ? `<button class="btn btn-secondary btn-small" data-act="setFolder" data-u="${esc(u.id)}" title="書類フォルダからの道（例：映像制作/テレビ番組/…）">${u.元.フォルダ ? 'フォルダを変更' : 'フォルダを決める'}</button>` : ''}</div></div></div>`;
   h += `<div class="sec"><div class="sec-label">ACTIONS<span class="jp">操作</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">
     ${(() => { const m = 計測中(); const i = 計る工程の番号(u); return m && m.案件 === u.id
-      ? `<button class="btn btn-primary btn-small" data-act="timerStop">■ 止めて記録する</button>`
-      : `<button class="btn btn-primary btn-small" data-act="timerStart" data-u="${esc(u.id)}" ${m ? 'disabled' : ''} title="${m ? '別の案件を計っている' : (i >= 0 ? '止めたとき「' + esc(工程(u)[i].名前) + '」の実績に足す' : '工程が無いので、その日の実績として残す')}">▶ 作業を計る</button>`; })()}
-    <button class="btn btn-secondary btn-small" data-act="tomorrow" data-u="${esc(u.id)}" title="着手できる日を明日にする（⌘]）">明日へ送る</button>
-    ${u.元.最優先 ? `<button class="btn btn-secondary btn-small" data-act="unpriority" data-u="${esc(u.id)}">最優先を外す</button>` : `<button class="btn btn-secondary btn-small" data-act="priority" data-u="${esc(u.id)}" title="締切の順より先に割り振る（⇧⌘P）">この案件を最優先にする</button>`}
+      ? `<button class="btn btn-primary btn-small" data-act="timerStop">■ 計測を終了して記録</button>`
+      : `<button class="btn btn-primary btn-small" data-act="timerStart" data-u="${esc(u.id)}" ${m ? 'disabled' : ''} title="${m ? '別の案件を計っている' : (i >= 0 ? '止めたとき「' + esc(工程(u)[i].名前) + '」の実績に足す' : '工程が無いので、その日の実績として残す')}">▶ 計測開始</button>`; })()}
+    <button class="btn btn-secondary btn-small" data-act="tomorrow" data-u="${esc(u.id)}" title="着手できる日を明日にする（⌘]）">明日に回す</button>
+    ${u.元.最優先 ? `<button class="btn btn-secondary btn-small" data-act="unpriority" data-u="${esc(u.id)}">最優先を解除</button>` : `<button class="btn btn-secondary btn-small" data-act="priority" data-u="${esc(u.id)}" title="締切の順より先に割り振る（⇧⌘P）">この案件を最優先にする</button>`}
     <button class="btn btn-secondary btn-small" data-act="settings" data-u="${esc(u.id)}" title="名前・日付・工程をまとめて直す（⌘E）">案件の設定…</button>
     <button class="btn btn-secondary btn-small" data-act="saveAsPreset" data-u="${esc(u.id)}" ${工.length ? '' : 'disabled'} title="${工.length ? 'この工程の組をプリセットにする' : '工程が無い'}">プリセットとして保存</button>
-    <button class="btn btn-danger btn-small" data-act="deleteProject" data-u="${esc(u.id)}" ${u.種 !== '案件' ? 'disabled' : ''} title="${u.種 !== '案件' ? '定例の回はここでは消せない' : '一覧から外す（設定の 消した案件 に残る。⌘Z で戻せる）'}">この案件を消す</button></div></div>`;
+    <button class="btn btn-danger btn-small" data-act="deleteProject" data-u="${esc(u.id)}" ${u.種 !== '案件' ? 'disabled' : ''} title="${u.種 !== '案件' ? '定例の回はここでは消せない' : '一覧から外す（設定の 消した案件 に残る。⌘Z で戻せる）'}">この案件を削除</button></div></div>`;
   return h;
 }
 
@@ -1191,9 +1204,9 @@ function 三週間を描く() {
   return 上 + `<div class="sec"><div class="sec-label">3 WEEKS<span class="jp">日ごとの使える時間と割り振り</span><span class="right hint">行を押すと、その日の段取りを上に出す。灰の帯＝ふだんの時間で使える分・色＝案件の急ぎ・枠の橙＝時間外・赤＝深夜</span></div>${rows}</div>`;
 }
 
-/* ═══ 朝の計画・夜の締め（Sunsama） ═══ */
+/* ═══ 朝の計画・夜の振り返り（Sunsama） ═══ */
 function 朝夜を描く() {
-  return `<div class="tabs2"><button class="${ui.planTab === '朝' ? 'on' : ''}" data-act="planTab" data-t="朝">朝の計画</button><button class="${ui.planTab === '夜' ? 'on' : ''}" data-act="planTab" data-t="夜">夜の締め</button></div>` +
+  return `<div class="tabs2"><button class="${ui.planTab === '朝' ? 'on' : ''}" data-act="planTab" data-t="朝">朝の計画</button><button class="${ui.planTab === '夜' ? 'on' : ''}" data-act="planTab" data-t="夜">夜の振り返り</button></div>` +
     (ui.planTab === '朝' ? 朝を描く() : 夜を描く());
 }
 function その日の案件(d) {
@@ -1217,15 +1230,15 @@ function 朝を描く() {
   const 通 = 計('作業'), 外 = 計('時間外'), 深 = 計('深夜');
   const 上 = (しそ設定().空き日に使える時間 || 9), 外上 = (しそ設定().時間外の上限 || 3);
   const 終 = 今.length ? 今[今.length - 1].e : null;
-  let h = `<div class="sec"><div class="sec-label">1. YESTERDAY<span class="jp">昨日の残りを片づける</span><span class="right hint">済んだ＝次の工程を済みに・明日へ＝着手できる日を明日に</span></div><div class="panel-card">`;
+  let h = `<div class="sec"><div class="sec-label">1. YESTERDAY<span class="jp">昨日の残作業</span><span class="right hint">完了＝次の工程を完了に・明日に回す＝着手できる日を明日に</span></div><div class="panel-card">`;
   if (!残.length) h += `<div class="list-row"><span class="hint">昨日に割り振った作業で、残っているものは無い（または昨日の割り振りが進行.json に無い）</span></div>`;
   for (const x of 残) {
     const i = 工程(x.u).findIndex(s => !s.済); const s = 工程(x.u)[i];
     h += `<div class="list-row"><div class="grow"><div class="t1">${esc(x.u.名前)}</div><div class="t2">昨日 ${時間(x.h)} 割り振り・次の工程：${esc(s.名前)}（${h字(s.見込み)}）</div></div>
-      <button class="btn btn-primary btn-small" data-act="toggleStep" data-u="${esc(x.u.id)}" data-i="${i}">済んだ</button><button class="btn btn-secondary btn-small" data-act="tomorrow" data-u="${esc(x.u.id)}">明日へ</button></div>`;
+      <button class="btn btn-primary btn-small" data-act="toggleStep" data-u="${esc(x.u.id)}" data-i="${i}">完了</button><button class="btn btn-secondary btn-small" data-act="tomorrow" data-u="${esc(x.u.id)}">明日に回す</button></div>`;
   }
   h += `</div></div>`;
-  h += `<div class="sec"><div class="sec-label">2. TODAY<span class="jp">今日の合計を確かめる</span></div><div class="plan-sum">
+  h += `<div class="sec"><div class="sec-label">2. TODAY<span class="jp">今日の合計を確認</span></div><div class="plan-sum">
     <div class="nowcell"><div class="k">ふだんの時間</div><div class="v num">${時間(通)}</div><div class="s">上限 ${時間(上)}</div></div>
     <div class="nowcell"><div class="k">時間外</div><div class="v num ${外 ? 'dl-orange' : ''}">${時間(外)}</div><div class="s">上限 ${時間(外上)}</div></div>
     <div class="nowcell"><div class="k">深夜</div><div class="v num ${深 ? 'dl-red' : ''}">${時間(深)}</div><div class="s">${深 ? '徹夜になる' : 'なし'}</div></div>
@@ -1239,20 +1252,20 @@ function 夜を描く() {
   const 日々 = (設定().日々の実績 || {})[今日()] || {};
   const 予 = xs.reduce((a, x) => a + x.h, 0), 実 = Object.values(日々).reduce((a, v) => a + (Number(v) || 0), 0);
   let h = `<div class="plan-sum"><div class="nowcell"><div class="k">今日に割り振った時間</div><div class="v num">${時間(予)}</div></div>
-    <div class="nowcell"><div class="k">今日入れた実績</div><div class="v num">${時間(実)}</div></div>
+    <div class="nowcell"><div class="k">今日の実績</div><div class="v num">${時間(実)}</div></div>
     <div class="nowcell"><div class="k">差</div><div class="v num ${実 > 予 ? 'dl-orange' : ''}">${実 - 予 >= 0 ? '+' : ''}${時間(実 - 予)}</div></div>
-    <div class="nowcell"><div class="k">明日の作業</div><div class="v num">${時間(今日の段取り(足す日(今日(), 1)).filter(x => x.種 === '作業').reduce((a, x) => a + (x.e - x.s) / 3600000, 0))}</div><div class="s">計算し直すと変わる</div></div></div>`;
+    <div class="nowcell"><div class="k">明日の作業</div><div class="v num">${時間(今日の段取り(足す日(今日(), 1)).filter(x => x.種 === '作業').reduce((a, x) => a + (x.e - x.s) / 3600000, 0))}</div><div class="s">再計算で変わります</div></div></div>`;
   const fcp = Math.round((((S.f['FCPの時間.json'] || {}).日 || {})[今日()] || 0) / 360) / 10;
   if (Mac) h += `<div class="panel-card" style="margin:0 0 12px"><div class="list-row"><div class="grow"><div class="t1">Final Cut Pro を使った時間（今日）　<span class="num">${時間(fcp)}</span></div>
     <div class="t2">前面で使っていて、最後の操作から3分以内だった時間。実績を入れるときの目安に</div></div>
     ${fcp && xs.length ? `<select class="in" id="fcp-to" style="width:220px">${xs.map(x => `<option value="${esc(x.u.id)}">${esc(x.u.名前)}</option>`).join('')}</select>
-      <button class="btn btn-secondary btn-small" data-act="fcpToActual" data-h="${fcp}" title="選んだ案件の、次に済ませる工程の実績に足す（工程が無ければその日の実績）">この時間を実績に入れる</button>` : ''}</div></div>`;
-  h += `<div class="sec"><div class="sec-label">ACTUALS<span class="jp">作業ごとに実際にかかった時間を入れる</span><span class="right hint">済んだ工程にチェック。終わらなかった案件は「明日へ送る」</span></div>`;
+      <button class="btn btn-secondary btn-small" data-act="fcpToActual" data-h="${fcp}" title="選んだ案件の、次に済ませる工程の実績に足す（工程が無ければその日の実績）">実績に記録</button>` : ''}</div></div>`;
+  h += `<div class="sec"><div class="sec-label">ACTUALS<span class="jp">作業ごとに実際にかかった時間を入れる</span><span class="right hint">完了した工程にチェック。終わらなかった案件は「明日に回す」</span></div>`;
   if (!xs.length) h += `<div class="panel-card"><div class="list-row hint">今日に割り振った作業は無い</div></div>`;
   for (const x of xs) {
     const u = x.u;
     h += `<div class="panel-card" style="margin-bottom:8px"><div class="list-row"><div class="grow"><div class="t1">${esc(u.名前)}</div><div class="t2">今日 ${時間(x.h)} 割り振り・今日の実績 ${時間(日々[u.名前] || 0)}</div></div>
-      <button class="btn btn-secondary btn-small" data-act="tomorrow" data-u="${esc(u.id)}">明日へ送る</button></div>
+      <button class="btn btn-secondary btn-small" data-act="tomorrow" data-u="${esc(u.id)}">明日に回す</button></div>
       ${工程(u).map((s, i) => `<div class="step-row simple ${s.済 ? 'is-done' : ''}"><button class="step-done-check ${s.済 ? 'on' : ''}" data-act="toggleStep" data-u="${esc(u.id)}" data-i="${i}"></button>
         <div class="step-code">${esc(記号(s))}</div><div class="step-names"><div class="step-jp">${esc(s.名前)}</div><div class="step-en">見込み ${h字(s.見込み)}</div></div>
         <div class="stepper"><button data-act="act" data-u="${esc(u.id)}" data-i="${i}" data-d="-0.5">−</button><span class="v">${s.実績 ? h字(s.実績) : '実績'}</span><button data-act="act" data-u="${esc(u.id)}" data-i="${i}" data-d="0.5">＋</button></div></div>`).join('') || '<div class="list-row hint">工程が無い。詳細の欄から足す</div>'}</div>`;
@@ -1278,18 +1291,18 @@ function 止まっている() {
 function 見直しを描く() {
   const xs = 止まっている(); const 見 = 設定().見直し || {};
   const n = 見.最後 ? 日差(見.最後, 今日()) : null;
-  let h = `<div class="sec"><div class="sec-label">WEEKLY REVIEW<span class="jp">止まっている案件だけを順に見る</span><span class="right hint">${見.最後 ? `前の見直し ${mdw(見.最後)}（${n}日前）` : 'まだ見直していない'}・週に1回</span></div>`;
+  let h = `<div class="sec"><div class="sec-label">WEEKLY REVIEW<span class="jp">止まっている案件を順に確認</span><span class="right hint">${見.最後 ? `前の見直し ${mdw(見.最後)}（${n}日前）` : 'まだ見直していない'}・週に1回</span></div>`;
   if (!xs.length) return h + `<div class="issue ok"><div class="issue-head"><span class="lamp green"></span><span class="issue-title">止まっている案件は無い</span></div></div>
-    <button class="btn btn-primary" style="margin-top:10px" data-act="reviewDone">見直しを終える</button></div>`;
+    <button class="btn btn-primary" style="margin-top:10px" data-act="reviewDone">見直しを終了</button></div>`;
   ui.reviewIdx = Math.min(ui.reviewIdx, xs.length - 1);
   const x = xs[ui.reviewIdx];
   h += `<div class="hint" style="margin-bottom:8px">${ui.reviewIdx + 1} / ${xs.length} 件</div>${案件カード(x.u)}
     <div class="panel-card" style="margin-top:10px">${x.why.map(w => `<div class="list-row"><span class="lamp orange"></span><div class="grow">${w}</div></div>`).join('')}</div>
-    <div class="sec-label" style="margin-top:14px">その場で直す</div><div class="seg" style="margin-bottom:10px">${状態の名.map(s => `<button class="${状態(x.u) === s ? 'on s-' + s : ''}" data-act="status" data-u="${esc(x.u.id)}" data-s="${s}">${s}</button>`).join('')}</div>
+    <div class="sec-label" style="margin-top:14px">その場で編集</div><div class="seg" style="margin-bottom:10px">${状態の名.map(s => `<button class="${状態(x.u) === s ? 'on s-' + s : ''}" data-act="status" data-u="${esc(x.u.id)}" data-s="${s}">${s}</button>`).join('')}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary" data-act="reviewPrev" ${ui.reviewIdx ? '' : 'disabled'}>前へ</button>
-    <button class="btn btn-secondary" data-act="tomorrow" data-u="${esc(x.u.id)}">明日へ送る</button><button class="btn btn-secondary" data-act="select" data-u="${esc(x.u.id)}">詳細を見る</button>
+    <button class="btn btn-secondary" data-act="tomorrow" data-u="${esc(x.u.id)}">明日に回す</button><button class="btn btn-secondary" data-act="select" data-u="${esc(x.u.id)}">詳細を見る</button>
     <button class="btn btn-primary" data-act="reviewNext" ${ui.reviewIdx < xs.length - 1 ? '' : 'disabled'}>次へ</button>
-    <button class="btn btn-secondary" data-act="reviewDone" style="margin-left:auto" title="いまの工程の進みを覚える。次の見直しで、進んでいない案件を見つけるのに使う">見直しを終える</button></div></div>`;
+    <button class="btn btn-secondary" data-act="reviewDone" style="margin-left:auto" title="いまの工程の進みを覚える。次の見直しで、進んでいない案件を見つけるのに使う">見直しを終了</button></div></div>`;
   return h;
 }
 
@@ -1384,7 +1397,7 @@ function シートを描く() {
       <div class="form-row"><span class="form-label">名前</span><input class="in" style="flex:1" id="np-title" placeholder="案件の名前…" value="${esc(d.名前)}" ${!新 && s.回 ? 'disabled' : ''}></div>
       <div class="form-row"><span class="form-label">着手できる日</span>${欄('date', d.着手できる日, 'id="np-start"')}<span class="hint">空なら今日から</span></div>
       ${新 ? `<div class="form-row"><span class="form-label">納期</span>${欄('date', d.納期, 'id="np-deadline"')}${欄('time', d.時刻, 'id="np-time" style="width:90px"')}<span class="hint">時刻は任意</span></div>` :
-        `<div class="form-row"><span class="form-label">締切</span><span class="hint">締切の日付は右の詳細の欄の「締切を動かす」で</span></div>`}
+        `<div class="form-row"><span class="form-label">締切</span><span class="hint">締切の日付は右の詳細の欄の「締切を変更」で</span></div>`}
       ${s.回 ? '' : `<div class="form-row"><span class="form-label">撮影日</span>${欄('date', d.撮影日, 'id="np-shoot"', 'なし')}${欄('time', d.撮影始, 'id="np-shoot-s" style="width:90px"', '始まり')}<span class="hint">〜</span>${欄('time', d.撮影終, 'id="np-shoot-e" style="width:90px"', '終わり')}</div>
       <div class="form-row"><span class="form-label">撮影の場所</span><input class="in" style="flex:1" id="np-place" placeholder="場所（任意）" value="${esc(d.撮影の場所 || '')}"><span class="hint">移動 片道</span><input class="in" type="number" min="0" step="5" style="width:70px" id="np-move" placeholder="60" value="${d.撮影の移動 ?? ''}"><span class="hint">分</span></div>
       <div class="form-row"><span class="hint">時刻まで入れると、カレンダーの「撮影」に入れて、移動を含めたその時間に作業を入れない。カレンダーで動かすと、こちらも合わせて直る。移動が空なら設定の値（撮影 ${(しそ設定().移動 || {}).撮影?.前 ?? 60}分）</span></div>`}
@@ -1396,7 +1409,7 @@ function シートを描く() {
       <button class="btn btn-secondary btn-wide" data-act="dAddStep">＋ 工程を追加 / Add Step</button>`;
     foot = `<button class="btn btn-primary btn-wide" data-act="${新 ? 'dCreate' : 'dSave'}">${新 ? 'プロジェクト作成 / Create' : '保存 / Save'}</button>`;
   } else if (s.kind === 'addstep') {
-    head = `<button class="sheet-back" data-act="${s.戻り ? 'sheetBack' : 'closeSheet'}">⟨ 戻る</button><div class="sheet-title">ADD STEP　工程を足す</div><span style="width:50px"></span>`;
+    head = `<button class="sheet-back" data-act="${s.戻り ? 'sheetBack' : 'closeSheet'}">⟨ 戻る</button><div class="sheet-title">ADD STEP　工程を追加</div><span style="width:50px"></span>`;
     body = `<div class="tabs2"><button class="${s.mode !== 'create' ? 'on' : ''}" data-act="asMode" data-m="lib">ライブラリから選択</button><button class="${s.mode === 'create' ? 'on' : ''}" data-act="asMode" data-m="create">新規作成</button></div>`;
     if (s.mode !== 'create') body += `<div class="panel-card">${区分ごと(st.工程の一覧 || [], (l, i) => `<div class="lib-step" data-act="asPick" data-i="${i}"><div class="step-code">${esc(l.記号)}</div><div class="step-names"><div class="step-jp">${esc(l.名前)}</div><div class="step-en">${esc(l.英名)}・${h字(l.標準時間)}</div></div><span class="hint">›</span></div>`)}</div>`;
     else { body += `<div class="panel-card"><div class="form-row"><span class="form-label">日本語名</span><input class="in" style="flex:1" id="as-jp" placeholder="工程名を入力…"></div>
@@ -1415,10 +1428,10 @@ function シートを描く() {
     body = `<div class="sec"><div class="sec-label">見た目</div><div class="panel-card"><div class="form-row"><span class="form-label">色</span><div class="seg">
         <button class="${今の === '黒' ? 'on' : ''}" data-act="theme" data-t="黒">黒地（v1.0）</button><button class="${今の === '明るい' ? 'on' : ''}" data-act="theme" data-t="明るい">明るい色（v1.4）</button></div>
         <span class="hint">${Mac ? 'EDITFLOW設定.json に覚える' : 'この iPhone に覚える'}</span></div></div></div>
-      ${iPhone ? `<div class="sec"><div class="sec-label">Mac とのつなぎ</div><div class="panel-card"><div class="list-row"><div class="grow"><div class="t1">${esc(GH.repo())}</div><div class="t2">${GH.token() ? 'トークンは覚えてある' : 'トークンがまだ無い'}</div></div><button class="btn btn-secondary btn-small" data-act="phonePrefs">つなぎ方を直す</button></div></div></div>
+      ${iPhone ? `<div class="sec"><div class="sec-label">Mac との接続</div><div class="panel-card"><div class="list-row"><div class="grow"><div class="t1">${esc(GH.repo())}</div><div class="t2">${GH.token() ? 'トークンは覚えてある' : 'トークンがまだ無い'}</div></div><button class="btn btn-secondary btn-small" data-act="phonePrefs">接続設定</button></div></div></div>
         ${(() => { const st = 通知の状態(); if (!st) return ''; return `<div class="sec"><div class="sec-label">通知</div><div class="panel-card"><div class="list-row" style="flex-wrap:wrap">
           <div class="grow"><div class="t1">${st.済 ? 'この iPhone で受け取っている' : 'この iPhone で通知を受け取る'}</div>
-          <div class="t2">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の締め。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div>
+          <div class="t2">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の振り返り。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div>
           ${st.済 ? '<button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>' : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 ? '' : 'disabled'}>受け取る</button>`}</div></div></div>`; })()}` : ''}
       ${Mac ? `<div class="sec"><div class="sec-label">表示</div><div class="panel-card"><div class="form-row"><span class="form-label">メニューバー</span><button class="btn btn-small ${st.メニューバーに出す !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefMenubar">${st.メニューバーに出す !== false ? '✓ 小窓を出す' : '小窓を出す'}</button><span class="hint">今の作業・残り時間・次の予定の3行</span></div>
         <div class="form-row"><span class="form-label">自動の反映</span><button class="btn btn-small ${st.自動で反映 !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefAuto">${st.自動で反映 !== false ? '✓ 自動でカレンダーへ反映する' : '自動でカレンダーへ反映する'}</button><span class="hint">毎朝5:30と、直して3分後。窓を閉じても裏で続ける（止めるのはメニューバーの「終わる」）</span></div></div></div>` : ''}
@@ -1429,7 +1442,7 @@ function シートを描く() {
           <button class="btn btn-small ${方 === 'ならす' ? 'btn-primary' : 'btn-secondary'}" data-act="prefAlloc" data-m="ならす">${方 === 'ならす' ? '✓ ' : ''}日ごとにならす</button></div>
         <div class="form-row"><span class="form-label">1日の上限</span><input class="in" type="number" min="2" max="12" step="0.5" style="width:70px" id="pref-cap" value="${上}" ${方 === 'ならす' ? '' : 'disabled title="「日ごとにならす」のときだけ使う"'}><span class="hint">時間。ならすときの、ふだんの作業の1日の目安</span></div>
         <div class="form-row"><span class="hint">1本ずつ続けて：締切の近い順に、今日から前へ詰める（1本が仕上がるまで続けて入る。後ろに余裕が残る）。<br>日ごとにならす：締切までの日に均等に分け、1日の上限を超えないように置く（日ごとの量は揃うが、締切の近くまで作業が残る）。どちらも、足りなければ上限を超え、それでも足りなければ時間外・深夜を使う。</span></div></div></div>`; })()}
-      <div class="sec"><div class="sec-label">プリセット<span class="right"><button class="btn btn-primary btn-small" data-act="presetNew">＋ 新しいプリセット</button></span></div><div class="panel-card">${(st.プリセット || []).map((p, i) => `<div class="list-row"><div class="grow"><div class="t1">${esc(p.名前)}</div><div class="t2">${esc(p.工程.map(x => x.記号).join(' ・ '))}・${h字(p.工程.reduce((a, x) => a + (Number(x.見込み) || 0), 0))}</div></div><button class="btn btn-secondary btn-small" data-act="presetEdit" data-i="${i}">直す</button><button class="icon-btn del" data-act="presetDel" data-i="${i}" title="このプリセットを消す（⌘Z で戻せる）">✕</button></div>`).join('')}</div></div>
+      <div class="sec"><div class="sec-label">プリセット<span class="right"><button class="btn btn-primary btn-small" data-act="presetNew">＋ 新しいプリセット</button></span></div><div class="panel-card">${(st.プリセット || []).map((p, i) => `<div class="list-row"><div class="grow"><div class="t1">${esc(p.名前)}</div><div class="t2">${esc(p.工程.map(x => x.記号).join(' ・ '))}・${h字(p.工程.reduce((a, x) => a + (Number(x.見込み) || 0), 0))}</div></div><button class="btn btn-secondary btn-small" data-act="presetEdit" data-i="${i}">編集</button><button class="icon-btn del" data-act="presetDel" data-i="${i}" title="このプリセットを消す（⌘Z で戻せる）">✕</button></div>`).join('')}</div></div>
       <div class="sec"><div class="sec-label">工程の一覧（ライブラリ）<span class="right hint">撮影そのものはカレンダーの予定で数える</span></div><div class="panel-card">${区分ごと(st.工程の一覧 || [], l => `<div class="lib-step"><div class="step-code">${esc(l.記号)}</div><div class="step-names"><div class="step-jp">${esc(l.名前)}</div><div class="step-en">${esc(l.英名)}・${h字(l.標準時間)}</div></div></div>`)}</div></div>
       <div class="hint">休みと空き時間はカレンダーから、1日の時間はエンジンの設定（しそチャンNET_進行.json の 設定）から。前の EDITFLOW の「編集不可日」と「1日の上限」は使わない。</div>`;
   }
@@ -1444,7 +1457,7 @@ function シートを描く() {
       <div class="form-row"><span class="form-label">日付</span>${欄('date', d.日付, 'id="ev-date"')}${欄('time', d.始, 'id="ev-s" style="width:90px"')}<span class="hint">〜</span>${欄('time', d.終, 'id="ev-e" style="width:90px"')}</div>
       <div class="form-row"><span class="form-label">場所</span><input class="in" style="flex:1" id="ev-place" value="${esc(d.場所 || '')}" placeholder="任意"></div>
       <div class="form-row"><span class="hint">保存するとカレンダーに入り（iPhone のカレンダーにも出る）、すぐ計算し直して作業を組み直す。繰り返しの予定は、この回だけ直す</span></div></div>`;
-    foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel" ${iPhone ? 'disabled' : ''}>この予定を消す</button>`}<button class="btn btn-primary btn-wide" data-act="evSave" ${iPhone ? 'disabled' : ''}>${新 ? 'カレンダーに入れる' : '保存'}</button>`;
+    foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel" ${iPhone ? 'disabled' : ''}>この予定を削除</button>`}<button class="btn btn-primary btn-wide" data-act="evSave" ${iPhone ? 'disabled' : ''}>${新 ? 'カレンダーに入れる' : '保存'}</button>`;
   }
   if (s.kind === 'preset') {
     const 新 = s.i == null;
@@ -1468,14 +1481,14 @@ function シートを描く() {
         ${[['献立', '献立のまま（自動）'], ['外食', '外食'], ['書く', '自分で書く']].map(([k, t]) => `<button class="btn btn-small ${d.種 === k ? 'btn-primary' : 'btn-secondary'}" data-act="mlKind" data-k="${k}">${d.種 === k ? '✓ ' : ''}${t}</button>`).join('')}</div>
       ${d.種 === '書く' ? `<div class="form-row"><span class="form-label"></span><input class="in" style="flex:1" id="ml-text" value="${esc(d.字 || '')}" placeholder="例：カレー（作り置き）"></div>` : ''}
       <div class="form-row"><span class="hint">保存すると、この日のこの食事だけ変わる（毎週の決まりより優先）。献立と買い物の量も組み直す</span></div></div>`;
-    foot = `<button class="btn btn-secondary" data-act="mlNone">この${名}をなしにする</button>${s.決めた ? '<button class="btn btn-secondary" data-act="mlReset">決めたことを外す（自動に戻す）</button>' : ''}<button class="btn btn-primary btn-wide" data-act="mlSave">保存</button>`;
+    foot = `<button class="btn btn-secondary" data-act="mlNone">この${名}をなしにする</button>${s.決めた ? '<button class="btn btn-secondary" data-act="mlReset">自動に戻す</button>' : ''}<button class="btn btn-primary btn-wide" data-act="mlSave">保存</button>`;
   }
   if (s.kind === 'shop') {
     head = `<button class="sheet-back" data-act="closeSheet">キャンセル</button><div class="sheet-title">SHOPPING　買い物の時刻</div><span style="width:50px"></span>`;
     body = `<div class="panel-card">
       <div class="form-row"><span class="form-label">日付</span>${欄('date', d.日付, 'id="sh-date"')}${欄('time', d.始, 'id="sh-s" style="width:90px"')}<input class="in" type="number" min="10" max="180" step="5" style="width:70px" id="sh-min" value="${d.分}"><span class="hint">分</span></div>
       <div class="form-row"><span class="hint">この日から次の買い物まで（最大1週間）の献立に要る分を、買い物リストに出す。消すと、その分は次の買い物に回る</span></div></div>`;
-    foot = `<button class="btn btn-danger" data-act="shDel">この買い物を消す</button><button class="btn btn-primary btn-wide" data-act="shSave">保存</button>`;
+    foot = `<button class="btn btn-danger" data-act="shDel">この買い物を削除</button><button class="btn btn-primary btn-wide" data-act="shSave">保存</button>`;
   }
   if (s.kind === 'work') {
     head = `<button class="sheet-back" data-act="closeSheet">キャンセル</button><div class="sheet-title">WORK　作業の時刻を決める</div><span style="width:50px"></span>`;
@@ -1483,19 +1496,19 @@ function シートを描く() {
       <div class="form-row"><span class="form-label">作業</span><span class="t1">${esc(s.ラベル)}</span></div>
       <div class="form-row"><span class="form-label">日付</span>${欄('date', d.日付, 'id="wk-date"')}${欄('time', d.始, 'id="wk-s" style="width:90px"')}<span class="hint">〜</span>${欄('time', d.終, 'id="wk-e" style="width:90px"')}</div>
       <div class="form-row"><span class="hint">${s.固定 ? 'この作業は時刻を固定してある。' : 'いまは自動で割り振った時刻。'}「この時刻に固定する」を押すと、この時間は必ずこの作業になり、残りの時間だけを自動で割り振り直す。カレンダーで作業の予定を動かしても、同じように固定になる</span></div></div>`;
-    foot = `${s.固定 ? '<button class="btn btn-secondary" data-act="wkUnpin">固定を外す</button>' : ''}<button class="btn btn-primary btn-wide" data-act="wkPin">この時刻に固定する</button>`;
+    foot = `${s.固定 ? '<button class="btn btn-secondary" data-act="wkUnpin">固定を解除</button>' : ''}<button class="btn btn-primary btn-wide" data-act="wkPin">この時刻に固定する</button>`;
   }
   if (s.kind === 'phone') {
     head = `<button class="sheet-back" data-act="closeSheet">閉じる</button><div class="sheet-title">iPhone の設定</div><span style="width:50px"></span>`;
     body = `<div class="hint" style="margin-bottom:10px">Mac の EDITFLOW が、非公開のリポジトリにデータを置く。そこを読むための鍵（fine-grained token）を一度だけ貼る。鍵はこの iPhone にだけ覚え、画面には出さない。作り方は「iPhoneの入れ方」</div>
       <div class="panel-card"><div class="form-row"><span class="form-label">リポジトリ</span><input class="in" style="flex:1" id="ph-repo" value="${esc(GH.repo())}" autocapitalize="off" autocorrect="off"></div>
       <div class="form-row"><span class="form-label">トークン</span><input class="in" style="flex:1" id="ph-token" type="password" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="${GH.token() ? '覚えてある（貼り直すときだけ入れる）' : 'github_pat_… を貼る'}" autocomplete="off" autocapitalize="off"></div></div>
-      ${GH.token() ? '<button class="btn btn-danger btn-small" style="margin-top:10px" data-act="phoneForget">この iPhone のトークンを消す</button>' : ''}
+      ${GH.token() ? '<button class="btn btn-danger btn-small" style="margin-top:10px" data-act="phoneForget">この iPhone のトークンを削除</button>' : ''}
       ${(() => { const st = 通知の状態(); if (!st) return ''; return `<div class="sec" style="margin-top:16px"><div class="sec-label">通知</div><div class="panel-card"><div class="form-row" style="flex-wrap:wrap">
         ${st.済 ? '<span class="tag green">この iPhone で受け取っている</span><button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>'
           : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 ? '' : 'disabled'}>この iPhone で通知を受け取る</button>`}
-        <div class="hint" style="width:100%">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の締め を知らせる。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div></div></div>`; })()}`;
-    foot = `<button class="btn btn-primary btn-wide" data-act="phoneSave">覚えて読み直す</button>`;
+        <div class="hint" style="width:100%">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の振り返り を知らせる。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div></div></div>`; })()}`;
+    foot = `<button class="btn btn-primary btn-wide" data-act="phoneSave">保存して再読み込み</button>`;
   }
   $('#sheetHeader').innerHTML = head; $('#sheetContent').innerHTML = body; $('#sheetFooter').innerHTML = foot;
   $('#sheetFooter').style.display = foot ? '' : 'none';
@@ -1664,6 +1677,10 @@ function 案件を作る() {
   if (d.撮影の場所) 新.撮影の場所 = d.撮影の場所;
   if (d.撮影の移動 != null) 新.撮影の移動 = d.撮影の移動;
   if (d.工程.length) 新.工程 = d.工程.map(x => ({ 記号: x.記号, 名前: x.名前, 英名: x.英名, 見込み: x.見込み, 済: false }));
+  if (d.撮影日 && !(新.工程 || []).some(x => x.記号 === 'SH')) {
+    const h = d.撮影始 && d.撮影終 ? ((t => t[0] * 60 + t[1])(d.撮影終.split(':').map(Number)) - (t => t[0] * 60 + t[1])(d.撮影始.split(':').map(Number))) / 60 : 0;
+    新.工程 = [{ 記号: 'SH', 名前: '撮影', 英名: 'Shooting', 見込み: Math.max(0, h), 済: false }].concat(新.工程 || []);
+  }
   直す('編集案件.json', [{ 道: ['案件'], 足す: 新 }], `${名} を作った`);
   ui.sel = '案件:' + 名; シートを閉じる(); ui.view = 'projects'; 描く();
 }
@@ -1697,13 +1714,13 @@ function 設定を保存() {
 function 命令の一覧() {
   const L = [];
   for (const [v, g] of Object.entries(画面)) L.push({ g: '画面', t: `${g.jp}（${g.en}）を開く`, f: () => 画面へ(v) });
-  L.push({ g: '計算', t: '計算し直す', k: '⌘R', f: () => 計算(false) }, { g: '計算', t: 'カレンダーとリマインダーへ反映', k: '⇧⌘R', f: () => 計算(true) },
+  L.push({ g: '計算', t: '再計算', k: '⌘R', f: () => 計算(false) }, { g: '計算', t: 'カレンダーとリマインダーへ反映', k: '⇧⌘R', f: () => 計算(true) },
     { g: '案件', t: '新しい案件を作る', k: '⌘N', f: 新しい案件を開く }, { g: '編集', t: '取り消す', k: '⌘Z', f: 取り消す });
   for (const u of 単位().filter(u => !済か(u))) {
     L.push({ g: '開く', t: `${u.名前} を開く`, f: () => { ui.sel = u.id; 画面へ('projects'); } });
     const i = 工程(u).findIndex(s => !s.済);
     if (i >= 0) L.push({ g: '済みに', t: `${u.名前} ▸ ${工程(u)[i].名前} を済みにする`, f: () => 工程を切り替える(u, i) });
-    L.push({ g: '明日へ', t: `${u.名前} を明日へ送る`, f: () => 明日へ送る(u) });
+    L.push({ g: '明日へ', t: `${u.名前} を明日に回す`, f: () => 明日に回す(u) });
     if (!u.元.最優先) L.push({ g: '最優先', t: `${u.名前} を最優先にする`, f: () => 最優先にする(u) });
   }
   return L;
@@ -1768,7 +1785,7 @@ document.addEventListener('click', e => {
     case 'status': 状態を変える(u, d.s); break;
     case 'priority': 最優先にする(u, true); break;
     case 'unpriority': 最優先にする(u, false); break;
-    case 'tomorrow': 明日へ送る(u); break;
+    case 'tomorrow': 明日に回す(u); break;
     case 'clearStart': 着手できる日を置く(u, null); break;
     case 'est': 見込みを足す(u, i, Number(d.d)); break;
     case 'act': 実績を足す(u, i, Number(d.d)); break;
@@ -1783,8 +1800,8 @@ document.addEventListener('click', e => {
     case 'makeRound': 回を作る(u); break;
     case 'deleteProject': if (confirm(`「${u.名前}」を一覧から消しますか？\n（EDITFLOW設定.json の 消した案件 に残ります。⌘Z で戻せます）`)) 案件を消す(u); break;
     case 'moveOpen': ui.動かす[d.id] = !ui.動かす[d.id]; 描く(); break;
-    case 'moveDo': { const dd = document.getElementById('mv-d-' + d.id).value, tt = document.getElementById('mv-t-' + d.id).value; ui.動かす[d.id] = false; 締切を動かす(u, d.k, dd, tt); break; }
-    case 'moveDl': { const dd = document.getElementById('dl-d-' + d.id).value, tt = document.getElementById('dl-t-' + d.id).value; 締切を動かす(u, d.k, dd, tt); break; }
+    case 'moveDo': { const dd = document.getElementById('mv-d-' + d.id).value, tt = document.getElementById('mv-t-' + d.id).value; ui.動かす[d.id] = false; 締切を変更(u, d.k, dd, tt); break; }
+    case 'moveDl': { const dd = document.getElementById('dl-d-' + d.id).value, tt = document.getElementById('dl-t-' + d.id).value; 締切を変更(u, d.k, dd, tt); break; }
     case 'fcpToActual': { const uu = 単位を探す(document.getElementById('fcp-to').value); const hh = Number(d.h) || 0; if (!uu || !hh) break;
       const i = 計る工程の番号(uu); if (i >= 0) 実績を足す(uu, i, hh);
       else { const 前 = Number(((設定().日々の実績 || {})[今日()] || {})[uu.名前]) || 0; 直す('EDITFLOW設定.json', [{ 道: ['日々の実績', 今日(), uu.名前], 値: Math.round((前 + hh) * 10) / 10, 作る: true }], `${uu.名前}：${時間(hh)} を記録した`, { undo: false, 計算: false }); }
@@ -1802,7 +1819,7 @@ document.addEventListener('click', e => {
     case 'openFolder': if (u && u.元.フォルダ) 頼む('開く', { url: 'file://' + encodeURI(S.置き場.replace(/\/撮影編集\/?$/, '') + '/' + u.元.フォルダ) }); break;
     case 'delivered': if (u) 渡した(u, d.k); break;
     case 'undeliver': if (u) 直す('編集案件.json', [{ 道: ['案件', { 名前: u.名前 }, '締切', { 種類: d.k }, '済'], 消す: true }].concat(u.元.状態 === '納品済' ? [{ 道: u.道.concat(['状態']), 値: '作業中' }] : []), `${u.名前}：${d.k} を「渡していない」に戻した`); break;
-    case 'allowOT': { const q = (P().問題 || []).find(q => q.id === d.id); if (q) 時間外を認める(q); break; }
+    case 'allowOT': { const q = (P().問題 || []).find(q => q.id === d.id); if (q) 時間外を許可(q); break; }
     case 'calc': 計算(false); break;
     case 'reflect': 計算(true); break;
     case 'palette': 命令窓を開く(); break;
@@ -1813,6 +1830,7 @@ document.addEventListener('click', e => {
     case 'settings': if (u) 設定を開く(u); break;
     case 'presetSheet': シートを開く({ kind: 'preset', u: d.u }); break;
     case 'presetApply': { const p = 設定().プリセット.find(p => p.id === d.p); if (u && p) { 工程を置く(u, clone(p.工程).map(x => Object.assign(x, { 済: false })), `${u.名前}：プリセット「${p.名前}」の工程を入れた`); シートを閉じる(); } break; }
+    case 'shootDone': 撮影完了(u); break;
     case 'presetNew': プリセットを開く(null); break;
     case 'presetEdit': プリセットを開く(i); break;
     case 'presetSave': プリセットを保存(); break;
@@ -1943,15 +1961,15 @@ document.addEventListener('contextmenu', e => {
       { t: '上へ', f: () => 工程を動かす(u, i, -1), off: i ? '' : 'いちばん上' }, { t: '下へ', f: () => 工程を動かす(u, i, 1), off: i < 工程(u).length - 1 ? '' : 'いちばん下' },
       '-', { t: 'この工程を消す', f: () => 工程を消す(u, i) }];
   } else {
-    品 = [{ t: '次の工程を済みにする', k: 'スペース', f: () => 次の工程を済み(u), off: 次 >= 0 ? '' : '済んでいない工程が無い' },
-      { t: '明日へ送る', k: '⌘]', f: () => 明日へ送る(u) },
+    品 = [{ t: '次の工程を完了にするする', k: 'スペース', f: () => 次の工程を済み(u), off: 次 >= 0 ? '' : '未完了の工程が無い' },
+      { t: '明日に回す', k: '⌘]', f: () => 明日に回す(u) },
       u.元.最優先 ? { t: '最優先を外す', f: () => 最優先にする(u, false) } : { t: 'この案件を最優先にする', k: '⇧⌘P', f: () => 最優先にする(u, true) }, '-',
       ...状態の名.map(s => ({ t: (状態(u) === s ? '✓ ' : '　') + '状態：' + s, f: () => 状態を変える(u, s), off: 状態(u) === s ? 'いまの状態' : '' })), '-',
       { t: '工程を足す…', k: '⌘T', f: () => シートを開く({ kind: 'addstep', u: u.id, mode: 'lib' }) },
       { t: 'プリセットから工程を入れる…', f: () => シートを開く({ kind: 'preset', u: u.id }) },
       { t: '版を足す', f: () => 版を足す(u) },
       { t: '案件の設定…', k: '⌘E', f: () => 設定を開く(u) }, '-',
-      { t: 'この案件を消す', f: () => { if (confirm(`「${u.名前}」を一覧から消しますか？（⌘Z で戻せます）`)) 案件を消す(u); }, off: u.種 === '案件' ? '' : '定例の回はここでは消せない' }];
+      { t: 'この案件を削除', f: () => { if (confirm(`「${u.名前}」を一覧から消しますか？（⌘Z で戻せます）`)) 案件を消す(u); }, off: u.種 === '案件' ? '' : '定例の回はここでは消せない' }];
   }
   描く(); 文脈を開く(e.clientX, e.clientY, 品);
 });
@@ -2004,7 +2022,7 @@ EF.命令 = 名 => {
   const 表 = {
     設定: () => シートを開く({ kind: 'prefs' }), 新しい案件: 新しい案件を開く, 命令窓: 命令窓を開く, 読み直す: () => 読み直す(true),
     取り消す, やり直す, 次の工程を済み: () => 次の工程を済み(u), 工程を足す: () => u && シートを開く({ kind: 'addstep', u: u.id, mode: 'lib' }),
-    明日へ送る: () => 明日へ送る(u), 最優先: () => 最優先にする(u, true), 案件の設定: () => u && 設定を開く(u),
+    明日に回す: () => 明日に回す(u), 最優先: () => 最優先にする(u, true), 案件の設定: () => u && 設定を開く(u),
     前の案件: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' })), 次の案件: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' })),
     計算し直す: () => 計算(false), 反映: () => 計算(true), 詳細の欄: () => { ui.詳細 = !ui.詳細; 描く(); },
     小窓: () => { 直す('EDITFLOW設定.json', [{ 道: ['メニューバーに出す'], 値: 設定().メニューバーに出す === false }], 'メニューバーの小窓を切り替えた', { 計算: false }); 小窓を送る(); }
@@ -2065,7 +2083,7 @@ EF.通しで試す = async () => {
     await 読み直す(false);
     報(工程(単位を探す(u.id))[0].実績 === 1.5 && 残() === 2.5, `実績 1.5h を入れる → ファイルに残り、残りの計算は変わらない（${残()}）`);
     const 明 = 足す日(今日(), 9);
-    締切を動かす(単位を探す(u.id), u.締切[0].種類, 明, '');
+    締切を変更(単位を探す(u.id), u.締切[0].種類, 明, '');
     await 待つ();
     const k = A().案件.find(a => a.名前 === u.名前).締切[0];
     報(k.日付 === 明 && k.動かした === true && (進行の締切(id) || {}).日付 === 明, `締切を ${明} に動かす → 編集案件.json に 動かした が付き、進行.json の締切も ${(進行の締切(id) || {}).日付}`);
