@@ -56,8 +56,53 @@ const GH = {
     const r = await fetch(this.url(p), { method: 'PUT', headers: Object.assign(this.頭(false), { 'Content-Type': 'application/json' }), body: JSON.stringify({ message: msg, content: b64 }) });
     if (!r.ok) throw new Error('GitHub に書けない（' + r.status + '）');
     return true;
+  },
+  // 既にあるファイルも上書きする（sha を取ってから PUT）
+  async 上書き(p, 字, msg) {
+    let sha = null;
+    const g = await fetch(this.url(p), { headers: this.頭(false), cache: 'no-store' });
+    if (g.ok) sha = (await g.json()).sha;
+    const b64 = btoa(Array.from(new TextEncoder().encode(字), c => String.fromCharCode(c)).join(''));
+    const r = await fetch(this.url(p), { method: 'PUT', headers: Object.assign(this.頭(false), { 'Content-Type': 'application/json' }), body: JSON.stringify(Object.assign({ message: msg, content: b64 }, sha ? { sha } : {})) });
+    if (!r.ok) throw new Error('GitHub に書けない（' + r.status + '）');
+    return true;
   }
 };
+/* ── iPhone の通知（Web Push）。送るのは EDITFLOW-data の GitHub Actions（30分ごと）── */
+function b64uをバイトに(s) { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); }
+function 通知の状態() {
+  if (Mac) return null;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return { 可: false, 字: 'この開き方では通知を受け取れない。ホーム画面に追加した EDITFLOW から開く' };
+  if (Notification.permission === 'denied') return { 可: false, 字: '通知が切られている。設定アプリ › 通知 › EDITFLOW で許可する' };
+  return { 可: true, 済: 端末.get('EF_通知') === '1' && Notification.permission === 'granted' };
+}
+async function 通知を受け取る() {
+  try {
+    const st = 通知の状態(); if (!st || !st.可) return 誤りを出す(st ? st.字 : 'Mac では使わない');
+    const 公 = (設定().通知 || {}).公開鍵;
+    if (!公) return 誤りを出す('通知の鍵がまだ届いていない。Mac で EDITFLOW を開いて同期すると届く');
+    const 許 = await Notification.requestPermission();
+    if (許 !== 'granted') return 誤りを出す('通知が許可されなかった。設定アプリ › 通知 › EDITFLOW で許可する');
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uをバイトに(公) });
+    let id = 端末.get('EF_端末'); if (!id) { id = 'iphone-' + Math.random().toString(36).slice(2, 10); 端末.set('EF_端末', id); }
+    await GH.上書き('通知/購読/' + id + '.json', JSON.stringify(Object.assign(sub.toJSON(), { 日: new Date().toISOString() }), null, 2), 'iPhone：通知を受け取る');
+    端末.set('EF_通知', '1');
+    知らせを出す('この iPhone で通知を受け取る。30分ごとに確かめて、知らせることがあれば届く');
+    if (ui.sheet) シートを描く();
+  } catch (e) { 誤りを出す('通知を受け取れるようにできなかった：' + e.message); }
+}
+async function 通知をやめる() {
+  try {
+    const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe();
+    端末.set('EF_通知', null); 知らせを出す('この iPhone の通知をやめた（GitHub の購読は次の送信で外れる）'); if (ui.sheet) シートを描く();
+  } catch (e) { 誤りを出す('やめられなかった：' + e.message); }
+}
+function バッジを合わせる() {
+  if (Mac || !navigator.setAppBadge || !('Notification' in window) || Notification.permission !== 'granted') return;
+  const p = P(); const n = p ? (p.問題 || []).length + (p.過ぎた || []).length : 0;
+  (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => { });
+}
 async function iPhoneに頼む(種, 中) {
   if (種 === '読む') {
     if (!試し && !GH.token()) return { ファイル: {}, 撮影: [], 変更: [], トークンなし: true, 置き場: 'GitHub ' + GH.repo() };
@@ -273,7 +318,14 @@ async function 読み直す(撮影も) {
   描く();
   小窓を送る();
   新しい問題を知らせる();
+  バッジを合わせる();
+  if (!S.ハッシュを見た) { S.ハッシュを見た = true; ハッシュで開く(); }
 }
+function ハッシュで開く() {
+  const m = (location.hash || '').match(/[#&]k=([^&]+)/);
+  if (m && S.読めた) { EF.開く('締切', decodeURIComponent(m[1])); history.replaceState(null, '', location.pathname); }
+}
+window.addEventListener('hashchange', ハッシュで開く);
 /* Mac の通知：新しく出た「間に合わない」「過ぎた締切」だけを1回ずつ。最初の1回は知らせずに覚える */
 function 新しい問題を知らせる() {
   if (!Mac || S.画面外) return;
@@ -1285,7 +1337,11 @@ function シートを描く() {
     body = `<div class="hint" style="margin-bottom:10px">Mac の EDITFLOW が、非公開のリポジトリにデータを置く。そこを読むための鍵（fine-grained token）を一度だけ貼る。鍵はこの iPhone にだけ覚え、画面には出さない。作り方は「iPhoneの入れ方」</div>
       <div class="panel-card"><div class="form-row"><span class="form-label">リポジトリ</span><input class="in" style="flex:1" id="ph-repo" value="${esc(GH.repo())}" autocapitalize="off" autocorrect="off"></div>
       <div class="form-row"><span class="form-label">トークン</span><input class="in" style="flex:1" id="ph-token" type="password" placeholder="${GH.token() ? '覚えてある（貼り直すときだけ入れる）' : 'github_pat_… を貼る'}" autocomplete="off" autocapitalize="off"></div></div>
-      ${GH.token() ? '<button class="btn btn-danger btn-small" style="margin-top:10px" data-act="phoneForget">この iPhone のトークンを消す</button>' : ''}`;
+      ${GH.token() ? '<button class="btn btn-danger btn-small" style="margin-top:10px" data-act="phoneForget">この iPhone のトークンを消す</button>' : ''}
+      ${(() => { const st = 通知の状態(); if (!st) return ''; return `<div class="sec" style="margin-top:16px"><div class="sec-label">通知</div><div class="panel-card"><div class="form-row" style="flex-wrap:wrap">
+        ${st.済 ? '<span class="tag green">この iPhone で受け取っている</span><button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>'
+          : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 && GH.token() ? '' : 'disabled'}>この iPhone で通知を受け取る</button>`}
+        <div class="hint" style="width:100%">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の締め を知らせる。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div></div></div>`; })()}`;
     foot = `<button class="btn btn-primary btn-wide" data-act="phoneSave">覚えて読み直す</button>`;
   }
   $('#sheetHeader').innerHTML = head; $('#sheetContent').innerHTML = body; $('#sheetFooter').innerHTML = foot;
@@ -1403,6 +1459,8 @@ document.addEventListener('click', e => {
     case 'closeDetail': ui.詳細を開く = false; 描く(); break;
     case 'prefs': シートを開く({ kind: 'prefs' }); break;
     case 'phonePrefs': シートを開く({ kind: 'phone' }); break;
+    case 'pushOn': 通知を受け取る(); break;
+    case 'pushOff': 通知をやめる(); break;
     case 'theme': 見た目を選ぶ(d.t); break;
     case 'phoneSave': { const t = $('#ph-token').value.trim(), r = $('#ph-repo').value.trim(); if (r) 端末.set('EF_リポジトリ', r); if (t) 端末.set('EF_トークン', t); シートを閉じる(); 知らせを出す('この iPhone に覚えた。読み直す'); 読み直す(true); break; }
     case 'phoneForget': 端末.set('EF_トークン', null); 知らせを出す('トークンを消した'); シートを描く(); break;

@@ -694,3 +694,15 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
 @keyframes rec{50%{opacity:.25}}
 
 .nowcell .now-btn{margin-top:8px}
+
+/* iPhone の幅：間に合わない欄・過ぎた締切の案件名を切らずに折り返す、締切を動かす欄を広く（2026-10-13） */
+@media (max-width:760px){
+  .issue-head{flex-wrap:wrap}
+  .issue-title{flex:1 1 calc(100% - 24px);white-space:normal;overflow:visible;line-height:1.35}
+  .move-box{flex-wrap:wrap}
+  .move-box .hint{flex-basis:100%}
+  .move-box input{flex:1 1 140px;width:auto!important;min-width:0}
+  .move-box .btn{flex:1 1 auto}
+  .stale{font-size:12px}
+  .timer-bar .btn:first-of-type{margin-left:0}
+}
