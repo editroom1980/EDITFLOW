@@ -724,3 +724,5 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
 .tl-item.editable{cursor:pointer}.tl-item.editable:hover{filter:brightness(1.15);outline:1px solid rgba(112,107,255,.6)}
 .tl-head .tl-add{margin-left:auto;align-self:center}
 .tl-item.k-作業 .t b,.tl-item .n{word-break:break-all}
+.tl-note{font-size:11px;color:var(--tx-mid);margin:-2px 0 6px;padding-left:2px}
+.tl-mark{pointer-events:none}
