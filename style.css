@@ -674,3 +674,23 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15)}
   body.書き出し .main{position:relative;top:auto;bottom:auto;padding-top:calc(62px);padding-bottom:110px;overflow:visible}
   body.書き出し .detail.open{position:absolute;min-height:100%}
 }
+
+/* 計算が古いときの帯と、過ぎた締切の札（2026-10-13） */
+.stale{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;border-radius:10px;font-size:12.5px;border:1px solid}
+.stale.orange{background:rgba(255,146,16,.12);border-color:rgba(255,146,16,.45);color:#ffb35c}
+.stale.red{background:rgba(255,64,64,.12);border-color:rgba(255,64,64,.5);color:#ff7a7a}
+html[data-theme="light"] .stale.orange{color:#9a5200}
+html[data-theme="light"] .stale.red{color:#b11d1d}
+.stale span{color:inherit;opacity:.85}
+.stale .btn{margin-left:auto}
+.issue.past{border-style:dashed}
+
+/* 計測中の帯（2026-10-13） */
+.timer-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:9px 14px;border-radius:10px;font-size:12.5px;
+  background:rgba(74,120,212,.14);border:1px solid rgba(74,120,212,.5)}
+.timer-bar .num{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
+.timer-bar .btn:first-of-type{margin-left:auto}
+.timer-bar .rec{width:9px;height:9px;border-radius:50%;background:#ff4040;animation:rec 1.2s infinite}
+@keyframes rec{50%{opacity:.25}}
+
+.nowcell .now-btn{margin-top:8px}
