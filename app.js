@@ -69,6 +69,8 @@ const GH = {
   }
 };
 /* ── iPhone の通知（Web Push）。送るのは EDITFLOW-data の GitHub Actions（30分ごと）── */
+// 通知の公開用の鍵（公開してよい鍵。秘密の鍵は EDITFLOW-data の 通知/鍵.json にだけある）。データが届く前でも受け取れるように、ここにも持つ
+const 通知の公開鍵 = 'BFj8RITUB9Sxc8nYdwlwzS_jQrSf9PPHAJhI3JOvrt3f0eSU2Nj-_zIXdHUbMUDl8PJv4LdPAkfYjzEgKqZeKV8';
 function b64uをバイトに(s) { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); }
 function 通知の状態() {
   if (Mac) return null;
@@ -79,17 +81,22 @@ function 通知の状態() {
 async function 通知を受け取る() {
   try {
     const st = 通知の状態(); if (!st || !st.可) return 誤りを出す(st ? st.字 : 'Mac では使わない');
-    const 公 = (設定().通知 || {}).公開鍵;
-    if (!公) return 誤りを出す('通知の鍵がまだ届いていない。Mac で EDITFLOW を開いて同期すると届く');
+    // トークンの欄に貼っただけで、まだ「覚えて読み直す」を押していなければ、先に覚える
+    const 欄 = document.getElementById('ph-token');
+    if (欄 && 欄.value.trim()) 端末.set('EF_トークン', 欄.value.trim());
+    if (!GH.token()) return 誤りを出す('先にトークンを貼る');
+    const 公 = (設定().通知 || {}).公開鍵 || 通知の公開鍵;
     const 許 = await Notification.requestPermission();
     if (許 !== 'granted') return 誤りを出す('通知が許可されなかった。設定アプリ › 通知 › EDITFLOW で許可する');
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uをバイトに(公) });
+    知らせを出す('通知を受け取れるようにしている…');
     let id = 端末.get('EF_端末'); if (!id) { id = 'iphone-' + Math.random().toString(36).slice(2, 10); 端末.set('EF_端末', id); }
     await GH.上書き('通知/購読/' + id + '.json', JSON.stringify(Object.assign(sub.toJSON(), { 日: new Date().toISOString() }), null, 2), 'iPhone：通知を受け取る');
     端末.set('EF_通知', '1');
     知らせを出す('この iPhone で通知を受け取る。30分ごとに確かめて、知らせることがあれば届く');
     if (ui.sheet) シートを描く();
+    if (!A()) 読み直す(true);
   } catch (e) { 誤りを出す('通知を受け取れるようにできなかった：' + e.message); }
 }
 async function 通知をやめる() {
@@ -1338,7 +1345,7 @@ function シートを描く() {
         ${(() => { const st = 通知の状態(); if (!st) return ''; return `<div class="sec"><div class="sec-label">通知</div><div class="panel-card"><div class="list-row" style="flex-wrap:wrap">
           <div class="grow"><div class="t1">${st.済 ? 'この iPhone で受け取っている' : 'この iPhone で通知を受け取る'}</div>
           <div class="t2">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の締め。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div>
-          ${st.済 ? '<button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>' : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 && GH.token() ? '' : 'disabled'}>受け取る</button>`}</div></div></div>`; })()}` : ''}
+          ${st.済 ? '<button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>' : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 ? '' : 'disabled'}>受け取る</button>`}</div></div></div>`; })()}` : ''}
       ${Mac ? `<div class="sec"><div class="sec-label">表示</div><div class="panel-card"><div class="form-row"><span class="form-label">メニューバー</span><button class="btn btn-small ${st.メニューバーに出す !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefMenubar">${st.メニューバーに出す !== false ? '✓ 小窓を出す' : '小窓を出す'}</button><span class="hint">今の作業・残り時間・次の予定の3行</span></div>
         <div class="form-row"><span class="form-label">自動の反映</span><button class="btn btn-small ${st.自動で反映 !== false ? 'btn-primary' : 'btn-secondary'}" data-act="prefAuto">${st.自動で反映 !== false ? '✓ 自動でカレンダーへ反映する' : '自動でカレンダーへ反映する'}</button><span class="hint">毎朝5:30と、直して3分後。窓を閉じても裏で続ける（止めるのはメニューバーの「終わる」）</span></div></div></div>` : ''}
       <div class="sec"><div class="sec-label">プリセット</div><div class="panel-card">${(st.プリセット || []).map((p, i) => `<div class="list-row"><div class="grow"><div class="t1">${esc(p.名前)}</div><div class="t2">${esc(p.工程.map(x => x.記号).join(' ・ '))}</div></div><button class="icon-btn del" data-act="presetDel" data-i="${i}" title="このプリセットを消す（⌘Z で戻せる）">✕</button></div>`).join('')}</div></div>
@@ -1353,7 +1360,7 @@ function シートを描く() {
       ${GH.token() ? '<button class="btn btn-danger btn-small" style="margin-top:10px" data-act="phoneForget">この iPhone のトークンを消す</button>' : ''}
       ${(() => { const st = 通知の状態(); if (!st) return ''; return `<div class="sec" style="margin-top:16px"><div class="sec-label">通知</div><div class="panel-card"><div class="form-row" style="flex-wrap:wrap">
         ${st.済 ? '<span class="tag green">この iPhone で受け取っている</span><button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>'
-          : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 && GH.token() ? '' : 'disabled'}>この iPhone で通知を受け取る</button>`}
+          : `<button class="btn btn-primary btn-small" data-act="pushOn" ${st.可 ? '' : 'disabled'}>この iPhone で通知を受け取る</button>`}
         <div class="hint" style="width:100%">間に合わない・締切を過ぎた・Mac が止まっている・朝の段取り・夜の締め を知らせる。30分ごとに確かめて送る（Mac が止まっていても届く）${st.可 ? '' : '<br>' + esc(st.字)}${GH.token() ? '' : '<br>先にトークンを貼る'}</div></div></div></div>`; })()}`;
     foot = `<button class="btn btn-primary btn-wide" data-act="phoneSave">覚えて読み直す</button>`;
   }
