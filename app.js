@@ -78,13 +78,40 @@ function 通知の状態() {
   if (Notification.permission === 'denied') return { 可: false, 字: '通知が切られている。設定アプリ › 通知 › EDITFLOW で許可する' };
   return { 可: true, 済: 端末.get('EF_通知') === '1' && Notification.permission === 'granted' };
 }
+/* トークンを貼ったら、形を確かめ、その場で GitHub に通るか試してから覚える（間違いを黙って覚えない）*/
+async function トークンを確かめる(t, repo) {
+  if (!/^github_pat_[A-Za-z0-9_]{60,}$/.test(t)) return 'トークンの形が違う。github_pat_ で始まる長い文字（90字ほど）を、途中で切らずに貼る';
+  try {
+    const r = await fetch('https://api.github.com/repos/' + repo, { headers: { Authorization: 'Bearer ' + t, Accept: 'application/vnd.github+json' }, cache: 'no-store' });
+    if (r.status === 401) return 'GitHub がこのトークンを受け付けない（401）。違う文字か、作り直す前の古いトークン。GitHub で作り直して貼る';
+    if (r.status === 404) return 'このトークンでは ' + repo + ' が見えない（404）。トークンの Repository access で EDITFLOW-data を選ぶ';
+    if (!r.ok) return 'GitHub が ' + r.status + ' を返した';
+    return null;
+  } catch (e) { return null; }   // 電波が無いときは確かめずに覚える
+}
+async function トークンを覚える() {
+  const 欄 = $('#ph-token'), t = 欄 ? 欄.value.replace(/\s+/g, '') : '', r = ($('#ph-repo').value || '').trim() || GH.repo();
+  if (r) 端末.set('EF_リポジトリ', r);
+  if (t) {
+    知らせを出す('トークンを確かめている…');
+    const 誤 = await トークンを確かめる(t, r);
+    if (誤) return 誤りを出す(誤);
+    端末.set('EF_トークン', t);
+  }
+  シートを閉じる(); 知らせを出す('この iPhone に覚えた。読み直す'); 読み直す(true);
+}
 async function 通知を受け取る() {
   try {
     const st = 通知の状態(); if (!st || !st.可) return 誤りを出す(st ? st.字 : 'Mac では使わない');
     // トークンの欄に貼っただけで、まだ「覚えて読み直す」を押していなければ、先に覚える
     const 欄 = document.getElementById('ph-token');
-    if (欄 && 欄.value.trim()) 端末.set('EF_トークン', 欄.value.trim());
+    if (欄 && 欄.value.trim()) {
+      const t = 欄.value.replace(/\s+/g, ''), 誤 = await トークンを確かめる(t, GH.repo());
+      if (誤) return 誤りを出す(誤);
+      端末.set('EF_トークン', t);
+    }
     if (!GH.token()) return 誤りを出す('先にトークンを貼る');
+    { const 誤 = await トークンを確かめる(GH.token(), GH.repo()); if (誤) return 誤りを出す(誤); }
     const 公 = (設定().通知 || {}).公開鍵 || 通知の公開鍵;
     const 許 = await Notification.requestPermission();
     if (許 !== 'granted') return 誤りを出す('通知が許可されなかった。設定アプリ › 通知 › EDITFLOW で許可する');
@@ -1356,7 +1383,7 @@ function シートを描く() {
     head = `<button class="sheet-back" data-act="closeSheet">閉じる</button><div class="sheet-title">iPhone の設定</div><span style="width:50px"></span>`;
     body = `<div class="hint" style="margin-bottom:10px">Mac の EDITFLOW が、非公開のリポジトリにデータを置く。そこを読むための鍵（fine-grained token）を一度だけ貼る。鍵はこの iPhone にだけ覚え、画面には出さない。作り方は「iPhoneの入れ方」</div>
       <div class="panel-card"><div class="form-row"><span class="form-label">リポジトリ</span><input class="in" style="flex:1" id="ph-repo" value="${esc(GH.repo())}" autocapitalize="off" autocorrect="off"></div>
-      <div class="form-row"><span class="form-label">トークン</span><input class="in" style="flex:1" id="ph-token" type="password" placeholder="${GH.token() ? '覚えてある（貼り直すときだけ入れる）' : 'github_pat_… を貼る'}" autocomplete="off" autocapitalize="off"></div></div>
+      <div class="form-row"><span class="form-label">トークン</span><input class="in" style="flex:1" id="ph-token" type="password" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="${GH.token() ? '覚えてある（貼り直すときだけ入れる）' : 'github_pat_… を貼る'}" autocomplete="off" autocapitalize="off"></div></div>
       ${GH.token() ? '<button class="btn btn-danger btn-small" style="margin-top:10px" data-act="phoneForget">この iPhone のトークンを消す</button>' : ''}
       ${(() => { const st = 通知の状態(); if (!st) return ''; return `<div class="sec" style="margin-top:16px"><div class="sec-label">通知</div><div class="panel-card"><div class="form-row" style="flex-wrap:wrap">
         ${st.済 ? '<span class="tag green">この iPhone で受け取っている</span><button class="btn btn-secondary btn-small" data-act="pushOff">通知をやめる</button>'
@@ -1482,7 +1509,7 @@ document.addEventListener('click', e => {
     case 'pushOn': 通知を受け取る(); break;
     case 'pushOff': 通知をやめる(); break;
     case 'theme': 見た目を選ぶ(d.t); break;
-    case 'phoneSave': { const t = $('#ph-token').value.trim(), r = $('#ph-repo').value.trim(); if (r) 端末.set('EF_リポジトリ', r); if (t) 端末.set('EF_トークン', t); シートを閉じる(); 知らせを出す('この iPhone に覚えた。読み直す'); 読み直す(true); break; }
+    case 'phoneSave': トークンを覚える(); break;
     case 'phoneForget': 端末.set('EF_トークン', null); 知らせを出す('トークンを消した'); シートを描く(); break;
     case 'phoneReload': 読み直す(true); break;
     case 'toggleStep': if (u) { ui.sel = u.id; 工程を切り替える(u, i); } break;
