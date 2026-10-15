@@ -550,8 +550,34 @@ function 次の工程を済み(u) {
 }
 function 状態を変える(u, s) {
   if (u.種 === '回を作る') return;
+  if (s === '確認待ち' && u.種 === '案件') return 確認待ちを開く(u);
   const ops = [{ 道: u.道.concat(['状態']), 値: s }];
   直す('編集案件.json', ops, `${u.名前}：状態を「${s}」にした`);
+}
+/* 確認待ち：提出した版（とりあえず／ほぼ完成）と、戻りが来たあとの残りの見込みを入れて待機にする */
+function 確認待ちを開く(u) {
+  const 残工 = 工程(u).filter(x => !x.済 && 記号(x) !== 'SH').reduce((a, x) => a + (Number(x.見込み) || 0), 0);
+  const 未 = u.締切.filter(k => !k.済);
+  const 前 = u.元.確認待ち || {};
+  ui.下書き = { 版: 前.版 || 'とりあえず', 時間: 前.追加見込み ?? (残工 || 3), 残工, 戻り: u.元.着手できる日 && u.元.着手できる日 > 今日() ? u.元.着手できる日 : '',
+    提出: 未.length >= 2 ? 未[0].種類 : '' };
+  シートを開く({ kind: 'waiting', u: u.id });
+}
+function 確認待ちにする() {
+  const s = ui.sheet; const u = 単位を探す(s.u); if (!u) return シートを閉じる();
+  const g = id => document.getElementById(id); const d = ui.下書き;
+  const 時 = Number(g('wt-hours').value);
+  if (!(時 >= 0 && 時 <= 200)) return 知らせを出す('見込み時間を 0〜200 で入れてください');
+  const 戻り = g('wt-back').value;
+  const ops = [{ 道: u.道.concat(['状態']), 値: '確認待ち' },
+    { 道: u.道.concat(['確認待ち']), 値: { 送った日: 今日(), 版: d.版, 追加見込み: 時 } }];
+  if (戻り) ops.push({ 道: u.道.concat(['着手できる日']), 値: 戻り });
+  else if (u.元.着手できる日 && u.元.着手できる日 <= 今日()) ops.push({ 道: u.道.concat(['着手できる日']), 消す: true });
+  if (d.提出 && g('wt-done') && g('wt-done').checked) ops.push({ 道: u.道.concat(['締切', { 種類: d.提出 }, '済']), 値: true });
+  const vs = 版(u), n = vs.filter(v => v.名前.startsWith('確認用')).length + 1;
+  ops.push({ 道: u.道.concat(['版']), 足す: { 名前: `確認用 v${n}`, 日付: 今日(), 指摘: [], 種: d.版 === 'ほぼ完成' ? 'ほぼ完成' : 'とりあえず' } });
+  直す('編集案件.json', ops, `${u.名前}：確認待ちにした（戻りのあと あと${時}時間の見込み）。今日の作業はここで切り上げ、ほかの案件を先に組み直す`);
+  シートを閉じる();
 }
 function 明日に回す(u) {
   if (!u) return 誤りを出す('先に案件を選ぶ');
@@ -659,6 +685,8 @@ function 版を足す(u) {
   const 確認 = vs.filter(v => v.名前.startsWith('確認用')).length, 直し = vs.filter(v => v.名前.startsWith('直し')).length;
   const 最後 = vs[vs.length - 1];
   const 名 = !最後 || 最後.名前.startsWith('直し') ? `確認用 v${確認 + 1}` : `直し${直し + 1}`;
+  // 確認用を出すときは、確認待ちの画面で版と残りの見込みを決める（版もそこで足す）
+  if (名.startsWith('確認用') && u.種 === '案件') return 確認待ちを開く(u);
   const 新 = { 名前: 名, 日付: 今日(), 指摘: [] };
   const ops = [{ 道: u.道.concat(['版']), 足す: 新 }];
   // 確認用を出したら、先方の確認待ち。直しの版を作ったら、直し（Frame.io の流れ）
@@ -1020,7 +1048,8 @@ function 詳細を描く() {
   if (回作) return h + `<div class="hint" style="margin-bottom:10px">この月の回は、まだ編集案件.json に書いてない。</div><button class="btn btn-primary btn-wide" data-act="makeRound" data-u="${esc(u.id)}">この月の回を作る</button>`;
   // 状態（工程とは別に持つ）
   h += `<div class="sec"><div class="sec-label">STATUS<span class="jp">状態</span></div><div class="seg">${状態の名.map(s => `<button class="${状態(u) === s ? 'on s-' + s : ''}" data-act="status" data-u="${esc(u.id)}" data-s="${s}">${s}</button>`).join('')}</div>
-    ${(u.元.状態 === '編集中') ? '<div class="why">前の名前「編集中」は「作業中」として出している</div>' : ''}</div>`;
+    ${(u.元.状態 === '編集中') ? '<div class="why">前の名前「編集中」は「作業中」として出している</div>' : ''}
+    ${u.元.確認待ち && ['確認待ち', '直し'].includes(u.元.状態) ? `<div class="why">${mdw(u.元.確認待ち.送った日)} に${u.元.確認待ち.版 === 'ほぼ完成' ? 'ほぼ完成の版' : 'とりあえずの版'}を提出。戻りのあと あと ${h字(u.元.確認待ち.追加見込み)} の見込み${u.元.着手できる日 ? `・戻りの目安 ${mdw(u.元.着手できる日)}` : ''}　<button class="btn btn-secondary btn-small" data-act="wtEdit" data-u="${esc(u.id)}">編集</button></div>` : ''}</div>`;
   // 日付
   h += `<div class="sec"><div class="sec-label">DATES<span class="jp">着手できる日と締切</span></div><div class="panel-card">
     <div class="form-row" style="flex-wrap:wrap"><span class="form-label">着手できる日</span>${欄('date', u.元.着手できる日, `style="width:132px" data-chg="startDate" data-u="${esc(u.id)}"`, 'なし（今日から）')}
@@ -1464,6 +1493,19 @@ function シートを描く() {
       <div class="form-row"><span class="hint">保存するとカレンダーに入り（iPhone のカレンダーにも出る）、すぐ計算し直して作業を組み直す。繰り返しの予定は、この回だけ直す</span></div></div>`;
     foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel" ${iPhone ? 'disabled' : ''}>この予定を削除</button>`}<button class="btn btn-primary btn-wide" data-act="evSave" ${iPhone ? 'disabled' : ''}>${新 ? 'カレンダーに入れる' : '保存'}</button>`;
   }
+  if (s.kind === 'waiting') {
+    const u = 単位を探す(s.u);
+    head = `<button class="sheet-back" data-act="closeSheet">キャンセル</button><div class="sheet-title">WAITING　確認待ちにする</div><span style="width:50px"></span>`;
+    body = `<div class="panel-card">
+      <div class="form-row"><span class="form-label">案件</span><span class="t1">${esc(u ? u.名前 : '')}</span></div>
+      <div class="form-row" style="flex-wrap:wrap"><span class="form-label">送った版</span>
+        ${[['とりあえず', 'とりあえずの版（細部の調整はこれから）'], ['ほぼ完成', 'ほぼ完成の版']].map(([k, t]) => `<button class="btn btn-small ${d.版 === k ? 'btn-primary' : 'btn-secondary'}" data-act="wtKind" data-k="${k}">${d.版 === k ? '✓ ' : ''}${t}</button>`).join('')}</div>
+      <div class="form-row"><span class="form-label">残りの見込み</span><input class="in" type="number" min="0" max="200" step="0.5" style="width:80px" id="wt-hours" value="${d.時間}"><span class="hint">時間。戻りが来たあとに作業する見込み${d.残工 ? `（未完了の工程の合計は ${h字(d.残工)}）` : ''}</span></div>
+      <div class="form-row"><span class="form-label">戻りの目安</span>${欄('date', d.戻り, 'id="wt-back"', '未定（明日以降に入れる）')}<span class="hint">分かれば。この日より前には割り振らない</span></div>
+      ${d.提出 ? `<div class="form-row"><span class="form-label">提出した締切</span><label class="hint"><input type="checkbox" id="wt-done" checked> 「${esc(d.提出)}」を提出済みにする</label></div>` : ''}
+      <div class="form-row"><span class="hint">確認待ちにすると、今日のこの案件の作業はここで切り上げ、ほかの急ぎの編集を先に組み直す。この案件の残りは、ほかを入れたあとの空きに、締切までに入れる（間に合わなければ「間に合わない」に出す）。版の一覧に「確認用 vN」を足す</span></div></div>`;
+    foot = `<button class="btn btn-primary btn-wide" data-act="wtSave">確認待ちにする</button>`;
+  }
   if (s.kind === 'presetEdit') {
     const 新 = s.i == null;
     const total = d.工程.reduce((a, x) => a + (Number(x.見込み) || 0), 0);
@@ -1839,6 +1881,10 @@ document.addEventListener('click', e => {
     case 'presetSheet': シートを開く({ kind: 'preset', u: d.u }); break;
     case 'presetApply': { const p = 設定().プリセット.find(p => p.id === d.p); if (u && p) { 工程を置く(u, clone(p.工程).map(x => Object.assign(x, { 済: false })), `${u.名前}：プリセット「${p.名前}」の工程を入れた`); シートを閉じる(); } break; }
     case 'shootDone': 撮影完了(u); break;
+    case 'wtKind': { const g = document.getElementById('wt-hours'); if (g) ui.下書き.時間 = g.value; const b = document.getElementById('wt-back'); if (b) ui.下書き.戻り = b.value;
+      if (d.k !== ui.下書き.版) ui.下書き.時間 = d.k === 'ほぼ完成' ? 1 : (ui.下書き.残工 || 3); ui.下書き.版 = d.k; シートを描く(); break; }
+    case 'wtSave': 確認待ちにする(); break;
+    case 'wtEdit': 確認待ちを開く(u); break;
     case 'presetNew': プリセットを開く(null); break;
     case 'presetEdit': プリセットを開く(i); break;
     case 'presetSave': プリセットを保存(); break;
@@ -2055,6 +2101,7 @@ EF.書き出しの場面 = 名 => {
   if (v === 'preset') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); プリセットを開く(添 === 'new' ? null : 4); if (添 === 'add') { ui.sheet = { kind: 'addstep', mode: 'lib', 戻り: ui.sheet }; シートを描く(); } return true; }
   if (v === 'newpreset') { ui.view = 'projects'; 描く(); 新しい案件を開く(); プリセットを開く(null); ui.sheet = { kind: 'addstep', mode: 'lib', 戻り: ui.sheet }; 工程を足す_({ 記号: 'SH', 名前: '撮影', 英名: 'Shooting', 見込み: 4, 済: false }); return true; }
   if (v === 'presetpick') { ui.view = 'projects'; 描く(); const u = 単位().find(u => u.種 === '案件'); シートを開く({ kind: 'preset', u: u.id }); return true; }
+  if (v === 'waiting') { ui.view = 'projects'; 描く(); const u = 単位().find(u => u.種 === '案件' && u.名前.startsWith('ル・ポン')) || 単位()[0]; 確認待ちを開く(u); return true; }
   if (v === 'meal') { ui.view = 'today'; 描く(); const d = 足す日(今日(), 1); const x = 今日の段取り(d).find(x => x.食事 === '夜'); if (x) 食事を開く(d, x); return true; }
   if (v === 'today' && 添 && /^\d+$/.test(添)) { ui.日ずらし = Number(添); ui.view = 'today'; 描く(); return true; }
   if (v === 'event' || v === 'work') {

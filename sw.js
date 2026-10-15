@@ -1,5 +1,5 @@
 // EDITFLOW の service worker：画面の部品は先に覚えておき、データ（GitHub の API）は取りに行けなければ最後に読んだものを出す
-const 版 = 'editflow-v2.3-8';
+const 版 = 'editflow-v2.3-9';
 const 部品 = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(版).then(c => c.addAll(部品)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
