@@ -738,3 +738,4 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
 .ag-row.k-区切り{border-color:transparent;color:var(--tx-mid);font-size:11px}
 html[data-theme="light"] .ag-day{background:#fff}
 .lib-group{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--tx-mid);padding:8px 12px 2px}
+.pri-toggle{cursor:pointer;border:0;font:inherit}.pri-toggle.dim{opacity:.55}.pri-toggle:hover{opacity:1;outline:1px solid rgba(112,107,255,.5)}

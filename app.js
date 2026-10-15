@@ -638,8 +638,8 @@ function 計測を止める(記録する = true) {
   const u = 単位を探す(m.案件);
   if (u && m.工程 != null && 工程(u)[m.工程]) return 実績を足す(u, m.工程, 時);
   // 工程が無いときは、その日の実績だけ残す（夜の振り返りに出る）
-  const 今 = 今日(), 前 = Number(((設定().日々の実績 || {})[今] || {})[m.名前]) || 0;
-  直す('EDITFLOW設定.json', [{ 道: ['日々の実績', 今, m.名前], 値: Math.round((前 + 時) * 10) / 10, 作る: true }], `${m.名前}：${時間(時)} を記録した`, { undo: false, 計算: false });
+  const 本日 = 今日(), 前 = Number(((設定().日々の実績 || {})[本日] || {})[m.名前]) || 0;
+  直す('EDITFLOW設定.json', [{ 道: ['日々の実績', 本日, m.名前], 値: Math.round((前 + 時) * 10) / 10, 作る: true }], `${m.名前}：${時間(時)} を記録した`, { undo: false, 計算: false });
 }
 function 計測の帯() {
   const m = 計測中(); if (!m) return '';
@@ -860,7 +860,8 @@ function 問題の札(q) {
     </div>
     <div class="issue-acts">
       <div class="act"><button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}" ${動かす理由 ? 'disabled' : ''} title="${esc(動かす理由 || '締切の日付と時刻を変えて再計算する')}">締切を変更</button>${動かす理由 ? `<span class="why">${esc(動かす理由)}</span>` : ''}</div>
-      <div class="act"><button class="btn btn-secondary btn-small" data-act="priority" data-u="${esc(u ? u.id : '')}" ${最理由 ? 'disabled' : ''} title="${esc(最理由 || '締切の順より先に、この案件から割り振る')}">この案件を最優先にする</button>${最理由 ? `<span class="why">${esc(最理由)}</span>` : ''}</div>
+      <div class="act">${u && u.元.最優先 ? `<button class="btn btn-secondary btn-small" data-act="unpriority" data-u="${esc(u.id)}" title="最優先を外し、締切の順に戻す">最優先を解除</button>`
+        : `<button class="btn btn-secondary btn-small" data-act="priority" data-u="${esc(u ? u.id : '')}" ${!u ? 'disabled' : ''} title="${esc(!u ? 'この締切の案件が見つからない' : '締切の順より先に、この案件から割り振る')}">この案件を最優先にする</button>`}</div>
       <div class="act"><button class="btn ${q.足りない > 0 ? 'btn-secondary' : 'btn-orange'} btn-small" data-act="allowOT" data-id="${esc(q.id)}" ${認理由 ? 'disabled' : ''} title="${esc(認理由 || 'この時間外を予定どおりやると決める。時間が増えたらまた聞く')}">時間外を許可</button>${認理由 ? `<span class="why">${esc(認理由)}</span>` : ''}</div>
       ${u ? `<div class="act"><button class="btn btn-secondary btn-small" data-act="select" data-u="${esc(u.id)}">詳細を見る</button></div>` : ''}
     </div>
@@ -1019,7 +1020,7 @@ function 案件カード(u) {
     <div class="pj-accent ${c}"></div>
     <div class="pj-body">
       <div class="pj-top"><div class="pj-title">${esc(u.名前)}</div>
-        ${u.元.最優先 ? '<span class="tag violet">★ 最優先</span>' : ''}${u.種 === '回' ? '<span class="tag dim">定例</span>' : ''}
+        ${done ? '' : `<button class="tag ${u.元.最優先 ? 'violet' : 'dim'} pri-toggle" data-act="${u.元.最優先 ? 'unpriority' : 'priority'}" data-u="${esc(u.id)}" title="${u.元.最優先 ? '押すと最優先を解除' : '押すと最優先にする（締切の順より先に割り振る）'}">${u.元.最優先 ? '★ 最優先' : '☆ 最優先にする'}</button>`}${u.種 === '回' ? '<span class="tag dim">定例</span>' : ''}
         <span class="tag ${状態(u) === '確認待ち' ? 'violet' : 状態(u) === '直し' ? 'orange' : 状態(u) === '納品済' ? 'green' : ''}">${esc(状態(u) || '—')}</span></div>
       <div class="pj-row">
         <div class="pj-dates"><span class="lbl">開始</span><span class="val">${md(開始日(u))}</span><span class="arrow">→</span>
@@ -2119,6 +2120,145 @@ EF.書き出しの場面 = 名 => {
 };
 EF.書き出しの高さ = () => Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, 狭い() ? 844 : 940);
 EF.試しの結果 = null;
+/* ボタンを実際に押して確かめる（写しのデータで。EDITFLOW_TEST=buttons） */
+EF.ボタンで試す = async () => {
+  const 行 = []; let よい = true;
+  const 報 = (ok, s) => { 行.push((ok ? '○ ' : '× ') + s); if (!ok) よい = false; };
+  const 寝る = ms => new Promise(r => setTimeout(r, ms));
+  const 待つ = async () => { await 寝る(250); for (let i = 0; i < 400; i++) { if (!未確認.length) break; await 寝る(150); } };
+  const 押す = async (sel, 名) => { const b = document.querySelector(sel); if (!b) throw new Error((名 || sel) + ' のボタンが画面に無い'); if (b.disabled) throw new Error((名 || sel) + ' が押せない（disabled）'); b.click(); await 待つ(); };
+  const 入れる = (id, v) => { const e = document.getElementById(id); if (!e) throw new Error('欄 ' + id + ' が無い'); e.type = e.type === 'text' && /date|time/.test(e.getAttribute('onfocus') || '') ? (e.getAttribute('onfocus').match(/'(\w+)'/) || [])[1] : e.type; e.value = v; };
+  const 読む = async () => { await 寝る(400); await 読み直す(false); };
+  window.confirm = () => true; window.prompt = (m, d) => (/URL/.test(m) ? 'https://example.com' : (d || '試し'));
+  計算を予約 = () => {}; 計算 = async () => {};   // 計算は試さない（カレンダーを読むと遅い）
+  const 誤り始め = () => { ui.誤り = null; };
+  const 試す = async (名, f) => { 誤り始め(); try { await f(); if (ui.誤り) 報(false, 名 + '：誤りが出た：' + ui.誤り); } catch (e) { 報(false, 名 + '：止まった：' + e.message); } シートを閉じる(); };
+  for (let i = 0; i < 100 && !S.読めた; i++) await 寝る(200);
+  const 案 = () => 単位().filter(u => u.種 === '案件' && !済か(u));
+  const u0 = 案().find(u => 工程(u).some(x => !x.済));
+  const 元 = id => 単位を探す(id).元;
+  const 開く = (v, u) => { if (u) ui.sel = u.id; ui.view = v; ui.詳細を開く = true; 描く(); };
+
+  await 試す('計測', async () => {
+    開く('projects', u0);
+    if (計測中()) { await 押す('[data-act="timerStop"]', '計測を終了して記録'); await 読む(); 報(!計測中(), `残っていた計測を止める → ${計測中() ? '残った' : '止まった'}`); 開く('projects', u0); }
+    const 番 = 計る工程の番号(u0), 前 = Number(工程(単位を探す(u0.id))[番].実績) || 0;
+    await 押す(`[data-act="timerStart"][data-u="${u0.id}"]`, '計測開始'); await 読む();
+    報(!!計測中(), `計測開始 → 計測中 ${計測中() ? 'あり' : '無い'}`);
+    設定().計測中.始め = new Date(Date.now() - 30 * 60000).toISOString();   // 30分計ったことにする
+    await 押す('[data-act="timerStop"]', '計測を終了して記録'); await 読む();
+    const 後 = Number(工程(単位を探す(u0.id))[番].実績) || 0;
+    報(!計測中() && 後 > 前, `計測を終了して記録 → 計測中 ${計測中() ? '残った' : '消えた'}・実績 ${前}→${後}`);
+    開く('projects', u0); await 押す(`[data-act="timerStart"][data-u="${u0.id}"]`, '計測開始'); await 読む();
+    await 押す('[data-act="timerCancel"]', 'やめる'); await 読む();
+    報(!計測中(), `やめる → 計測中 ${計測中() ? '残った' : '消えた'}`);
+  });
+  await 試す('最優先', async () => {
+    const u = 案().find(u => !u.元.最優先); 開く('projects', u);
+    await 押す(`.pri-toggle[data-u="${u.id}"]`, '☆ 最優先にする'); await 読む();
+    報(元(u.id).最優先 === true, `カードの ☆ で最優先にする → ${元(u.id).最優先}`);
+    開く('projects', u); await 押す(`.pri-toggle[data-u="${u.id}"]`, '★ 最優先'); await 読む();
+    報(!元(u.id).最優先, `もう一度押して解除 → ${元(u.id).最優先 || 'なし'}`);
+    開く('projects', u); await 押す(`[data-act="priority"][data-u="${u.id}"]:not(.pri-toggle)`, '詳細の「この案件を最優先にする」'); await 読む();
+    開く('projects', u); await 押す(`[data-act="unpriority"][data-u="${u.id}"]:not(.pri-toggle)`, '詳細の「最優先を解除」'); await 読む();
+    報(!元(u.id).最優先, `詳細から最優先にして解除 → ${元(u.id).最優先 || 'なし'}`);
+  });
+  await 試す('工程', async () => {
+    開く('projects', u0); const i = 工程(u0).findIndex(x => !x.済);
+    await 押す(`.step-done-check[data-u="${u0.id}"][data-i="${i}"]`, '工程の完了'); await 読む();
+    報(工程(単位を探す(u0.id))[i].済 === true, `工程の完了を押す → ${工程(単位を探す(u0.id))[i].済}`);
+    開く('projects', u0); await 押す(`.step-done-check[data-u="${u0.id}"][data-i="${i}"]`, '工程の完了（戻す）'); await 読む();
+    報(!工程(単位を探す(u0.id))[i].済, `もう一度押して未完了に → ${工程(単位を探す(u0.id))[i].済}`);
+    const 見 = Number(工程(単位を探す(u0.id))[i].見込み);
+    開く('projects', u0); await 押す(`[data-act="est"][data-u="${u0.id}"][data-i="${i}"][data-d="0.5"]`, '見込み＋'); await 読む();
+    報(Number(工程(単位を探す(u0.id))[i].見込み) === 見 + 0.5, `見込み＋ → ${見}→${工程(単位を探す(u0.id))[i].見込み}`);
+  });
+  await 試す('状態', async () => {
+    開く('projects', u0); await 押す(`[data-act="status"][data-u="${u0.id}"][data-s="直し"]`, '状態：直し'); await 読む();
+    報(元(u0.id).状態 === '直し', `状態を直しに → ${元(u0.id).状態}`);
+    開く('projects', u0); await 押す(`[data-act="status"][data-u="${u0.id}"][data-s="作業中"]`, '状態：作業中'); await 読む();
+    報(元(u0.id).状態 === '作業中', `状態を作業中に → ${元(u0.id).状態}`);
+  });
+  await 試す('確認待ち', async () => {
+    開く('projects', u0); const 版数 = 版(u0).length;
+    await 押す(`[data-act="status"][data-u="${u0.id}"][data-s="確認待ち"]`, '状態：確認待ち');
+    報(ui.sheet && ui.sheet.kind === 'waiting', `確認待ちを押すと確認待ちの画面が出る → ${ui.sheet && ui.sheet.kind}`);
+    await 押す('[data-act="wtKind"][data-k="ほぼ完成"]', 'ほぼ完成の版'); 入れる('wt-hours', '2');
+    await 押す('[data-act="wtSave"]', '確認待ちにする'); await 読む();
+    const a = 元(u0.id);
+    報(a.状態 === '確認待ち' && a.確認待ち && a.確認待ち.追加見込み === 2 && a.確認待ち.版 === 'ほぼ完成' && 版(単位を探す(u0.id)).length === 版数 + 1, `確認待ちにする → 状態 ${a.状態}・見込み ${a.確認待ち && a.確認待ち.追加見込み}・版 ${a.確認待ち && a.確認待ち.版}・版の数 ${版数}→${版(単位を探す(u0.id)).length}`);
+    開く('projects', u0); await 押す(`[data-act="wtEdit"][data-u="${u0.id}"]`, '確認待ちの編集'); 入れる('wt-hours', '4'); await 押す('[data-act="wtSave"]', '確認待ちにする（直し）'); await 読む();
+    報(元(u0.id).確認待ち.追加見込み === 4, `確認待ちの編集で見込みを4に → ${元(u0.id).確認待ち.追加見込み}`);
+  });
+  await 試す('明日に回す', async () => {
+    開く('projects', u0); await 押す(`[data-act="tomorrow"][data-u="${u0.id}"]`, '明日に回す'); await 読む();
+    報(元(u0.id).着手できる日 === 足す日(今日(), 1), `明日に回す → 着手できる日 ${元(u0.id).着手できる日}`);
+  });
+  await 試す('リンク', async () => {
+    開く('projects', u0); const n = (元(u0.id).リンク || []).length;
+    await 押す(`[data-act="addLink"][data-u="${u0.id}"]`, '＋ リンクを追加'); await 読む();
+    報((元(u0.id).リンク || []).length === n + 1, `リンクを追加 → ${n}→${(元(u0.id).リンク || []).length}`);
+  });
+  await 試す('プリセット', async () => {
+    const n = (設定().プリセット || []).length;
+    開く('today'); await 押す('[data-act="prefs"]', '⚙ 設定'); await 押す('[data-act="presetNew"]', '＋ 新しいプリセット');
+    入れる('pr-name', '試しのプリセット'); await 押す('[data-act="dAddStep"]', '工程を追加'); await 押す('[data-act="asPick"][data-i="0"]', 'ライブラリの工程');
+    報(ui.sheet && ui.sheet.kind === 'presetEdit' && document.getElementById('pr-name').value === '試しのプリセット', `工程を足して戻ると、名前が残っている → ${document.getElementById('pr-name') && document.getElementById('pr-name').value}`);
+    await 押す('[data-act="presetSave"]', 'プリセットを作る'); await 読む();
+    const ps = 設定().プリセット; 報(ps.length === n + 1 && ps[ps.length - 1].名前 === '試しのプリセット', `プリセットを作る → ${n}→${ps.length}`);
+    開く('today'); await 押す('[data-act="prefs"]', '⚙ 設定'); await 押す(`[data-act="presetEdit"][data-i="${ps.length - 1}"]`, 'プリセットの編集'); 入れる('pr-name', '試しのプリセット2'); await 押す('[data-act="presetSave"]', '保存'); await 読む();
+    報(設定().プリセット[ps.length - 1].名前 === '試しのプリセット2', `プリセットの名前を直す → ${設定().プリセット[ps.length - 1].名前}`);
+    開く('projects'); await 押す('[data-act="newProject"]', '＋ 新しい案件'); 入れる('np-title', '試しの案件'); await 押す('[data-act="presetNew"]', '新しい案件から ＋ 新しいプリセットを作る');
+    await 押す('[data-act="sheetBack"]', '戻る');
+    報(ui.sheet && ui.sheet.kind === 'new' && document.getElementById('np-title').value === '試しの案件', `新しい案件からプリセットを開いて戻ると、案件の名前が残る → ${document.getElementById('np-title') && document.getElementById('np-title').value}`);
+    シートを閉じる(); 開く('today'); await 押す('[data-act="prefs"]', '⚙ 設定'); await 押す(`[data-act="presetDel"][data-i="${ps.length - 1}"]`, 'プリセットを消す'); await 読む();
+    報(設定().プリセット.length === n, `プリセットを消す → ${設定().プリセット.length}`);
+  });
+  await 試す('新しい案件', async () => {
+    開く('projects'); await 押す('[data-act="newProject"]', '＋ 新しい案件');
+    入れる('np-title', '試しの撮影案件'); 入れる('np-deadline', 足す日(今日(), 20)); 入れる('np-shoot', 足す日(今日(), 5)); 入れる('np-shoot-s', '09:00'); 入れる('np-shoot-e', '12:00'); 入れる('np-move', '30');
+    await 押す('[data-act="dCreate"]', 'プロジェクト作成'); await 読む();
+    const a = (A().案件 || []).find(a => a.名前 === '試しの撮影案件');
+    報(!!a && a.撮影の時刻 && a.撮影の時刻[0] === '09:00' && a.撮影を動かした && (a.工程 || [])[0].記号 === 'SH' && a.工程[0].見込み === 3, `撮影つきで案件を作る → ${a ? JSON.stringify({ 時刻: a.撮影の時刻, 移動: a.撮影の移動, 最初の工程: a.工程 && a.工程[0].記号, 見込み: a.工程 && a.工程[0].見込み }) : '無い'}`);
+  });
+  await 試す('締切の変更と提出済み', async () => {
+    const u = 案().find(u => u.締切.some(k => !k.済)); const k = u.締切.find(k => !k.済);
+    ui.動かす[k.id] = true; 開く('today');
+    const q = (P().問題 || []).find(q => q.id === k.id);
+    if (q) { 入れる(`mv-d-${k.id}`, 足す日(今日(), 30)); await 押す(`[data-act="moveDo"][data-id="${k.id}"]`, 'この日時に変更'); await 読む(); 報(単位を探す(u.id).締切.find(x => x.種類 === k.種類).日付 === 足す日(今日(), 30), '締切を変更'); }
+    else 報(true, '締切の変更：間に合わない欄に無いので画面からは試さない');
+    開く('projects', u); const 済 = document.querySelector(`[data-act="delivered"][data-u="${u.id}"]`);
+    if (済) { 済.click(); await 待つ(); await 読む(); 報(!!単位を探す(u.id).締切.find(x => x.種類 === k.種類).済, '提出済みにする'); } else 報(true, '提出済みにする：この画面にボタンが無い（過ぎた締切だけに出る）');
+  });
+  await 試す('食事と買い物', async () => {
+    開く('today'); const d = 足す日(今日(), 1); const x = 今日の段取り(d).find(x => x.食事 === '夜');
+    if (!x) throw new Error('明日の夕食の札が無い');
+    await 押す(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`, '夕食の札');
+    await 押す('[data-act="mlKind"][data-k="外食"]', '外食'); await 押す('[data-act="mlSave"]', '保存'); await 読む();
+    報(((S.f['食事の予定.json'].日 || {})[d] || {}).夜 === '外食', `夕食を外食に → ${JSON.stringify((S.f['食事の予定.json'].日 || {})[d])}`);
+    const sh = Object.keys(P().日).map(d => [d, 今日の段取り(d).find(x => x.買い物)]).find(([, x]) => x);
+    if (sh) { 開く('weeks'); ui.週の日 = sh[0]; 描く(); await 押す(`[data-act="tlItem"][data-d="${sh[0]}"][data-s="${sh[1].始}"]`, '買い物の札'); 入れる('sh-s', '16:00'); await 押す('[data-act="shSave"]', '買い物を保存'); await 読む();
+      報((S.f['食事の予定.json'].買い物の予定 || []).some(y => y.日 === sh[0] && y.時刻 === '16:00'), '買い物の時刻を16:00に'); }
+  });
+  await 試す('作業の固定', async () => {
+    const d = Object.keys(P().日).find(d => d > 今日() && 今日の段取り(d).some(x => x.種 === '作業' && x.ラベル));
+    const x = 今日の段取り(d).find(x => x.種 === '作業' && x.ラベル); 開く('weeks'); ui.週の日 = d; 描く();
+    await 押す(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`, '作業の札'); await 押す('[data-act="wkPin"]', 'この時刻に固定する'); await 読む();
+    const u = 作業の単位(x.ラベル); 報(u && (u.元.固定 || []).some(f => f.日付 === d), `作業を固定 → ${u && JSON.stringify(u.元.固定)}`);
+  });
+  await 試す('設定', async () => {
+    開く('today'); await 押す('[data-act="prefs"]', '⚙ 設定'); await 押す('[data-act="prefAlloc"][data-m="ならす"]', '日ごとにならす'); await 読む();
+    報((設定().割り振り || {}).割り振り方 === 'ならす', `割り振り方をならすに → ${(設定().割り振り || {}).割り振り方}`);
+    開く('today'); await 押す('[data-act="dayShift"][data-n="1"]', '次の日'); 報(ui.日ずらし === 1, `今日の画面で次の日 → ${ui.日ずらし}`);
+  });
+  await 試す('撮影完了', async () => {
+    const u = 案().find(u => u.元.状態 === '撮影前' && 工程(u).some(x => 記号(x) === 'SH'));
+    if (!u) return 報(true, '撮影完了：撮影前で撮影の工程がある案件が無い');
+    撮影完了(u); await 待つ(); await 読む();
+    報(元(u.id).状態 === '作業中' && 工程(単位を探す(u.id)).filter(x => 記号(x) === 'SH').every(x => x.済), `撮影完了 → 状態 ${元(u.id).状態}`);
+  });
+  EF.試しの結果 = 行.join('\n') + (よい ? '\n全部よい' : '');
+};
 EF.通しで試す = async () => {
   const 行 = []; let よい = true;
   const 報 = (ok, s) => { 行.push((ok ? '○ ' : '× ') + s); if (!ok) よい = false; };
