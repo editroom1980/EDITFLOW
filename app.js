@@ -772,6 +772,9 @@ function 今日を描く() {
   if (古) h += `<div class="stale ${古.時間 >= 24 ? 'red' : 'orange'}"><b>計算が ${古.字} 前のまま</b>
     <span>${!Mac ? 'Mac の EDITFLOW が動いていないかもしれない。Mac で EDITFLOW を開く' : '下の予定や割り振りは古い。「再計算」を押す'}</span>
     ${!Mac ? '' : '<button class="btn btn-primary btn-small" data-act="calc">再計算</button>'}</div>`;
+  // iPhone へ送れていない（GitHub に push できない）
+  if (Mac && S.同期 && /できない/.test(S.同期.状態 || '')) h += `<div class="stale red"><b>iPhone に送れていない</b>
+    <span>${esc(S.同期.状態)}。この Mac の GitHub の認証が切れている。認証を入れ直すまで iPhone の画面は古いまま</span></div>`;
   // 過ぎた締切（渡したかを聞く）
   const 過 = (p.過ぎた || []);
   if (過.length) {
@@ -1403,7 +1406,8 @@ function シートを描く() {
       <div class="form-row"><span class="hint">時刻まで入れると、カレンダーの「撮影」に入れて、移動を含めたその時間に作業を入れない。カレンダーで動かすと、こちらも合わせて直る。移動が空なら設定の値（撮影 ${(しそ設定().移動 || {}).撮影?.前 ?? 60}分）</span></div>`}
       ${!新 && !s.回 ? '<div class="form-row"><span class="hint">名前を変えると、カレンダーの締切は反映のときに入れ直される</span></div>' : ''}</div></div>`;
     if (新) body += `<div class="sec"><div class="sec-label">プリセット選択</div><div class="preset-list">${(st.プリセット || []).map(p => `<div class="preset-card ${d.プリセット === p.id ? 'on' : ''}" data-act="dPreset" data-p="${esc(p.id)}"><div class="preset-radio"></div><div class="preset-info"><div class="preset-name">${esc(p.名前)}</div><div class="preset-desc">${esc(p.説明 || '')}</div></div><div class="preset-meta">${p.工程.length}工程・${h字(p.工程.reduce((a, x) => a + x.見込み, 0))}</div></div>`).join('')}
-      <div class="preset-card ${d.プリセット === '' ? 'on' : ''}" data-act="dPreset" data-p=""><div class="preset-radio"></div><div class="preset-info"><div class="preset-name">カスタム</div><div class="preset-desc">空の工程から作成</div></div><div class="preset-meta">—</div></div></div></div>`;
+      <div class="preset-card ${d.プリセット === '' ? 'on' : ''}" data-act="dPreset" data-p=""><div class="preset-radio"></div><div class="preset-info"><div class="preset-name">カスタム</div><div class="preset-desc">空の工程から作成</div></div><div class="preset-meta">—</div></div></div>
+      <button class="btn btn-secondary btn-wide" style="margin-top:8px" data-act="presetNew">＋ 新しいプリセットを作る</button></div>`;
     body += `<div class="sec"><div class="sec-label">工程 / Production Steps</div><div class="panel-card">${d.工程.map((x, i) => 工程の行(x, i)).join('') || '<div class="list-row hint">工程がありません。「工程を追加」を押す</div>'}</div>
       <div class="total-row" style="border-radius:0 0 10px 10px"><span>合計作業時間 / Total</span><span class="num">${h字(total)}</span></div></div>
       <button class="btn btn-secondary btn-wide" data-act="dAddStep">＋ 工程を追加 / Add Step</button>`;
@@ -1421,7 +1425,8 @@ function シートを描く() {
   } else if (s.kind === 'preset') {
     const u = 単位を探す(s.u);
     head = `<button class="sheet-back" data-act="closeSheet">キャンセル</button><div class="sheet-title">PRESET　プリセットから工程を入れる</div><span style="width:50px"></span>`;
-    body = `<div class="hint" style="margin-bottom:10px">${esc(u ? u.名前 : '')} の工程を、選んだプリセットで置き換える（今の工程は ⌘Z で戻せる）</div><div class="preset-list">${(st.プリセット || []).map(p => `<div class="preset-card" data-act="presetApply" data-p="${esc(p.id)}" data-u="${esc(s.u)}"><div class="preset-radio"></div><div class="preset-info"><div class="preset-name">${esc(p.名前)}</div><div class="preset-desc">${esc(p.工程.map(x => x.記号).join(' ・ '))}</div></div><div class="preset-meta">${p.工程.length}工程・${h字(p.工程.reduce((a, x) => a + x.見込み, 0))}</div></div>`).join('')}</div>`;
+    body = `<div class="hint" style="margin-bottom:10px">${esc(u ? u.名前 : '')} の工程を、選んだプリセットで置き換える（今の工程は ⌘Z で戻せる）</div><div class="preset-list">${(st.プリセット || []).map(p => `<div class="preset-card" data-act="presetApply" data-p="${esc(p.id)}" data-u="${esc(s.u)}"><div class="preset-radio"></div><div class="preset-info"><div class="preset-name">${esc(p.名前)}</div><div class="preset-desc">${esc(p.工程.map(x => x.記号).join(' ・ '))}</div></div><div class="preset-meta">${p.工程.length}工程・${h字(p.工程.reduce((a, x) => a + x.見込み, 0))}</div></div>`).join('')}</div>
+      <button class="btn btn-secondary btn-wide" style="margin-top:8px" data-act="presetNew">＋ 新しいプリセットを作る</button>`;
   } else if (s.kind === 'prefs') {
     head = `<button class="sheet-back" data-act="closeSheet">閉じる</button><div class="sheet-title">SETTINGS　設定</div><span style="width:50px"></span>`;
     const 今の = 今の見た目();
@@ -1459,7 +1464,7 @@ function シートを描く() {
       <div class="form-row"><span class="hint">保存するとカレンダーに入り（iPhone のカレンダーにも出る）、すぐ計算し直して作業を組み直す。繰り返しの予定は、この回だけ直す</span></div></div>`;
     foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel" ${iPhone ? 'disabled' : ''}>この予定を削除</button>`}<button class="btn btn-primary btn-wide" data-act="evSave" ${iPhone ? 'disabled' : ''}>${新 ? 'カレンダーに入れる' : '保存'}</button>`;
   }
-  if (s.kind === 'preset') {
+  if (s.kind === 'presetEdit') {
     const 新 = s.i == null;
     const total = d.工程.reduce((a, x) => a + (Number(x.見込み) || 0), 0);
     head = `<button class="sheet-back" data-act="${s.戻り ? 'sheetBack' : 'closeSheet'}">⟨ 戻る</button><div class="sheet-title">${新 ? 'NEW PRESET　プリセットを作る' : 'PRESET　プリセットを直す'}</div><span style="width:50px"></span>`;
@@ -1627,7 +1632,10 @@ function 区分ごと(一覧, 行) {
 function プリセットを開く(i) {
   const p = i == null ? null : 設定().プリセット[i];
   ui.下書き = { 名前: p ? p.名前 : '', 説明: p ? (p.説明 || '') : '', 工程: p ? clone(p.工程) : [] };
-  ui.sheet = { kind: 'preset', i, 戻り: ui.sheet && ui.sheet.kind === 'prefs' ? ui.sheet : null };
+  // 戻る先（設定・新しい案件・プリセットから追加）の下書きは預けておき、戻るときに返す
+  const 戻り = ui.sheet || null, 戻り下書き = 戻り ? ui.下書き : null;
+  if (戻り && 戻り.kind === 'new') 下書きを読む();
+  ui.sheet = { kind: 'presetEdit', i, 戻り, 戻り下書き };
   $('#overlay').classList.add('on'); $('#sheet').classList.add('on'); シートを描く();
 }
 function プリセットを保存() {
@@ -1640,7 +1648,7 @@ function プリセットを保存() {
   const 中 = { id: s.i == null ? 'preset_' + Date.now() : 一覧[s.i].id, 名前: 名, 説明: (d.説明 || '').trim(),
     工程: d.工程.map(x => Object.assign({ 記号: x.記号, 名前: x.名前, 英名: x.英名, 見込み: Number(x.見込み) || 0 }, x.締切 ? { 締切: x.締切 } : {})) };
   直す('EDITFLOW設定.json', [s.i == null ? { 道: ['プリセット'], 足す: 中 } : { 道: ['プリセット', s.i], 値: 中 }], `プリセット「${名}」を${s.i == null ? '作った' : '直した'}`, { 計算: false });
-  if (s.戻り) { ui.sheet = s.戻り; シートを描く(); } else シートを閉じる();
+  if (s.戻り) { ui.sheet = s.戻り; if (s.戻り下書き) ui.下書き = s.戻り下書き; シートを描く(); } else シートを閉じる();
 }
 function 撮影の誤り(d) {
   if ((d.撮影始 || d.撮影終) && !d.撮影日) return '撮影の時刻を入れるときは撮影日も入れてください';
@@ -1715,7 +1723,7 @@ function 命令の一覧() {
   const L = [];
   for (const [v, g] of Object.entries(画面)) L.push({ g: '画面', t: `${g.jp}（${g.en}）を開く`, f: () => 画面へ(v) });
   L.push({ g: '計算', t: '再計算', k: '⌘R', f: () => 計算(false) }, { g: '計算', t: 'カレンダーとリマインダーへ反映', k: '⇧⌘R', f: () => 計算(true) },
-    { g: '案件', t: '新しい案件を作る', k: '⌘N', f: 新しい案件を開く }, { g: '編集', t: '取り消す', k: '⌘Z', f: 取り消す });
+    { g: '案件', t: '新しい案件を作る', k: '⌘N', f: 新しい案件を開く }, { g: 'プリセット', t: '新しいプリセットを作る', f: () => プリセットを開く(null) }, { g: '編集', t: '取り消す', k: '⌘Z', f: 取り消す });
   for (const u of 単位().filter(u => !済か(u))) {
     L.push({ g: '開く', t: `${u.名前} を開く`, f: () => { ui.sel = u.id; 画面へ('projects'); } });
     const i = 工程(u).findIndex(s => !s.済);
@@ -1838,7 +1846,7 @@ document.addEventListener('click', e => {
     case 'saveAsPreset': { const n = prompt('プリセット名を入力\n（例：しそうチャンネル番組）', u.名前); if (n) 直す('EDITFLOW設定.json', [{ 道: ['プリセット'], 足す: { id: 'preset_' + Date.now(), 名前: n.trim(), 説明: '', 工程: 工程(u).map(s => ({ 記号: 記号(s), 名前: s.名前, 英名: 英名(s), 見込み: s.見込み })) } }], `プリセット「${n}」を保存した`, { 計算: false }); break; }
     case 'addStep': if (u) { ui.下書き = null; シートを開く({ kind: 'addstep', u: u.id, mode: 'lib' }); } break;
     case 'closeSheet': シートを閉じる(); break;
-    case 'sheetBack': ui.sheet = ui.sheet.戻り; シートを描く(); break;
+    case 'sheetBack': { const 下 = ui.sheet.戻り下書き; ui.sheet = ui.sheet.戻り; if (下) ui.下書き = 下; シートを描く(); break; }
     case 'dPreset': { 下書きを読む(); const p = 設定().プリセット.find(p => p.id === d.p); ui.下書き.プリセット = d.p; ui.下書き.工程 = p ? clone(p.工程).map(x => Object.assign(x, { 済: false })) : []; シートを描く(); break; }
     case 'dEst': 下書きを読む(); ui.下書き.工程[i].見込み = Math.max(0, (Number(ui.下書き.工程[i].見込み) || 0) + Number(d.d)); シートを描く(); break;
     case 'dUp': 下書きを読む(); { const w = ui.下書き.工程; [w[i - 1], w[i]] = [w[i], w[i - 1]]; } シートを描く(); break;
@@ -2045,6 +2053,8 @@ EF.書き出しの場面 = 名 => {
   ui.詳細を開く = false;
   if (v === 'weeks' && 添) { ui.週の日 = 足す日(今日(), Number(添)); ui.view = 'weeks'; 描く(); return true; }
   if (v === 'preset') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); プリセットを開く(添 === 'new' ? null : 4); if (添 === 'add') { ui.sheet = { kind: 'addstep', mode: 'lib', 戻り: ui.sheet }; シートを描く(); } return true; }
+  if (v === 'newpreset') { ui.view = 'projects'; 描く(); 新しい案件を開く(); プリセットを開く(null); ui.sheet = { kind: 'addstep', mode: 'lib', 戻り: ui.sheet }; 工程を足す_({ 記号: 'SH', 名前: '撮影', 英名: 'Shooting', 見込み: 4, 済: false }); return true; }
+  if (v === 'presetpick') { ui.view = 'projects'; 描く(); const u = 単位().find(u => u.種 === '案件'); シートを開く({ kind: 'preset', u: u.id }); return true; }
   if (v === 'meal') { ui.view = 'today'; 描く(); const d = 足す日(今日(), 1); const x = 今日の段取り(d).find(x => x.食事 === '夜'); if (x) 食事を開く(d, x); return true; }
   if (v === 'today' && 添 && /^\d+$/.test(添)) { ui.日ずらし = Number(添); ui.view = 'today'; 描く(); return true; }
   if (v === 'event' || v === 'work') {
