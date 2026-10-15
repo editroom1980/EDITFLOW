@@ -1609,7 +1609,9 @@ async function 予定を保存(消す) {
   const r = await 頼む('予定', Object.assign({ 操作: 消す ? '消す' : (s.元 ? '直す' : '作る'), 予定表: d.予定表, 題: d.題, 始: d.日付 + 'T' + d.始, 終: d.日付 + 'T' + d.終, 場所: d.場所, 元: s.元 || null },
     移動を書く ? { 移動: d.移動 } : {}));
   if (!r || !r.ok) return 誤りを出す((r && r.エラー) || 'カレンダーに書けなかった');
-  シートを閉じる();
+  if (s.元) 札を差し替える(s.元.始.slice(0, 10), y => y.予定表 && y.始 === s.元.始 && y.元題 === s.元.題);
+  if (!消す) 札を差し替える(d.日付, () => false, [{ 始: d.日付 + 'T' + d.始, 終: d.日付 + 'T' + d.終, 題: `${d.予定表}：${d.題}`, 種: '予定', 予定表: d.予定表, 元題: d.題, 場所: d.場所, 移動: d.移動 }]);
+  シートを閉じる(); 描く();
   知らせを出す(消す ? `「${s.元.題}」を消した。組み直している` : `「${d.題}」を${s.元 ? '直した' : 'カレンダーに入れた'}。組み直している`);
   計算(true);
 }
@@ -1660,6 +1662,11 @@ function 作業の単位(ラベル) {
   const k = ((P() && P().締切) || []).find(k => k.ラベル === ラベル);
   return k ? 単位().find(u => u.締切.some(x => x.id === k.id)) : null;
 }
+/* 再計算を待たずに、その日の段取りの札を差し替える（計算が終わると正しいものに置き換わる） */
+function 札を差し替える(d, 消す札, 足す札) {
+  const v = P() && P().日[d]; if (!v) return;
+  v.段取り = v.段取り.filter(y => !消す札(y)).concat(足す札 || []).sort((a, b) => a.始 < b.始 ? -1 : 1);
+}
 function 空きを足す(xs) {
   const 前 = 設定().作業しない時間 || [];
   return { 道: ['作業しない時間'], 値: 前.concat(xs).filter(x => x.始 < x.終) };
@@ -1667,6 +1674,8 @@ function 空きを足す(xs) {
 function 作業を消す() {
   const s = ui.sheet;
   直す('EDITFLOW設定.json', [空きを足す([{ 日付: s.元.日付, 始: s.元.始, 終: s.元.終 }])], `${mdw(s.元.日付)} ${s.元.始}〜${s.元.終} の作業を消した（空きにした）`, { 計算: false });
+  札を差し替える(s.元.日付, y => y.種 === '作業' && y.始.slice(11, 16) === s.元.始,
+    [{ 始: s.元.日付 + 'T' + s.元.始, 終: s.元.日付 + 'T' + s.元.終, 題: '空き（作業を入れない）', 種: '予定', 空き: (設定().作業しない時間 || []).length - 1 }]);
   // 固定だったら固定も外す
   if (s.固定) { 作業を固定する(true); return; }
   シートを閉じる(); 計算(true);
@@ -1687,11 +1696,15 @@ function 作業を固定する(外す) {
   直す('編集案件.json', [後.length ? { 道: u.道.concat(['固定']), 値: 後 } : { 道: u.道.concat(['固定']), 消す: true }],
     外す ? `${s.ラベル}：${mdw(s.元.日付)} ${s.元.始} の固定を外した` : `${s.ラベル}：${mdw(新.日付)} ${新.始}〜${新.終} にした`, { 計算: false });
   // 同じ日のうちで縮めた分は空きにする（自動の作業で埋め直さない）
-  if (!外す && 新.日付 === s.元.日付) {
-    const 空 = [{ 日付: 新.日付, 始: s.元.始, 終: 新.始 }, { 日付: 新.日付, 始: 新.終, 終: s.元.終 }].filter(x => x.始 < x.終);
-    if (空.length) 直す('EDITFLOW設定.json', [空きを足す(空)], '', { undo: false, 計算: false });
+  const 空 = !外す && 新.日付 === s.元.日付 ? [{ 日付: 新.日付, 始: s.元.始, 終: 新.始 }, { 日付: 新.日付, 始: 新.終, 終: s.元.終 }].filter(x => x.始 < x.終) : [];
+  if (空.length) 直す('EDITFLOW設定.json', [空きを足す(空)], '', { undo: false, 計算: false });
+  // 計算を待たずに札を差し替える
+  if (!外す) {
+    札を差し替える(s.元.日付, y => y.種 === '作業' && y.始.slice(11, 16) === s.元.始);
+    札を差し替える(新.日付, () => false, [{ 始: 新.日付 + 'T' + 新.始, 終: 新.日付 + 'T' + 新.終, 題: `固定：${s.ラベル}`, 種: '作業', ラベル: s.ラベル, 固定: true }]
+      .concat(空.map((x, j) => ({ 始: x.日付 + 'T' + x.始, 終: x.日付 + 'T' + x.終, 題: '空き（作業を入れない）', 種: '予定', 空き: (設定().作業しない時間 || []).length - 空.length + j }))));
   }
-  シートを閉じる(); 計算(true);
+  シートを閉じる(); 描く(); 計算(true);
 }
 function 区分ごと(一覧, 行) {
   const 組 = []; for (const [i, l] of 一覧.entries()) { const k = l.区分 || 'そのほか'; let g = 組.find(g => g.k === k); if (!g) 組.push(g = { k, xs: [] }); g.xs.push([l, i]); }
@@ -1956,8 +1969,10 @@ document.addEventListener('click', e => {
     case 'wkPin': 作業を固定する(false); break;
     case 'wkUnpin': 作業を固定する(true); break;
     case 'wkFree': 作業を消す(); break;
-    case 'freeDel': { const i0 = ui.sheet.x.i; const xs = (設定().作業しない時間 || []).filter((_, j) => j !== i0);
-      直す('EDITFLOW設定.json', [{ 道: ['作業しない時間'], 値: xs }], '空きを解除した', { 計算: false }); シートを閉じる(); 計算(true); break; }
+    case 'freeDel': { const x0 = ui.sheet.x; const xs = (設定().作業しない時間 || []).filter((_, j) => j !== x0.i);
+      直す('EDITFLOW設定.json', [{ 道: ['作業しない時間'], 値: xs }], `${mdw(x0.日付)} ${x0.始}〜${x0.終} の空きを解除した。作業を組み直している`, { 計算: false });
+      札を差し替える(x0.日付, y => y.空き != null && y.始.slice(11, 16) === x0.始);
+      シートを閉じる(); 描く(); 計算(true); break; }
     case 'toggleDone': ui.済も出す = !ui.済も出す; 描く(); break;
     case 'reviewNext': ui.reviewIdx++; 描く(); break;
     case 'reviewPrev': ui.reviewIdx = Math.max(0, ui.reviewIdx - 1); 描く(); break;
@@ -2297,10 +2312,31 @@ EF.ボタンで試す = async () => {
     ui.sheet = null; シートを開く({ kind: 'free', x: Object.assign({ i: n }, (設定().作業しない時間 || [])[n]) }); await 押す('[data-act="freeDel"]', '空きを解除'); await 読む();
     報((設定().作業しない時間 || []).length === n + 1, `空きを解除 → ${(設定().作業しない時間 || []).length - n}件`);
   });
+  await 試す('空きの札から解除', async () => {
+    const d = Object.keys(P().日).find(d => 今日の段取り(d).some(x => x.空き != null));
+    if (!d) return 報(true, '空きの札が3週間に無い');
+    const x = 今日の段取り(d).find(x => x.空き != null); const n = (設定().作業しない時間 || []).length;
+    for (const v of ['weeks', 'today']) {
+      if (v === 'today') { ui.日ずらし = Math.max(0, Math.min(20, 日差(今日(), d))); }
+      開く(v); if (v === 'weeks') { ui.週の日 = d; 描く(); }
+      const 札 = document.querySelector(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`);
+      報(!!札, `${v} の画面に空きの札がある`);
+      if (!札) continue;
+      札.click(); await 待つ();
+      報(ui.sheet && ui.sheet.kind === 'free', `空きの札を押すと空きの画面 → ${ui.sheet && ui.sheet.kind}`);
+      シートを閉じる();
+    }
+    開く('weeks'); ui.週の日 = d; 描く();
+    document.querySelector(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`).click(); await 待つ();
+    await 押す('[data-act="freeDel"]', '空きを解除');
+    報(!今日の段取り(d).some(y => y.空き != null && y.始 === x.始), '空きを解除した直後に、画面から空きの札が消える');
+    await 読む();
+    報((設定().作業しない時間 || []).length === n - 1, `空きを解除 → ${n}→${(設定().作業しない時間 || []).length}`);
+  });
   await 試す('設定', async () => {
     開く('today'); await 押す('[data-act="prefs"]', '⚙ 設定'); await 押す('[data-act="prefAlloc"][data-m="ならす"]', '日ごとにならす'); await 読む();
     報((設定().割り振り || {}).割り振り方 === 'ならす', `割り振り方をならすに → ${(設定().割り振り || {}).割り振り方}`);
-    開く('today'); await 押す('[data-act="dayShift"][data-n="1"]', '次の日'); 報(ui.日ずらし === 1, `今日の画面で次の日 → ${ui.日ずらし}`);
+    ui.日ずらし = 0; 開く('today'); await 押す('[data-act="dayShift"][data-n="1"]', '次の日'); 報(ui.日ずらし === 1, `今日の画面で次の日 → ${ui.日ずらし}`);
   });
   await 試す('撮影完了', async () => {
     const u = 案().find(u => u.元.状態 === '撮影前' && 工程(u).some(x => 記号(x) === 'SH'));
