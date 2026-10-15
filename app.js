@@ -774,7 +774,7 @@ function 帯を描く() {
   if (iPhone) {
     if (S.同期誤り) 次 = `<span class="err">GitHub に届かない：${esc(S.同期誤り)}${S.最後に読んだ ? `（${hm(S.最後に読んだ)} に読んだものを出している）` : ''}</span>`;
     else if (S.待ち.length) 次 = `<span class="busy">⏳ Mac が取り込むまで待ち ${S.待ち.length}件（Mac が計算し直すと消える）</span>`;
-    else 次 = '<span class="next">Mac と同じ。計算・反映・チェックリストは Mac で（iPhone では押せない）</span>';
+    else 次 = '<span class="next">見る・直すはここで。計算と反映は Mac</span>';
   }
   const 要 = ui.要点.length ? `<span>${esc(ui.要点.slice(-3).join('　／　'))}</span>` : '';
   const 同 = Mac && S.同期 ? `iPhone との同期：${esc(S.同期.状態)}　` : '';
@@ -947,7 +947,9 @@ function 時間軸(d, 名) {
   const xs = 今日の段取り(d);
   const 零 = 日(d);
   const 時 = t => (t - 零) / 3600000;
-  const 始 = Math.floor(Math.min(8, ...xs.map(x => 時(x.s))));
+  // 今日は、もう過ぎた時間を詰めて「いま」の1時間前から出す（過ぎた札は見えなくてよい）
+  const 今の時 = 時(今());
+  const 始 = d === 今日() && 今の時 > 9 ? Math.floor(今の時) - 1 : Math.floor(Math.min(8, ...xs.map(x => 時(x.s))));
   const 終 = Math.ceil(Math.max(22, ...xs.map(x => 時(x.e)))) + 0.5;
   const 一 = 46;
   const y = h => (h - 始) * 一;
@@ -957,29 +959,32 @@ function 時間軸(d, 名) {
   const 夕 = xs.find(x => x.種 === '食事' && x.題.startsWith('夕食'));
   const 晩 = 夕 ? 時(夕.e) : 19;
   const 夜 = しそ設定().作業の終わり || 22;
-  h += `<div class="tl-zone evening" style="top:${y(晩)}px"><b>今晩</b></div><div class="tl-zone night" style="top:${y(夜)}px"><b>深夜</b></div>`;
+  if (晩 >= 始) h += `<div class="tl-zone evening" style="top:${y(晩)}px"><b>今晩</b></div>`;
+  if (夜 >= 始) h += `<div class="tl-zone night" style="top:${y(夜)}px"><b>深夜</b></div>`;
   // 重なりは横に分ける
-  const 並 = xs.filter(x => x.種 !== '区切り').sort((a, b) => a.s - b.s);
+  const 並 = xs.filter(x => x.種 !== '区切り' && 時(x.e) > 始).sort((a, b) => a.s - b.s);
   const 列終 = []; const 列 = new Map();
   for (const x of 並) { let i = 列終.findIndex(e => e <= x.s); if (i < 0) { 列終.push(x.e); i = 列終.length - 1; } else 列終[i] = x.e; 列.set(x, i); }
   const n = Math.max(1, 列終.length);
   const now = 今();
   for (const x of 並) {
-    const k = 区分(x); const top = y(時(x.s)); const ht = Math.max(18, (時(x.e) - 時(x.s)) * 一 - 2);
+    const k = 区分(x); const 見始 = Math.max(時(x.s), 始); const top = y(見始); const 実高 = (時(x.e) - 見始) * 一 - 2;
+    // 20分未満の札（短い移動など）は、文字を出さない細い帯にする（次の札と重ならない）
+    const 細い = 実高 < 15; const ht = 細い ? Math.max(3, 実高) : Math.max(18, 実高);
     const i = 列.get(x); const いま = x.s <= now && now < x.e;
     const 押せる = !!(x.予定表 || (x.種 === '作業' && x.ラベル) || x.食事 || x.買い物 || x.空き != null);
     const 幅 = n > 1 ? `left:calc(58px + (100% - 66px) * ${i / n});right:auto;width:calc((100% - 66px) / ${n} - 3px);` : '';
-    h += `<div class="tl-item k-${k} ${いま ? 'now' : ''} ${押せる ? 'editable' : ''}" style="top:${top}px;height:${ht}px;${幅}" ${押せる ? `data-act="tlItem" data-d="${d}" data-s="${esc(x.始)}" data-t="${esc(x.題)}"` : ''} title="${esc(x.題 + (x.材料 ? '\n材料：' + x.材料 : '') + (押せる ? '\n押すと直せる' : ''))}">
-      <div class="t">${hm(x.s)}〜${hm(x.e)}${ht < 36 ? '　<b>' + esc(x.題) + '</b>' : ''}</div>${ht >= 36 ? `<div class="n">${esc(x.題)}</div>` : ''}${ht >= 56 && x.材料 ? `<div class="m">材料：${esc(x.材料)}</div>` : ''}${ht >= 36 && x.場所 ? `<div class="m">場所：${esc(x.場所)}${x.移動 ? `・移動 片道${x.移動}分` : ''}</div>` : ''}</div>`;
+    h += `<div class="tl-item k-${k} ${いま ? 'now' : ''} ${押せる ? 'editable' : ''} ${細い ? 'thin' : ''}" style="top:${top}px;height:${ht}px;${幅}" ${押せる ? `data-act="tlItem" data-d="${d}" data-s="${esc(x.始)}" data-t="${esc(x.題)}"` : ''} title="${esc(hm(x.s) + '〜' + hm(x.e) + '　' + x.題 + (x.場所 ? '\n場所：' + x.場所 : '') + (x.材料 ? '\n材料：' + x.材料 : '') + (押せる ? '\n押して編集' : ''))}">
+      ${細い ? '' : `<div class="t">${hm(x.s)}〜${hm(x.e)}${ht < 36 ? '　<b>' + esc(x.題) + '</b>' : ''}</div>${ht >= 36 ? `<div class="n">${esc(x.題)}</div>` : ''}${ht >= 56 && x.材料 ? `<div class="m">材料：${esc(x.材料)}</div>` : ''}${ht >= 36 && x.場所 ? `<div class="m">場所：${esc(x.場所)}${x.移動 ? `・移動 片道${x.移動}分` : ''}</div>` : ''}`}</div>`;
   }
   const 印 = xs.filter(x => x.種 === '区切り');
-  for (const x of 印) h += `<div class="tl-mark" style="top:${y(時(x.s))}px"></div>`;
+  for (const x of 印.filter(x => 時(x.s) >= 始)) h += `<div class="tl-mark" style="top:${y(時(x.s))}px"></div>`;
   const nh = 時(now);
   if (nh >= 始 && nh <= 終) h += `<div class="tl-now" style="top:${y(nh)}px"><span>いま ${hm(now)}</span></div>`;
   const 作 = xs.filter(x => x.種 === '作業').reduce((a, x) => a + (x.e - x.s) / 3600000, 0);
   return `<div class="tl"><div class="tl-head">${名} ${mdw(d)}<span class="hint">作業 ${時間(作)}</span><button class="btn btn-secondary btn-small tl-add" data-act="tlNew" data-d="${d}" title="この日に予定を入れる（カレンダーに入る）">＋ 予定</button></div>
     ${印.map(x => `<div class="tl-note">${/^(今日の作業はここまで|本日の作業終了)/.test(x.題) ? `${hm(x.s)} 作業終了。「夜の振り返り」で進捗を入力` : esc(x.題)}</div>`).join('')}
-    <div class="tl-body" style="height:${(終 - 始) * 一 + 8}px">${xs.length ? h : '<div class="empty">段取りなし</div>'}</div></div>`;
+    <div class="tl-body" data-hour="${一}" style="height:${(終 - 始) * 一 + 8}px">${xs.length ? h : '<div class="empty">段取りなし</div>'}</div></div>`;
 }
 
 /* ═══ 案件（前の PROJECTS） ═══ */
@@ -1151,8 +1156,8 @@ function 暦を描く() {
       const 前 = i % 7 !== 0 && b.日.has(日々[i - 1]), 後 = i % 7 !== 6 && b.日.has(日々[i + 1]);
       bars += `<div class="cal-bar cb-${b.c} ${前 ? '' : 'start'} ${後 ? '' : 'end'}" title="${esc(b.u.名前)}">${前 ? '' : esc(b.u.名前)}</div>`;
     }
-    const dl = (締[d] || []).map(x => `<div class="cal-dl ${急ぎ(x.u) === 'red' ? 'dl-red' : 急ぎ(x.u) === 'orange' ? 'dl-orange' : 'dl-silver'}">▲ ${esc(x.k.種類)} ${esc(x.u.名前.slice(0, 12))}</div>`).join('');
-    const ev = (予[d] || []).slice(0, 2).map(x => `<div class="cal-ev">${esc(x)}</div>`).join('');
+    const dl = (締[d] || []).map(x => `<div class="cal-dl ${急ぎ(x.u) === 'red' ? 'dl-red' : 急ぎ(x.u) === 'orange' ? 'dl-orange' : 'dl-silver'}" title="${esc(x.k.種類 + '　' + x.u.名前)}">▲ ${esc(x.k.種類)} ${esc(x.u.名前.slice(0, 12))}</div>`).join('');
+    const ev = (予[d] || []).slice(0, 2).map(x => `<div class="cal-ev" title="${esc(x)}">${esc(x)}</div>`).join('');
     return `<div class="cal-day ${oth ? 'oth' : ''} ${d === t ? 'tod' : ''}"><div class="cal-day-num">${dd.getDate()}${v && v.使える ? `<span class="free">空き ${h字(v.使える)}</span>` : ''}</div>${bars}${dl}${ev}</div>`;
   }).join('');
   return `<div class="cal-header"><div class="cal-nav"><button class="cal-arrow" data-act="prevMonth" title="前の月">‹</button><div class="cal-title">${y}年${m + 1}月</div>
@@ -1177,10 +1182,10 @@ function 工程表(us, y, m) {
       ? `<div class="g-bar ${c}" style="left:${左}%;width:${幅}%">${字}</div>`
       : `<div class="g-bar ${c}" style="left:${左}%;width:${幅}%"></div><div class="g-lab" style="left:calc(${左 + 幅}% + 6px)">${字}</div>`) : '';
     const mk = dls.map(k => `<div class="g-dl" style="left:calc(${x(k.日付) + 100 / 日数}% - 1px)" title="${esc(k.種類)} ${md(k.日付)}"></div>`).join('');
-    return `<div class="g-row"><div class="g-name ${c === 'red' ? 'dl-red' : c === 'orange' ? 'dl-orange' : ''}">${esc(u.名前)}</div><div class="g-track">${bar}${mk}${今日().startsWith(頭) ? `<div class="g-today" style="left:${x(今日())}%"></div>` : ''}</div></div>`;
+    return `<div class="g-row"><div class="g-name ${c === 'red' ? 'dl-red' : c === 'orange' ? 'dl-orange' : ''}" title="${esc(u.名前)}">${esc(u.名前)}</div><div class="g-track">${bar}${mk}${今日().startsWith(頭) ? `<div class="g-today" style="left:${x(今日())}%"></div>` : ''}</div></div>`;
   }).join('');
   const ax = [1, 5, 10, 15, 20, 25, 日数].map(d => `<span style="left:${(d - 0.5) / 日数 * 100}%">${d}</span>`).join('');
-  return `<div class="gantt-card"><div class="gantt-title">PROJECT SCHEDULE — ${y}/${String(m + 1).padStart(2, '0')}　<span style="text-transform:none">横棒＝作業の始めと終わり・白い線＝締切</span></div>${rows || '<div class="hint">この月に割り振りも締切も無い</div>'}<div class="g-axis">${ax}</div></div>`;
+  return `<div class="gantt-card"><div class="gantt-title">PROJECT SCHEDULE — ${y}/${String(m + 1).padStart(2, '0')}　<span style="text-transform:none">横棒＝作業の始めと終わり・白い線＝締切</span></div>${rows || '<div class="hint">この月に割り振りも締切も無い</div>'}<div class="g-row g-axis-row"><div></div><div class="g-axis">${ax}</div></div></div>`;
 }
 
 /* ═══ 締切 ═══ */
@@ -1663,6 +1668,54 @@ function 作業の単位(ラベル) {
   return k ? 単位().find(u => u.締切.some(x => x.id === k.id)) : null;
 }
 /* 再計算を待たずに、その日の段取りの札を差し替える（計算が終わると正しいものに置き換わる） */
+/* ── 時間軸の札をつかんで動かす（上下）・下の端で長さを変える。15分刻み ── */
+const 引き = { 札: null };
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest && e.target.closest('.tl-item.editable:not(.thin)');
+  if (!el || e.button !== 0) return;
+  const x = 段取りの札(el.dataset.d, el.dataset.s, el.dataset.t); if (!x || x.空き != null) return;
+  if (iPhone) return;   // iPhone では指で画面を送るので、つかんで動かすのは Mac だけ（iPhone は押して編集）
+  const r = el.getBoundingClientRect();
+  引き.札 = { el, x, d: el.dataset.d, y0: e.clientY, top0: el.offsetTop, h0: el.offsetHeight, 伸ばす: e.clientY > r.bottom - 8, 動いた: false,
+    一: Number(el.closest('.tl-body').dataset.hour) || 46 };
+});
+document.addEventListener('pointermove', e => {
+  const g = 引き.札; if (!g) return;
+  const dy = e.clientY - g.y0;
+  if (!g.動いた && Math.abs(dy) < 5) return;
+  g.動いた = true; g.el.classList.add('dragging');
+  const 刻 = g.一 / 4, 段 = Math.round(dy / 刻) * 刻;
+  if (g.伸ばす) g.el.style.height = Math.max(刻, g.h0 + 段) + 'px'; else g.el.style.top = (g.top0 + 段) + 'px';
+  g.段 = Math.round(dy / 刻);
+  const 始 = new Date(g.x.s.getTime() + (g.伸ばす ? 0 : g.段 * 15 * 60000)), 終 = new Date(g.x.e.getTime() + g.段 * 15 * 60000);
+  g.el.querySelector('.t') && (g.el.querySelector('.t').firstChild.nodeValue = `${hm(始)}〜${hm(終)}`);
+});
+document.addEventListener('pointercancel', () => { if (引き.札) { 引き.札 = null; 描く(); } });
+document.addEventListener('pointerup', async () => {
+  const g = 引き.札; 引き.札 = null; if (!g || !g.動いた) return;
+  引き.直後 = Date.now();   // このあとの click で詳細の画面を開かない
+  if (!g.段) { 描く(); return; }
+  const x = g.x, 分 = g.段 * 15 * 60000;
+  const 始 = g.伸ばす ? x.s : new Date(x.s.getTime() + 分), 終 = new Date(x.e.getTime() + 分);
+  if (終 <= 始) { 描く(); return; }
+  const d = g.d;
+  if (ds(始) !== d || (ds(終) !== d && 時分(終) !== '00:00') || (ds(終) !== d && 時分(終) === '00:00' && ds(new Date(終 - 1)) !== d)) { 描く(); return 知らせを出す('日をまたぐ時刻にはできない。その日のうちに収める（日をまたぐ予定はカレンダーで）'); }
+  if (x.予定表) {
+    const r = await 頼む('予定', { 操作: '直す', 予定表: x.予定表, 題: x.元題, 始: d + 'T' + 時分(始), 終: d + 'T' + 時分(終), 場所: x.場所 || '', 元: { 予定表: x.予定表, 題: x.元題, 始: x.始, 終: x.終 } });
+    if (!r || !r.ok) { 描く(); return 誤りを出す((r && r.エラー) || 'カレンダーに書けなかった'); }
+    札を差し替える(d, y => y.予定表 && y.始 === x.始 && y.元題 === x.元題, [Object.assign({}, x, { 始: d + 'T' + 時分(始), 終: d + 'T' + 時分(終) })]);
+    知らせを出す(`「${x.元題}」を ${時分(始)}〜${時分(終)} にした。組み直している`); 描く(); 計算(true);
+  } else if (x.種 === '作業' && x.ラベル) {
+    ui.sheet = { kind: 'work', ラベル: x.ラベル, 固定: !!x.固定, 元: { 日付: d, 始: 時分(x.s), 終: 時分(x.e) } };
+    作業を固定する(false, { 日付: d, 始: 時分(始), 終: ds(終) !== d ? '23:59' : 時分(終) }, g.伸ばす);
+    const 重 = 今日の段取り(d).filter(y => y !== x && !['作業', '区切り'].includes(y.種) && y.s < 終 && 始 < y.e);
+    if (重.length) 知らせを出す(`${時分(始)}〜${時分(終)} にした。「${重[0].題}」と重なる分は作業にならない　⌘Z で戻す`);
+  } else if (x.食事) {
+    const 日 = Object.assign({}, (食事の予定().日 || {})[d] || {}); 日[x.食事 + 'の時刻'] = [時分(始), 時分(終)];
+    直す('食事の予定.json', [{ 道: ['日', d], 値: 日 }], `${mdw(d)} の${{ 朝: '朝食', 昼: '昼食', 夜: '夕食' }[x.食事]}を ${時分(始)}〜${時分(終)} にした`);
+    札を差し替える(d, y => y.食事 === x.食事 && y.始 === x.始, [Object.assign({}, x, { 始: d + 'T' + 時分(始), 終: d + 'T' + 時分(終) })]); 描く();
+  } else 描く();
+});
 function 札を差し替える(d, 消す札, 足す札) {
   const v = P() && P().日[d]; if (!v) return;
   v.段取り = v.段取り.filter(y => !消す札(y)).concat(足す札 || []).sort((a, b) => a.始 < b.始 ? -1 : 1);
@@ -1680,10 +1733,10 @@ function 作業を消す() {
   if (s.固定) { 作業を固定する(true); return; }
   シートを閉じる(); 計算(true);
 }
-function 作業を固定する(外す) {
+function 作業を固定する(外す, 渡す新, 縮めた分を空ける = true) {
   const s = ui.sheet; const g = id => document.getElementById(id);
   const u = 作業の単位(s.ラベル); if (!u) return 知らせを出す('この作業の案件が見つからない');
-  const 新 = { 日付: g('wk-date').value, 始: g('wk-s').value, 終: g('wk-e').value };
+  const 新 = 渡す新 || { 日付: g('wk-date').value, 始: g('wk-s').value, 終: g('wk-e').value };
   if (!外す) {
     if (!新.日付 || !新.始 || !新.終) return 知らせを出す('日付と始まり・終わりの時刻を入れてください');
     if (新.終 <= 新.始) return 知らせを出す('終わりは始まりより後にしてください');
@@ -1696,7 +1749,7 @@ function 作業を固定する(外す) {
   直す('編集案件.json', [後.length ? { 道: u.道.concat(['固定']), 値: 後 } : { 道: u.道.concat(['固定']), 消す: true }],
     外す ? `${s.ラベル}：${mdw(s.元.日付)} ${s.元.始} の固定を外した` : `${s.ラベル}：${mdw(新.日付)} ${新.始}〜${新.終} にした`, { 計算: false });
   // 同じ日のうちで縮めた分は空きにする（自動の作業で埋め直さない）
-  const 空 = !外す && 新.日付 === s.元.日付 ? [{ 日付: 新.日付, 始: s.元.始, 終: 新.始 }, { 日付: 新.日付, 始: 新.終, 終: s.元.終 }].filter(x => x.始 < x.終) : [];
+  const 空 = !外す && 縮めた分を空ける && 新.日付 === s.元.日付 ? [{ 日付: 新.日付, 始: s.元.始, 終: 新.始 }, { 日付: 新.日付, 始: 新.終, 終: s.元.終 }].filter(x => x.始 < x.終) : [];
   if (空.length) 直す('EDITFLOW設定.json', [空きを足す(空)], '', { undo: false, 計算: false });
   // 計算を待たずに札を差し替える
   if (!外す) {
@@ -1842,8 +1895,12 @@ setInterval(() => { if (S.読めた) { 小窓を送る(); if ((ui.view === 'toda
 /* ═══ 画面の切り替え・知らせ ═══ */
 function 画面へ(v) { ui.view = v; document.querySelector('#main').scrollTop = 0; 描く(); }
 function 知らせを出す(t) {
-  if (!t) return; const e = $('#toast'); e.textContent = t; e.classList.add('on');
-  clearTimeout(知らせを出す._t); 知らせを出す._t = setTimeout(() => e.classList.remove('on'), 3200);
+  if (!t) return; const e = $('#toast');
+  // 「⌘Z で戻す」と付いた知らせには、押して戻せるボタンを出す
+  const 戻せる = /⌘Z で戻す$/.test(t);
+  e.innerHTML = esc(t.replace(/　⌘Z で戻す$/, '')) + (戻せる ? '<button class="toast-undo" data-act="undo">戻す</button>' : '');
+  e.classList.add('on');
+  clearTimeout(知らせを出す._t); 知らせを出す._t = setTimeout(() => e.classList.remove('on'), 戻せる ? 6000 : 3200);
 }
 function 誤りを出す(t) { ui.誤り = t; 知らせを出す(t); 帯を描く(); }
 
@@ -1853,6 +1910,7 @@ document.addEventListener('click', e => {
   while (t && t !== document.body && !(t.dataset && t.dataset.act)) t = t.parentElement;
   if (!t || !t.dataset || !t.dataset.act || t.disabled) return;
   const a = t.dataset.act, d = t.dataset;
+  if (a === 'tlItem' && 引き.直後 && Date.now() - 引き.直後 < 400) return;
   const u = d.u ? 単位を探す(d.u) : null;
   const i = d.i != null ? Number(d.i) : null;
   // カードの中のボタンは、カードの選択より先に効かせる
@@ -1931,6 +1989,7 @@ document.addEventListener('click', e => {
     case 'saveAsPreset': { const n = prompt('プリセット名を入力\n（例：しそうチャンネル番組）', u.名前); if (n) 直す('EDITFLOW設定.json', [{ 道: ['プリセット'], 足す: { id: 'preset_' + Date.now(), 名前: n.trim(), 説明: '', 工程: 工程(u).map(s => ({ 記号: 記号(s), 名前: s.名前, 英名: 英名(s), 見込み: s.見込み })) } }], `プリセット「${n}」を保存した`, { 計算: false }); break; }
     case 'addStep': if (u) { ui.下書き = null; シートを開く({ kind: 'addstep', u: u.id, mode: 'lib' }); } break;
     case 'closeSheet': シートを閉じる(); break;
+    case 'undo': 取り消す(); $('#toast').classList.remove('on'); break;
     case 'sheetBack': { const 下 = ui.sheet.戻り下書き; ui.sheet = ui.sheet.戻り; if (下) ui.下書き = 下; シートを描く(); break; }
     case 'dPreset': { 下書きを読む(); const p = 設定().プリセット.find(p => p.id === d.p); ui.下書き.プリセット = d.p; ui.下書き.工程 = p ? clone(p.工程).map(x => Object.assign(x, { 済: false })) : []; シートを描く(); break; }
     case 'dEst': 下書きを読む(); ui.下書き.工程[i].見込み = Math.max(0, (Number(ui.下書き.工程[i].見込み) || 0) + Number(d.d)); シートを描く(); break;
@@ -2162,7 +2221,61 @@ EF.書き出しの場面 = 名 => {
   ui.view = v; 描く();
   return true;
 };
-EF.書き出しの高さ = () => Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, 狭い() ? 844 : 940);
+/* 点検：文字の重なり・はみ出し・横のはみ出しを数える（画面外の書き出しで場面ごとに呼ぶ） */
+EF.点検 = () => {
+  const 結果 = { 重なり: [], 切れ: [], 横はみ出し: null };
+  const シート開 = document.getElementById('sheet').classList.contains('on');
+  const 詳細だけ = !シート開 && 狭い() && ui.詳細を開く;   // iPhone で詳細を開いているときは、詳細の欄だけを見る
+  const 根 = シート開 ? [document.getElementById('sheet')] : 詳細だけ ? [document.getElementById('detail')] : [document.body];
+  const 見える = el => { for (let e = el; e && e !== document.body; e = e.parentElement) { const c = getComputedStyle(e); if (c.display === 'none' || c.visibility === 'hidden' || Number(c.opacity) === 0) return false; } return true; };
+  const 文字 = [];
+  for (const r of 根) {
+    const w = document.createTreeWalker(r, NodeFilter.SHOW_TEXT);
+    let t; while ((t = w.nextNode())) {
+      if (!t.nodeValue.trim()) continue;
+      const el = t.parentElement; if (!el || !見える(el)) continue;
+      if (シート開 === false && el.closest('#sheet,#palette,#overlay')) continue;
+      const rg = document.createRange(); rg.selectNodeContents(t);
+      // はみ出して見えない分（overflow:hidden の箱の外）は切り落としてから比べる
+      const 切る = r0 => { let r = { left: r0.left, top: r0.top, right: r0.right, bottom: r0.bottom };
+        for (let e = el; e && e !== document.body; e = e.parentElement) { const c = getComputedStyle(e);
+          if (c.overflow !== 'visible' || c.overflowX !== 'visible') { const q = e.getBoundingClientRect();
+            r = { left: Math.max(r.left, q.left), top: Math.max(r.top, q.top), right: Math.min(r.right, q.right), bottom: Math.min(r.bottom, q.bottom) }; } }
+        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.right - r.left, height: r.bottom - r.top }; };
+      for (const b0 of rg.getClientRects()) {
+        const b = 切る(b0);
+        if (b.width <= 1 || b.height <= 1) continue;
+        // ほかの欄（詳細の欄・シートなど）の下に隠れている文字は数えない
+        const x = Math.min(Math.max(b.left + 2, 0), innerWidth - 1), y = Math.min(Math.max(b.top + b.height / 2, 0), innerHeight - 1);
+        const 上 = document.elementFromPoint(x, y);
+        if (b.top < innerHeight && b.bottom > 0 && 上 && !(上 === el || el.contains(上) || 上.contains(el) || 上.closest('.tl-item,.cal-ev,.cal-bar,.cal-dl') === el.closest('.tl-item,.cal-ev,.cal-bar,.cal-dl'))) {
+          const 覆 = 上.closest('#detail,#sheet,#palette,.sheet,.overlay'); if (覆 && !覆.contains(el)) continue;
+        }
+        文字.push({ b, el, t: t.nodeValue.trim().slice(0, 30) });
+      }
+    }
+  }
+  // 文字どうしの重なり（同じ文字の折り返しは除く）
+  for (let i = 0; i < 文字.length; i++) for (let j = i + 1; j < 文字.length; j++) {
+    const a = 文字[i], b = 文字[j]; if (a.el === b.el) continue;
+    const w = Math.min(a.b.right, b.b.right) - Math.max(a.b.left, b.b.left), h = Math.min(a.b.bottom, b.b.bottom) - Math.max(a.b.top, b.b.top);
+    if (w > 2 && h > 3) 結果.重なり.push(`「${a.t}」と「${b.t}」（${Math.round(a.b.left)},${Math.round(a.b.top)}）`);
+  }
+  // 箱からはみ出して切れている文字
+  for (const r of 根) for (const el of r.querySelectorAll('*')) {
+    if (!el.childNodes.length || ![...el.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) continue;
+    if (!見える(el)) continue;
+    const c = getComputedStyle(el);
+    const 素 = t => t.replace(/[▲📷\s　]/g, ''); const ti = (el.closest('[title]') || {}).title || '';
+    const 全文あり = ti && 素(ti).includes(素(el.textContent).slice(0, 8));
+    if (!全文あり && (c.overflow === 'hidden' || c.overflowX === 'hidden' || c.textOverflow === 'ellipsis') && el.scrollWidth > el.clientWidth + 2) 結果.切れ.push(`${el.className || el.tagName}：「${el.textContent.trim().slice(0, 30)}」`);
+  }
+  if (document.documentElement.scrollWidth > window.innerWidth + 1) 結果.横はみ出し = `${document.documentElement.scrollWidth} > ${window.innerWidth}`;
+  結果.重なり = [...new Set(結果.重なり)].slice(0, 60); 結果.切れ = [...new Set(結果.切れ)].slice(0, 60);
+  return JSON.stringify(結果);
+};
+EF.書き出しの高さ = () => { if (狭い() && ui.詳細を開く) { const d = document.getElementById('detail'); d.scrollTop = 0; return Math.max(d.scrollHeight, 844); }
+  return Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, 狭い() ? 844 : 940); };
 EF.試しの結果 = null;
 /* ボタンを実際に押して確かめる（写しのデータで。EDITFLOW_TEST=buttons） */
 EF.ボタンで試す = async () => {
@@ -2332,6 +2445,29 @@ EF.ボタンで試す = async () => {
     報(!今日の段取り(d).some(y => y.空き != null && y.始 === x.始), '空きを解除した直後に、画面から空きの札が消える');
     await 読む();
     報((設定().作業しない時間 || []).length === n - 1, `空きを解除 → ${n}→${(設定().作業しない時間 || []).length}`);
+  });
+  await 試す('つかんで動かす', async () => {
+    const 合う = x => x.種 === '作業' && x.ラベル && !x.固定 && (x.e - x.s) >= 3600000 && x.e.getHours() <= 20 && x.e.getHours() >= 1;
+    const d = Object.keys(P().日).find(d => d > 今日() && 今日の段取り(d).some(合う));
+    if (!d) return 報(true, 'つかんで動かす：1時間以上の昼の作業の札が無い');
+    const x = 今日の段取り(d).find(合う);
+    開く('weeks'); ui.週の日 = d; 描く();
+    const el = document.querySelector(`.tl-item[data-d="${d}"][data-s="${x.始}"]`); if (!el) throw new Error('作業の札が無い');
+    const r = el.getBoundingClientRect(), 一 = Number(el.closest('.tl-body').dataset.hour);
+    const 押 = (type, y) => document.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.left + 20, clientY: y, button: 0 }));
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: r.left + 20, clientY: r.top + 5, button: 0 }));
+    押('pointermove', r.top + 5 + 一);
+    押('pointerup', r.top + 5 + 一); await 待つ(); await 読む();
+    const u = 作業の単位(x.ラベル), 新始 = 時分(new Date(x.s.getTime() + 3600000));
+    報(u && (u.元.固定 || []).some(f => f.日付 === d && f.始 === 新始), `作業の札を1時間下へ動かす → 固定 ${JSON.stringify((u && u.元.固定 || []).slice(-1))}`);
+    const 空 = (設定().作業しない時間 || []).filter(z => z.日付 === d);
+    報(!空.some(z => z.始 === 時分(x.s)), '動かしたときは、元の時間を空きにしない');
+  });
+  await 試す('知らせから戻す', async () => {
+    const u = 案().find(u => !u.元.最優先); 最優先にする(u, true); await 待つ();
+    報(!!document.querySelector('#toast .toast-undo'), '知らせに「戻す」ボタンが出る');
+    await 押す('#toast .toast-undo', '戻す'); await 読む();
+    報(!元(u.id).最優先, `「戻す」で最優先が外れる → ${元(u.id).最優先 || 'なし'}`);
   });
   await 試す('設定', async () => {
     開く('today'); await 押す('[data-act="prefs"]', '⚙ 設定'); await 押す('[data-act="prefAlloc"][data-m="ならす"]', '日ごとにならす'); await 読む();

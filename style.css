@@ -739,3 +739,17 @@ html[data-theme="light"] .stale.red{color:#b11d1d}
 html[data-theme="light"] .ag-day{background:#fff}
 .lib-group{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--tx-mid);padding:8px 12px 2px}
 .pri-toggle{cursor:pointer;border:0;font:inherit}.pri-toggle.dim{opacity:.55}.pri-toggle:hover{opacity:1;outline:1px solid rgba(112,107,255,.5)}
+/* 点検で直したもの（2026-10-15） */
+.tl-item.thin{padding:0;border-width:0;border-radius:2px;opacity:.75}
+.pj-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pj-top .tag,.pj-top .pri-toggle{flex:none}
+.issue-title{white-space:normal;line-height:1.35}
+.list-row .t1{white-space:normal}
+.g-row{grid-template-columns:minmax(90px,28%) 1fr}
+.g-axis-row{height:16px}.g-axis-row .g-axis{margin-left:0}
+/* ドラッグ・知らせの戻す */
+.tl-item.editable{touch-action:none}
+.tl-item.editable:not(.thin)::after{content:"";position:absolute;left:0;right:0;bottom:0;height:7px;cursor:ns-resize}
+.tl-item.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:5;outline:2px solid #706BFF}
+.toast-undo{margin-left:12px;background:transparent;border:1px solid currentColor;color:inherit;border-radius:6px;padding:2px 10px;font:inherit;font-weight:700;cursor:pointer;pointer-events:auto}
+.toast{pointer-events:auto}
