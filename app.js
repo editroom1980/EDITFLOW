@@ -159,6 +159,14 @@ async function iPhoneに頼む(種, 中) {
     try { await GH.置く('変更/' + 名, 字, 'iPhone から：' + (ui.最後の説明 || '直し')); return { ok: true, 待ち: 名 }; }
     catch (e) { return { ok: false, エラー: e.message }; }
   }
+  if (種 === '予定') {
+    // カレンダーの予定の直し：Mac が取り込んでカレンダーに書く
+    const 名 = new Date().toISOString().replace(/[-:]/g, '').replace('.', '') + '-' + Math.random().toString(36).slice(2, 7) + '.json';
+    const 予 = Object.assign({}, 中); delete 予.id; delete 予.種;
+    const 字 = JSON.stringify({ 予定: 予, 端末: 'iPhone', 時刻: new Date().toISOString() }, null, 1);
+    try { await GH.置く('変更/' + 名, 字, 'iPhone から：予定を' + (中.操作 || '直す')); return { ok: true, 待ち: 名 }; }
+    catch (e) { return { ok: false, エラー: e.message }; }
+  }
   if (種 === '開く') { if (!試し) window.open(中.url, '_blank'); return true; }
   if (種 === '計算' || 種 === 'チェックリスト') return { ok: false, エラー: 'iPhone ではできない（Mac が取り込んで計算し、反映する）' };
   return true;
@@ -402,7 +410,7 @@ function 計算を予約() {
   帯を描く();
 }
 async function 計算(書き込む) {
-  if (iPhone) { 知らせを出す('iPhone では計算も反映もできない。直したことは Mac が取り込んで計算し直し、反映する'); return; }
+  if (iPhone) return;   // iPhone では計算しない。直したことは Mac が取り込んで計算し、反映する（ボタンは押せなくしてある）
   if (ui.計算中) { ui.もう一度 = true; return; }
   clearTimeout(計算の予約);
   ui.計算中 = 書き込む ? '反映' : '計算';
@@ -724,9 +732,8 @@ function 案件を消す(u) {
 
 /* ───────── 描く ───────── */
 const 画面 = {
-  today: { en: 'TODAY', jp: '今日' }, projects: { en: 'PROJECTS', jp: '案件' }, calendar: { en: 'CALENDAR', jp: '暦' },
-  deadlines: { en: 'DEADLINES', jp: '締切' }, weeks: { en: '3 WEEKS', jp: '3週間' }, plan: { en: 'PLAN', jp: '朝・夜' },
-  review: { en: 'REVIEW', jp: '週の見直し' }, shoot: { en: 'SHOOT', jp: '撮影' }, shop: { en: 'SHOPPING', jp: '買い物' }
+  today: { en: 'TODAY', jp: '今日' }, projects: { en: 'PROJECTS', jp: '案件' }, deadlines: { en: 'DEADLINES', jp: '締切' },
+  calendar: { en: 'CALENDAR', jp: '暦' }, shoot: { en: 'SHOOT', jp: '撮影' }, plan: { en: 'NIGHT', jp: '振り返り' }
 };
 function 描く() {
   if (!S.読めた) { $('#main').innerHTML = '<div class="empty"><b>読み込んでいます…</b></div>'; return; }
@@ -734,8 +741,8 @@ function 描く() {
   $('#nav').innerHTML = 左を描く();
   const g = 画面[ui.view];
   $('#screenTitle').innerHTML = `${g.en}<small>${g.jp}${S.写し ? '　（写しのフォルダ）' : ''}</small>`;
-  const 描き手 = { today: 今日を描く, projects: 案件を描く, calendar: 暦を描く, deadlines: 締切を描く, weeks: 三週間を描く,
-    plan: 朝夜を描く, review: 見直しを描く, shoot: 撮影を描く }[ui.view === 'shop' ? (ui.view = 'today') : ui.view];
+  if (!画面[ui.view]) ui.view = 'today';   // 消した画面（3週間・週の見直し・買い物）を開いていたら今日へ
+  const 描き手 = { today: 今日を描く, projects: 案件を描く, calendar: 暦を描く, deadlines: 締切を描く, plan: 夜を描く, shoot: 撮影を描く }[ui.view];
   document.getElementById('detail').classList.toggle('open', !!ui.詳細を開く);
   document.getElementById('app').classList.toggle('詳細を開いた', !!ui.詳細を開く);
   if (iPhone && !A()) { $('#main').innerHTML = `<div class="empty"><b>${S.トークンなし ? 'まだ Mac とつないでいない' : (S.同期誤り ? 'GitHub に届かない' : 'データがまだ無い')}</b>${esc(S.同期誤り || (S.トークンなし ? '設定で EDITFLOW-data のトークンを貼る' : 'Mac で EDITFLOW を開いて計算し直すと届く'))}<br><br><button class="btn btn-primary" data-act="phonePrefs">iPhone の設定</button></div>`; $('#detail').innerHTML = ''; 帯を描く(); if (ui.sheet) シートを描く(); return; }
@@ -749,11 +756,9 @@ function 左を描く() {
   const p = P();
   const 問題 = p ? (p.問題 || []).filter(q => !認めたか(q)).length : 0;
   const 撮 = S.撮影.filter(x => 取材日(x) && 取材日(x) >= 今日()).length;
-  const 見 = 止まっている().length;
-  const 札 = { today: 問題, review: 見, shoot: 0 };
+  const 札 = { today: 問題 };
   const 品 = (v) => `<button class="nav-item ${ui.view === v ? 'on' : ''}" data-act="view" data-v="${v}">${画面[v].en}${札[v] ? `<span class="badge">${札[v]}</span>` : ''}<span class="jp">${画面[v].jp}</span></button>`;
-  return 品('today') + 品('projects') + 品('calendar') + 品('deadlines') + 品('weeks') +
-    '<div class="nav-sep"></div>' + 品('plan') + 品('review') + '<div class="nav-sep"></div>' + 品('shoot') +
+  return 品('today') + 品('projects') + 品('deadlines') + 品('calendar') + 品('shoot') + '<div class="nav-sep"></div>' + 品('plan') +
     `<div class="nav-sep"></div><div class="nav-foot">⌘1〜9 で画面<br>⌘K 命令窓　⌘N 新しい案件<br>スペース 次の工程を完了<br>↑↓ 案件を選ぶ　⌘Z 戻す${撮 ? `<br><br>撮影の予定 ${撮}件` : ''}</div>`;
 }
 function 帯を描く() {
@@ -1164,7 +1169,7 @@ function 暦を描く() {
     <button class="cal-arrow" data-act="nextMonth" title="次の月">›</button><button class="btn btn-secondary btn-small" data-act="thisMonth">今月</button></div>
     <span class="hint">帯＝エンジンが作業を割り振った日（${p ? md(p.今日) + 'から3週間' : '—'}）・▲＝締切・休みと空き時間はカレンダーから</span></div>
     <div class="cal-weekdays">${曜.map((w, i) => `<div class="cal-weekday ${i === 0 ? 'sun' : i === 6 ? 'sat' : ''}">${w}</div>`).join('')}</div>
-    <div class="cal-grid">${cells}</div>${工程表(us, y, m)}`;
+    <div class="cal-grid">${cells}</div>${工程表(us, y, m)}<div style="margin-top:16px">${空き時間の棒()}</div>`;
 }
 function 工程表(us, y, m) {
   const 日数 = new Date(y, m + 1, 0).getDate();
@@ -1209,7 +1214,7 @@ function 締切を描く() {
 }
 
 /* ═══ 3週間 ═══ */
-function 三週間を描く() {
+function 空き時間の棒() {
   const p = P(); if (!p) return '';
   const days = Object.entries(p.日).filter(([d]) => d >= p.今日).slice(0, 21);
   const 長 = (a) => (時刻(a.終) - 時刻(a.始)) / 3600000;
@@ -1217,16 +1222,6 @@ function 三週間を描く() {
   const ラベル色 = {}; const us = 単位();
   for (const u of us) for (const k of u.締切) { const e = 進行の締切(k.id); if (e) ラベル色[e.ラベル] = 急ぎ(u); }
   const 色 = { red: 'rgba(205,50,50,0.9)', orange: 'rgba(205,100,16,0.9)', silver: 'rgba(140,146,158,0.85)' };
-  const 日々 = days.map(([d]) => d);
-  const 選 = 日々.includes(ui.週の日) ? ui.週の日 : p.今日;
-  const i選 = 日々.indexOf(選);
-  const 名 = 選 === p.今日 ? '今日' : 選 === 足す日(p.今日, 1) ? '明日' : '';
-  const 前 = 日々[i選 - 1], 次 = 日々[i選 + 1];
-  const 上 = `<div class="sec"><div class="sec-label">DAY<span class="jp">その日の段取り</span><span class="right">
-    <button class="btn btn-secondary btn-small" data-act="pickDay" data-d="${前 || ''}" ${前 ? '' : 'disabled title="これより前の計算は無い"'}>‹ 前の日</button>
-    <button class="btn btn-secondary btn-small" data-act="pickDay" data-d="${p.今日}" ${選 === p.今日 ? 'disabled' : ''}>今日</button>
-    <button class="btn btn-secondary btn-small" data-act="pickDay" data-d="${次 || ''}" ${次 ? '' : 'disabled title="これより先の計算は無い（3週間まで）"'}>次の日 ›</button></span></div>
-    <div class="days one">${時間軸(選, 名)}</div></div>`;
   const rows = days.map(([d, v]) => {
     const 通 = (v.割当 || []).filter(a => a.種類 === '通常' || a.種類 === '固定'), 外 = (v.割当 || []).filter(a => a.種類 === '外' || a.種類 === '深夜');
     let x = 0, segs = '';
@@ -1235,56 +1230,14 @@ function 三週間を描く() {
     for (const a of 外) { const w = 長(a) / 最大 * 100; segs += `<div class="wk-seg ${a.種類}" style="left:${x}%;width:${w}%;background:${色[ラベル色[a.名前] || 'silver']};opacity:.8" title="${a.種類 === '深夜' ? '深夜' : '時間外'}：${esc(a.名前)} ${時間(長(a))}"></div>`; x += w; }
     const 計 = (v.割当 || []).reduce((s, a) => s + 長(a), 0);
     const w = 日(d).getDay();
-    return `<div class="wk-row ${d === 選 ? 'sel' : ''}" data-act="pickDay" data-d="${d}" title="この日の段取りを上に出す"><div class="wk-date ${w === 0 || w === 6 ? 'we' : ''} ${d === p.今日 ? 'tod' : ''}">${mdw(d)}</div>
+    return `<div class="wk-row" data-act="gotoDay" data-d="${d}" title="押すと、今日の画面でこの日の段取りを開く"><div class="wk-date ${w === 0 || w === 6 ? 'we' : ''} ${d === p.今日 ? 'tod' : ''}">${mdw(d)}</div>
       <div class="wk-track"><div class="wk-free" style="width:${(v.使える || 0) / 最大 * 100}%"></div>${segs}</div>
       <div class="wk-sum">使える ${時間(v.使える)}・割当 ${時間(計)}</div></div>`;
   }).join('');
-  return 上 + `<div class="sec"><div class="sec-label">3 WEEKS<span class="jp">日ごとの使える時間と割り振り</span><span class="right hint">行を押すと、その日の段取りを上に出す。灰の帯＝ふだんの時間で使える分・色＝案件の急ぎ・枠の橙＝時間外・赤＝深夜</span></div>${rows}</div>`;
+  return `<div class="sec"><div class="sec-label">3 WEEKS<span class="jp">日ごとの使える時間と割り振り</span><span class="right hint">行を押すと、その日の段取りを開く。灰の帯＝ふだんの時間で使える分・色＝案件の急ぎ・枠の橙＝時間外・赤＝深夜</span></div>${rows}</div>`;
 }
 
 /* ═══ 朝の計画・夜の振り返り（Sunsama） ═══ */
-function 朝夜を描く() {
-  return `<div class="tabs2"><button class="${ui.planTab === '朝' ? 'on' : ''}" data-act="planTab" data-t="朝">朝の計画</button><button class="${ui.planTab === '夜' ? 'on' : ''}" data-act="planTab" data-t="夜">夜の振り返り</button></div>` +
-    (ui.planTab === '朝' ? 朝を描く() : 夜を描く());
-}
-function その日の案件(d) {
-  const p = P(); if (!p || !p.日[d]) return [];
-  const ラ = new Map();
-  for (const a of p.日[d].割当 || []) ラ.set(a.名前, (ラ.get(a.名前) || 0) + (時刻(a.終) - 時刻(a.始)) / 3600000);
-  const us = 単位();
-  const out = [];
-  for (const [ラベル, h] of ラ) {
-    const u = us.find(u => u.締切.some(k => { const e = 進行の締切(k.id); return e && e.ラベル === ラベル; }));
-    out.push({ ラベル, h, u });
-  }
-  return out;
-}
-function 朝を描く() {
-  const p = P(); if (!p) return '';
-  const 昨 = 足す日(今日(), -1);
-  const 残 = その日の案件(昨).filter(x => x.u && 工程(x.u).some(s => !s.済) && !済か(x.u));
-  const 今 = 今日の段取り(今日()).filter(x => x.種 === '作業');
-  const 計 = k => 今.filter(x => 区分(x) === k).reduce((a, x) => a + (x.e - x.s) / 3600000, 0);
-  const 通 = 計('作業'), 外 = 計('時間外'), 深 = 計('深夜');
-  const 上 = (しそ設定().空き日に使える時間 || 9), 外上 = (しそ設定().時間外の上限 || 3);
-  const 終 = 今.length ? 今[今.length - 1].e : null;
-  let h = `<div class="sec"><div class="sec-label">1. YESTERDAY<span class="jp">昨日の残作業</span><span class="right hint">完了＝次の工程を完了に・明日に回す＝着手できる日を明日に</span></div><div class="panel-card">`;
-  if (!残.length) h += `<div class="list-row"><span class="hint">昨日に割り振った作業で、残っているものは無い（または昨日の割り振りが進行.json に無い）</span></div>`;
-  for (const x of 残) {
-    const i = 工程(x.u).findIndex(s => !s.済); const s = 工程(x.u)[i];
-    h += `<div class="list-row"><div class="grow"><div class="t1">${esc(x.u.名前)}</div><div class="t2">昨日 ${時間(x.h)} 割り振り・次の工程：${esc(s.名前)}（${h字(s.見込み)}）</div></div>
-      <button class="btn btn-primary btn-small" data-act="toggleStep" data-u="${esc(x.u.id)}" data-i="${i}">完了</button><button class="btn btn-secondary btn-small" data-act="tomorrow" data-u="${esc(x.u.id)}">明日に回す</button></div>`;
-  }
-  h += `</div></div>`;
-  h += `<div class="sec"><div class="sec-label">2. TODAY<span class="jp">今日の合計を確認</span></div><div class="plan-sum">
-    <div class="nowcell"><div class="k">ふだんの時間</div><div class="v num">${時間(通)}</div><div class="s">上限 ${時間(上)}</div></div>
-    <div class="nowcell"><div class="k">時間外</div><div class="v num ${外 ? 'dl-orange' : ''}">${時間(外)}</div><div class="s">上限 ${時間(外上)}</div></div>
-    <div class="nowcell"><div class="k">深夜</div><div class="v num ${深 ? 'dl-red' : ''}">${時間(深)}</div><div class="s">${深 ? '徹夜になる' : 'なし'}</div></div>
-    <div class="nowcell go"><div class="k">終わる見込み</div><div class="v num">${終 ? hm(終) : '—'}</div><div class="s">${終 ? (ds(終) !== 今日() ? '日をまたぐ' : '今日の最後の作業') : '今日の作業なし'}</div></div></div>
-    <div class="meter" title="ふだん・時間外・深夜"><i style="width:${通 / (上 + 外上) * 100}%;background:#4a78d4"></i><i style="width:${外 / (上 + 外上) * 100}%;background:#ff9210"></i><i style="width:${Math.min(100, 深 / (上 + 外上) * 100)}%;background:#ff4040"></i></div>
-    <div class="panel-card" style="margin-top:10px">${今.map(x => `<div class="list-row"><span class="tag ${区分(x) === '深夜' ? 'red' : 区分(x) === '時間外' ? 'orange' : ''}">${hm(x.s)}〜${hm(x.e)}</span><div class="grow t1">${esc(x.題)}</div></div>`).join('') || '<div class="list-row hint">今日の作業ブロックは無い</div>'}</div></div>`;
-  return h;
-}
 function 夜を描く() {
   const xs = その日の案件(今日()).filter(x => x.u);
   const 日々 = (設定().日々の実績 || {})[今日()] || {};
@@ -1312,38 +1265,6 @@ function 夜を描く() {
 }
 
 /* ═══ 週の見直し（OmniFocus の Review） ═══ */
-function 止まっている() {
-  const 見 = 設定().見直し || {}; const 前 = (見.済んだ数 || {});
-  const t = 今日();
-  return 単位().filter(u => u.種 !== '回を作る' && !済か(u)).map(u => {
-    const why = [];
-    const 済数 = 工程(u).filter(s => s.済).length;
-    if (見.最後 && u.名前 in 前 && 前[u.名前] === 済数 && 工程(u).length) why.push(`前の見直し（${md(見.最後)}）から工程が進んでいない`);
-    if (u.元.着手できる日 && u.元.着手できる日 < t && ['未着手', '撮影前', ''].includes(状態(u))) why.push(`着手できる日（${md(u.元.着手できる日)}）を過ぎたのに ${状態(u) || '状態なし'}`);
-    if (!工程(u).length && u.元.残り編集時間 == null) why.push('工程も残り時間も無い（割り振れない）');
-    if (状態(u) === '確認待ち') { const v = 版(u).slice(-1)[0]; if (v && 日差(v.日付, t) >= 7) why.push(`確認待ちのまま ${日差(v.日付, t)}日（${esc(v.名前)}）`); }
-    const k = 近い締切(u); if (k && k.日付 && k.日付 < t) why.push(`締切（${md(k.日付)}）を過ぎている`);
-    return { u, why };
-  }).filter(x => x.why.length);
-}
-function 見直しを描く() {
-  const xs = 止まっている(); const 見 = 設定().見直し || {};
-  const n = 見.最後 ? 日差(見.最後, 今日()) : null;
-  let h = `<div class="sec"><div class="sec-label">WEEKLY REVIEW<span class="jp">止まっている案件を順に確認</span><span class="right hint">${見.最後 ? `前の見直し ${mdw(見.最後)}（${n}日前）` : 'まだ見直していない'}・週に1回</span></div>`;
-  if (!xs.length) return h + `<div class="issue ok"><div class="issue-head"><span class="lamp green"></span><span class="issue-title">止まっている案件は無い</span></div></div>
-    <button class="btn btn-primary" style="margin-top:10px" data-act="reviewDone">見直しを終了</button></div>`;
-  ui.reviewIdx = Math.min(ui.reviewIdx, xs.length - 1);
-  const x = xs[ui.reviewIdx];
-  h += `<div class="hint" style="margin-bottom:8px">${ui.reviewIdx + 1} / ${xs.length} 件</div>${案件カード(x.u)}
-    <div class="panel-card" style="margin-top:10px">${x.why.map(w => `<div class="list-row"><span class="lamp orange"></span><div class="grow">${w}</div></div>`).join('')}</div>
-    <div class="sec-label" style="margin-top:14px">その場で編集</div><div class="seg" style="margin-bottom:10px">${状態の名.map(s => `<button class="${状態(x.u) === s ? 'on s-' + s : ''}" data-act="status" data-u="${esc(x.u.id)}" data-s="${s}">${s}</button>`).join('')}</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary" data-act="reviewPrev" ${ui.reviewIdx ? '' : 'disabled'}>前へ</button>
-    <button class="btn btn-secondary" data-act="tomorrow" data-u="${esc(x.u.id)}">明日に回す</button><button class="btn btn-secondary" data-act="select" data-u="${esc(x.u.id)}">詳細を見る</button>
-    <button class="btn btn-primary" data-act="reviewNext" ${ui.reviewIdx < xs.length - 1 ? '' : 'disabled'}>次へ</button>
-    <button class="btn btn-secondary" data-act="reviewDone" style="margin-left:auto" title="いまの工程の進みを覚える。次の見直しで、進んでいない案件を見つけるのに使う">見直しを終了</button></div></div>`;
-  return h;
-}
-
 /* ═══ 撮影（StudioBinder のコールシートとショットリスト） ═══ */
 function 取材日(x) { const m = String(x.計画.取材日 || '').match(/\d{4}-\d{2}-\d{2}/); return m ? m[0] : null; }
 function 撮影を描く() {
@@ -1394,27 +1315,6 @@ function 撮影を描く() {
 }
 
 /* ═══ 買い物と在庫 ═══ */
-function 買い物を描く() {
-  const p = P(); const 食 = S.f['食事の予定.json'] || {}; const 献 = S.f['献立.json'] || {};
-  const 買 = p ? p.買い物 : { 日: [], もの: {} };
-  let h = `<div class="sec"><div class="sec-label">SHOPPING<span class="jp">まとめ買いのリスト</span><span class="right">${(買.日 || []).map(d => `<span class="tag">${mdw(d)} の帰り</span>`).join(' ') || '<span class="hint">3週間のうちに買い物の日が無い</span>'}</span></div><div class="panel-card">
-    ${Object.entries(買.もの || {}).map(([k, v]) => { const a = Array.isArray(v) ? v : [String(v)]; return `<div class="list-row"><span class="step-done-check"></span><div class="grow"><div class="t1">${esc(a[0] || k)}</div><div class="t2">${esc(a.slice(1).join('　'))}</div></div></div>`; }).join('') || '<div class="list-row hint">買うものは無い</div>'}</div>
-    <div class="hint" style="margin-top:6px">済みにするのはリマインダーの「買い物」リストで。済みにした分はエンジンが在庫に足す</div></div>`;
-  const 在 = 食.在庫 || {};
-  const 材 = 献.食材 || {};
-  h += `<div class="sec"><div class="sec-label">STOCK<span class="jp">在庫（あと何回分あるか）</span><span class="right hint">赤＝無い・橙＝下限より少ない・？＝量が分からない（買い物の日に「在庫を見て」に出る）</span></div><div class="stock">
-    ${Object.entries(在).map(([k, v]) => { const f = 材[k] || {}; const lo = f.下限; const c = v === 0 ? 'red' : (v != null && lo != null && v < lo ? 'orange' : '');
-      return `<div class="stock-item ${c}"><div style="flex:1;min-width:0"><div class="nm">${esc(k)}</div><div class="lo">${lo != null ? '下限 ' + lo + '回分' : ''}${f.買う ? '・' + esc(f.買う) : ''}${f.回分 ? '（' + f.回分 + '回分）' : ''}</div></div>
-      <div class="stepper ${v == null ? 'dim' : ''}"><button data-act="stock" data-k="${esc(k)}" data-d="-1" ${v == null || v <= 0 ? 'disabled' : ''}>−</button><span class="v">${v == null ? '？' : v + '回'}</span><button data-act="stock" data-k="${esc(k)}" data-d="1">＋</button></div>
-      <button class="icon-btn" data-act="stockUnknown" data-k="${esc(k)}" title="${v == null ? '量が分からない（いまそうなっている）' : '量が分からないにする'}" ${v == null ? 'disabled' : ''}>？</button></div>`; }).join('')}</div></div>`;
-  return h;
-}
-function 在庫を直す(k, d) {
-  const v = (S.f['食事の予定.json'].在庫 || {})[k];
-  const 新 = v == null ? Math.max(0, d) : Math.max(0, v + d);
-  直す('食事の予定.json', [{ 道: ['在庫', k], 値: 新 }], `在庫：${k} を ${新}回分にした`);
-}
-
 /* ═══ シート（新しい案件・案件の設定・工程を足す・プリセット・設定） ═══ */
 function シートを開く(s) { ui.sheet = s; $('#overlay').classList.add('on'); $('#sheet').classList.add('on'); シートを描く(); }
 function シートを閉じる() { ui.sheet = null; $('#sheet').classList.remove('on'); if (!ui.pal.open) $('#overlay').classList.remove('on'); }
@@ -1490,7 +1390,7 @@ function シートを描く() {
     const 新 = !s.元;
     const 名 = (しそ設定().数える予定表 || []).filter(n => !n.includes('@')).concat(['撮影']).filter((n, i, a) => a.indexOf(n) === i);
     head = `<button class="sheet-back" data-act="closeSheet">キャンセル</button><div class="sheet-title">${新 ? 'NEW EVENT　予定を入れる' : 'EVENT　予定を直す'}</div><span style="width:50px"></span>`;
-    body = `${iPhone ? '<div class="stale orange"><b>iPhone からはカレンダーを直せない</b><span>iPhone ではカレンダーアプリで直す。直した分は Mac の EDITFLOW が読み直して、割り振りを組み直す</span></div>' : ''}
+    body = `${iPhone ? '<div class="hint" style="margin-bottom:8px">iPhone で直した予定は、Mac の EDITFLOW が1分ほどで取り込み、カレンダーに入れて組み直す</div>' : ''}
       <div class="panel-card">
       <div class="form-row"><span class="form-label">題</span><input class="in" style="flex:1" id="ev-title" value="${esc(d.題 || '')}" placeholder="予定の名前"></div>
       <div class="form-row"><span class="form-label">カレンダー</span><select class="in" id="ev-cal">${名.map(n => `<option ${n === d.予定表 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><span class="hint">外に出る予定は、カレンダーごとの移動の時間を前後に足して数える</span></div>
@@ -1498,7 +1398,7 @@ function シートを描く() {
       <div class="form-row"><span class="form-label">場所</span><textarea class="in" style="flex:1;min-height:44px;resize:vertical" id="ev-place" rows="2" placeholder="任意（入れると、外に出る予定として移動を足す）">${esc(d.場所 || '')}</textarea></div>
       <div class="form-row"><span class="form-label">移動（片道）</span><input class="in" type="number" min="0" max="300" step="5" style="width:80px" id="ev-move" value="${d.移動 || 0}"><span class="hint">分。予定の前後に足し、その時間に作業を入れない。0 なら移動なし</span></div>
       <div class="form-row"><span class="hint">保存するとカレンダーに入り（iPhone のカレンダーにも出る）、すぐ計算し直して作業を組み直す。繰り返しの予定は、この回だけ直す</span></div></div>`;
-    foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel" ${iPhone ? 'disabled' : ''}>この予定を削除</button>`}<button class="btn btn-primary btn-wide" data-act="evSave" ${iPhone ? 'disabled' : ''}>${新 ? 'カレンダーに入れる' : '保存'}</button>`;
+    foot = `${新 ? '' : `<button class="btn btn-danger" data-act="evDel">この予定を削除</button>`}<button class="btn btn-primary btn-wide" data-act="evSave">${新 ? 'カレンダーに入れる' : '保存'}</button>`;
   }
   if (s.kind === 'waiting') {
     const u = 単位を探す(s.u);
@@ -1549,7 +1449,7 @@ function シートを描く() {
     body = `<div class="panel-card">
       <div class="form-row"><span class="form-label">作業</span><span class="t1">${esc(s.ラベル)}</span></div>
       <div class="form-row"><span class="form-label">日付</span>${欄('date', d.日付, 'id="wk-date"')}${欄('time', d.始, 'id="wk-s" style="width:90px"')}<span class="hint">〜</span>${欄('time', d.終, 'id="wk-e" style="width:90px"')}</div>
-      <div class="form-row"><span class="hint">「この時刻に変更」：この時間は必ずこの作業にする。同じ日のうちで縮めた分は空きにして、作業を入れない。残りの作業時間はほかの日に割り振り直す。<br>「この作業を消す」：この時間を空きにして、作業を入れない（作業時間はほかの日に回る）。どちらもすぐカレンダーに反映する</span></div></div>`;
+      <div class="form-row"><span class="hint">終わりを始まりより前の時刻にすると、翌日にまたぐ深夜の作業になる。<br>「この時刻に変更」：この時間は必ずこの作業にする。同じ日のうちで縮めた分は空きにして、作業を入れない。残りの作業時間はほかの日に割り振り直す。<br>「この作業を消す」：この時間を空きにして、作業を入れない（作業時間はほかの日に回る）。どちらもすぐカレンダーに反映する</span></div></div>`;
     foot = `<button class="btn btn-danger" data-act="wkFree">この作業を消す</button>${s.固定 ? '<button class="btn btn-secondary" data-act="wkUnpin">固定を解除（自動に戻す）</button>' : ''}<button class="btn btn-primary btn-wide" data-act="wkPin">この時刻に変更</button>`;
   }
   if (s.kind === 'free') {
@@ -1617,6 +1517,7 @@ async function 予定を保存(消す) {
   if (s.元) 札を差し替える(s.元.始.slice(0, 10), y => y.予定表 && y.始 === s.元.始 && y.元題 === s.元.題);
   if (!消す) 札を差し替える(d.日付, () => false, [{ 始: d.日付 + 'T' + d.始, 終: d.日付 + 'T' + d.終, 題: `${d.予定表}：${d.題}`, 種: '予定', 予定表: d.予定表, 元題: d.題, 場所: d.場所, 移動: d.移動 }]);
   シートを閉じる(); 描く();
+  if (iPhone) { if (r.待ち) { S.待ち.push(r.待ち); 帯を描く(); } 知らせを出す(`「${消す ? s.元.題 : d.題}」を${消す ? '消す' : '直す'}。Mac が取り込んでカレンダーに入れる（1分ほど）`); return; }
   知らせを出す(消す ? `「${s.元.題}」を消した。組み直している` : `「${d.題}」を${s.元 ? '直した' : 'カレンダーに入れた'}。組み直している`);
   計算(true);
 }
@@ -1720,9 +1621,11 @@ function 札を差し替える(d, 消す札, 足す札) {
   const v = P() && P().日[d]; if (!v) return;
   v.段取り = v.段取り.filter(y => !消す札(y)).concat(足す札 || []).sort((a, b) => a.始 < b.始 ? -1 : 1);
 }
+const 終の時 = t => t === '00:00' ? '24:00' : t;   // 0:00 で終わる札は、その日の終わり（24:00）として比べる
 function 空きを足す(xs) {
   const 前 = 設定().作業しない時間 || [];
-  return { 道: ['作業しない時間'], 値: 前.concat(xs).filter(x => x.始 < x.終) };
+  // 終わりが始まりより前の時刻は、翌日にまたぐ時間として残す
+  return { 道: ['作業しない時間'], 値: 前.concat(xs).filter(x => x.始 && x.終 && x.始 !== x.終) };
 }
 function 作業を消す() {
   const s = ui.sheet;
@@ -1739,7 +1642,7 @@ function 作業を固定する(外す, 渡す新, 縮めた分を空ける = tru
   const 新 = 渡す新 || { 日付: g('wk-date').value, 始: g('wk-s').value, 終: g('wk-e').value };
   if (!外す) {
     if (!新.日付 || !新.始 || !新.終) return 知らせを出す('日付と始まり・終わりの時刻を入れてください');
-    if (新.終 <= 新.始) return 知らせを出す('終わりは始まりより後にしてください');
+    if (新.終 === 新.始) return 知らせを出す('始まりと終わりが同じ時刻');
     const 締 = u.締切.filter(k => !k.済).map(k => k.日付).sort().pop();
     if (締 && 新.日付 > 締) return 知らせを出す(`締切（${mdw(締)}）より後には固定できない`);
   }
@@ -1749,7 +1652,8 @@ function 作業を固定する(外す, 渡す新, 縮めた分を空ける = tru
   直す('編集案件.json', [後.length ? { 道: u.道.concat(['固定']), 値: 後 } : { 道: u.道.concat(['固定']), 消す: true }],
     外す ? `${s.ラベル}：${mdw(s.元.日付)} ${s.元.始} の固定を外した` : `${s.ラベル}：${mdw(新.日付)} ${新.始}〜${新.終} にした`, { 計算: false });
   // 同じ日のうちで縮めた分は空きにする（自動の作業で埋め直さない）
-  const 空 = !外す && 縮めた分を空ける && 新.日付 === s.元.日付 ? [{ 日付: 新.日付, 始: s.元.始, 終: 新.始 }, { 日付: 新.日付, 始: 新.終, 終: s.元.終 }].filter(x => x.始 < x.終) : [];
+  const 空 = !外す && 縮めた分を空ける && 新.日付 === s.元.日付 && 新.始 < 終の時(新.終) && s.元.始 < 終の時(s.元.終)
+    ? [{ 日付: 新.日付, 始: s.元.始, 終: 新.始 }, { 日付: 新.日付, 始: 新.終, 終: s.元.終 }].filter(x => x.始 < 終の時(x.終)) : [];
   if (空.length) 直す('EDITFLOW設定.json', [空きを足す(空)], '', { undo: false, 計算: false });
   // 計算を待たずに札を差し替える
   if (!外す) {
@@ -2009,10 +1913,8 @@ document.addEventListener('click', e => {
     case 'prevMonth': ui.calMonth.m--; if (ui.calMonth.m < 0) { ui.calMonth.m = 11; ui.calMonth.y--; } 描く(); break;
     case 'nextMonth': ui.calMonth.m++; if (ui.calMonth.m > 11) { ui.calMonth.m = 0; ui.calMonth.y++; } 描く(); break;
     case 'thisMonth': ui.calMonth = null; 描く(); break;
-    case 'planTab': ui.planTab = d.t; 描く(); break;
-    case 'pickDay': ui.週の日 = d.d; 描く(); break;
     case 'dayShift': ui.日ずらし = Math.max(0, Math.min(20, Number(d.n))); 描く(); break;
-    case 'shootDay': ui.週の日 = d.d; 画面へ('weeks'); break;
+    case 'shootDay': case 'gotoDay': ui.日ずらし = Math.max(0, Math.min(20, 日差(今日(), d.d))); 画面へ('today'); break;
     case 'tlItem': { const x = 段取りの札(d.d, d.s, d.t); if (!x) break;
       if (x.空き != null) { シートを開く({ kind: 'free', x: Object.assign({ i: x.空き }, (設定().作業しない時間 || [])[x.空き] || {}) }); break; }
       if (x.予定表) 予定を開く(d.d, x); else if (x.食事) 食事を開く(d.d, x); else if (x.買い物) 買い物を開く(d.d, x); else 作業を開く(d.d, x); break; }
@@ -2033,17 +1935,12 @@ document.addEventListener('click', e => {
       札を差し替える(x0.日付, y => y.空き != null && y.始.slice(11, 16) === x0.始);
       シートを閉じる(); 描く(); 計算(true); break; }
     case 'toggleDone': ui.済も出す = !ui.済も出す; 描く(); break;
-    case 'reviewNext': ui.reviewIdx++; 描く(); break;
-    case 'reviewPrev': ui.reviewIdx = Math.max(0, ui.reviewIdx - 1); 描く(); break;
-    case 'reviewDone': { const 数 = {}; 単位().forEach(u => { 数[u.名前] = 工程(u).filter(s => s.済).length; }); 直す('EDITFLOW設定.json', [{ 道: ['見直し'], 値: { 最後: 今日(), 済んだ数: 数 } }], '見直しを終えた（いまの進みを覚えた）', { 計算: false }); ui.reviewIdx = 0; break; }
     case 'shootSel': ui.shootSel = d.f; 描く(); break;
     case 'map': 頼む('開く', { url: 'https://maps.apple.com/?q=' + encodeURIComponent(d.q) }); break;
     case 'shot': { const 済 = (((メモ().撮影 || {})[d.f] || {}).消し込み || {})[d.id];
       直す('撮影メモ.json', [済 ? { 道: ['撮影', d.f, '消し込み', d.id], 消す: true } : { 道: ['撮影', d.f, '消し込み', d.id], 値: true, 作る: true }], `カット ${d.id} を${済 ? '戻した' : '消した'}`, { 計算: false }); break; }
     case 'checklist': ui.印 = { f: d.f, t: 'リマインダーへ入れている…' }; 描く();
       頼む('チェックリスト', { フォルダ: d.f }).then(r => { ui.印 = { f: d.f, t: r && r.ok ? (r.出力 || '').trim().split('\n').pop() : '失敗：' + ((r && (r.エラー || r.出力)) || '').trim().split('\n').pop() }; 描く(); }); break;
-    case 'stock': 在庫を直す(d.k, Number(d.d)); break;
-    case 'stockUnknown': 直す('食事の予定.json', [{ 道: ['在庫', d.k], 値: null }], `在庫：${d.k} を「量が分からない」にした`); break;
     case 'prefAlloc': { const w = Object.assign({}, 設定().割り振り || {}, { 割り振り方: d.m }); const c = document.getElementById('pref-cap');
       if (c && c.value) w['1日の作業の上限'] = Math.min(12, Math.max(2, Number(c.value)));
       直す('EDITFLOW設定.json', [{ 道: ['割り振り'], 値: w }], `割り振り方を「${d.m === 'ならす' ? '日ごとにならす' : '1本ずつ続けて'}」にした`); シートを描く(); break; }
@@ -2201,7 +2098,7 @@ EF.書き出しの場面 = 名 => {
   if (v === 'prefs') { ui.view = 'today'; 描く(); シートを開く({ kind: iPhone ? 'phone' : 'prefs' }); return true; }
   if (v === 'settings') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); return true; }
   ui.詳細を開く = false;
-  if (v === 'weeks' && 添) { ui.週の日 = 足す日(今日(), Number(添)); ui.view = 'weeks'; 描く(); return true; }
+
   if (v === 'preset') { ui.view = 'today'; 描く(); シートを開く({ kind: 'prefs' }); プリセットを開く(添 === 'new' ? null : 4); if (添 === 'add') { ui.sheet = { kind: 'addstep', mode: 'lib', 戻り: ui.sheet }; シートを描く(); } return true; }
   if (v === 'newpreset') { ui.view = 'projects'; 描く(); 新しい案件を開く(); プリセットを開く(null); ui.sheet = { kind: 'addstep', mode: 'lib', 戻り: ui.sheet }; 工程を足す_({ 記号: 'SH', 名前: '撮影', 英名: 'Shooting', 見込み: 4, 済: false }); return true; }
   if (v === 'presetpick') { ui.view = 'projects'; 描く(); const u = 単位().find(u => u.種 === '案件'); シートを開く({ kind: 'preset', u: u.id }); return true; }
@@ -2209,9 +2106,9 @@ EF.書き出しの場面 = 名 => {
   if (v === 'meal') { ui.view = 'today'; 描く(); const d = 足す日(今日(), 1); const x = 今日の段取り(d).find(x => x.食事 === '夜'); if (x) 食事を開く(d, x); return true; }
   if (v === 'today' && 添 && /^\d+$/.test(添)) { ui.日ずらし = Number(添); ui.view = 'today'; 描く(); return true; }
   if (v === 'event' || v === 'work') {
-    ui.view = 'weeks';
+    ui.view = 'today';
     for (let i = 0; i < 21; i++) { const d = 足す日(今日(), i); const x = 今日の段取り(d).find(x => v === 'event' ? x.予定表 : x.ラベル);
-      if (x) { ui.週の日 = d; 描く(); if (v === 'event') 予定を開く(d, x); else 作業を開く(d, x); return true; } }
+      if (x) { ui.日ずらし = i; 描く(); if (v === 'event') 予定を開く(d, x); else 作業を開く(d, x); return true; } }
     描く(); return true;
   }
   if (v === 'palette') { ui.view = 'today'; 描く(); 命令窓を開く(); ui.pal.q = ''; 命令窓を描く(); return true; }
@@ -2295,6 +2192,7 @@ EF.ボタンで試す = async () => {
   const u0 = 案().find(u => 工程(u).some(x => !x.済));
   const 元 = id => 単位を探す(id).元;
   const 開く = (v, u) => { if (u) ui.sel = u.id; ui.view = v; ui.詳細を開く = true; 描く(); };
+  const 日を開く = d => { ui.日ずらし = Math.max(0, Math.min(20, 日差(今日(), d))); 開く('today'); };
 
   await 試す('計測', async () => {
     開く('projects', u0);
@@ -2394,19 +2292,19 @@ EF.ボタンで試す = async () => {
     await 押す('[data-act="mlKind"][data-k="外食"]', '外食'); await 押す('[data-act="mlSave"]', '保存'); await 読む();
     報(((S.f['食事の予定.json'].日 || {})[d] || {}).夜 === '外食', `夕食を外食に → ${JSON.stringify((S.f['食事の予定.json'].日 || {})[d])}`);
     const sh = Object.keys(P().日).map(d => [d, 今日の段取り(d).find(x => x.買い物)]).find(([, x]) => x);
-    if (sh) { 開く('weeks'); ui.週の日 = sh[0]; 描く(); await 押す(`[data-act="tlItem"][data-d="${sh[0]}"][data-s="${sh[1].始}"]`, '買い物の札'); 入れる('sh-s', '16:00'); await 押す('[data-act="shSave"]', '買い物を保存'); await 読む();
+    if (sh) { 日を開く(sh[0]); await 押す(`[data-act="tlItem"][data-d="${sh[0]}"][data-s="${sh[1].始}"]`, '買い物の札'); 入れる('sh-s', '16:00'); await 押す('[data-act="shSave"]', '買い物を保存'); await 読む();
       報((S.f['食事の予定.json'].買い物の予定 || []).some(y => y.日 === sh[0] && y.時刻 === '16:00'), '買い物の時刻を16:00に'); }
   });
   await 試す('作業の固定', async () => {
     const d = Object.keys(P().日).find(d => d > 今日() && 今日の段取り(d).some(x => x.種 === '作業' && x.ラベル));
-    const x = 今日の段取り(d).find(x => x.種 === '作業' && x.ラベル); 開く('weeks'); ui.週の日 = d; 描く();
+    const x = 今日の段取り(d).find(x => x.種 === '作業' && x.ラベル); 日を開く(d);
     await 押す(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`, '作業の札'); await 押す('[data-act="wkPin"]', 'この時刻に固定する'); await 読む();
-    const u = 作業の単位(x.ラベル); 報(u && (u.元.固定 || []).some(f => f.日付 === d), `作業を固定 → ${u && JSON.stringify(u.元.固定)}`);
+    const u = 作業の単位(x.ラベル); 報(u && (u.元.固定 || []).some(f => f.日付 === d), `作業を固定 → ${u && JSON.stringify(u.元.固定)}・札 ${x.題}・知らせ ${$("#toast").textContent}`);
   });
   await 試す('予定の場所', async () => {
     const d = Object.keys(P().日).find(d => 今日の段取り(d).some(x => x.予定表 && x.場所));
     if (!d) return 報(true, '予定の場所：場所の入った予定が3週間に無い');
-    const x = 今日の段取り(d).find(x => x.予定表 && x.場所); 開く('weeks'); ui.週の日 = d; 描く();
+    const x = 今日の段取り(d).find(x => x.予定表 && x.場所); 日を開く(d);
     await 押す(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`, '予定の札');
     報(document.getElementById('ev-place').value === x.場所 && Number(document.getElementById('ev-move').value) === (x.移動 || 0), `予定を開くと場所と移動が入っている → ${document.getElementById('ev-place').value}・${document.getElementById('ev-move').value}分`);
   });
@@ -2415,12 +2313,12 @@ EF.ボタンで試す = async () => {
     if (!d) return 報(true, '作業を縮める：2時間以上の作業の札が無い');
     const x = 今日の段取り(d).find(x => x.種 === '作業' && x.ラベル && !x.固定 && (x.e - x.s) >= 2 * 3600000);
     const n = (設定().作業しない時間 || []).length;
-    開く('weeks'); ui.週の日 = d; 描く(); await 押す(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`, '作業の札');
+    日を開く(d); await 押す(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`, '作業の札');
     const 新終 = 時分(new Date(x.s.getTime() + 3600000)); 入れる('wk-e', 新終); await 押す('[data-act="wkPin"]', 'この時刻に変更'); await 読む();
     const u = 作業の単位(x.ラベル), 空 = 設定().作業しない時間 || [];
     報(u && (u.元.固定 || []).some(f => f.日付 === d && f.終 === 新終) && 空.length === n + 1 && 空[空.length - 1].始 === 新終, `作業を1時間に縮める → 固定 ${JSON.stringify((u.元.固定 || []).slice(-1))}・空き ${JSON.stringify(空.slice(-1))}`);
     const y = 今日の段取り(d).find(y => y.種 === '作業' && y.ラベル && y.始 !== x.始) || x;
-    開く('weeks'); ui.週の日 = d; 描く(); const 札 = document.querySelector(`[data-act="tlItem"][data-d="${d}"][data-s="${y.始}"]`);
+    日を開く(d); const 札 = document.querySelector(`[data-act="tlItem"][data-d="${d}"][data-s="${y.始}"]`);
     if (札) { 札.click(); await 待つ(); await 押す('[data-act="wkFree"]', 'この作業を消す'); await 読む(); 報((設定().作業しない時間 || []).length === n + 2, `作業を消す → 空き ${(設定().作業しない時間 || []).length - n}件`); }
     ui.sheet = null; シートを開く({ kind: 'free', x: Object.assign({ i: n }, (設定().作業しない時間 || [])[n]) }); await 押す('[data-act="freeDel"]', '空きを解除'); await 読む();
     報((設定().作業しない時間 || []).length === n + 1, `空きを解除 → ${(設定().作業しない時間 || []).length - n}件`);
@@ -2429,9 +2327,8 @@ EF.ボタンで試す = async () => {
     const d = Object.keys(P().日).find(d => 今日の段取り(d).some(x => x.空き != null));
     if (!d) return 報(true, '空きの札が3週間に無い');
     const x = 今日の段取り(d).find(x => x.空き != null); const n = (設定().作業しない時間 || []).length;
-    for (const v of ['weeks', 'today']) {
-      if (v === 'today') { ui.日ずらし = Math.max(0, Math.min(20, 日差(今日(), d))); }
-      開く(v); if (v === 'weeks') { ui.週の日 = d; 描く(); }
+    for (const v of ['today']) {
+      日を開く(d);
       const 札 = document.querySelector(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`);
       報(!!札, `${v} の画面に空きの札がある`);
       if (!札) continue;
@@ -2439,7 +2336,7 @@ EF.ボタンで試す = async () => {
       報(ui.sheet && ui.sheet.kind === 'free', `空きの札を押すと空きの画面 → ${ui.sheet && ui.sheet.kind}`);
       シートを閉じる();
     }
-    開く('weeks'); ui.週の日 = d; 描く();
+    日を開く(d);
     document.querySelector(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`).click(); await 待つ();
     await 押す('[data-act="freeDel"]', '空きを解除');
     報(!今日の段取り(d).some(y => y.空き != null && y.始 === x.始), '空きを解除した直後に、画面から空きの札が消える');
@@ -2451,7 +2348,7 @@ EF.ボタンで試す = async () => {
     const d = Object.keys(P().日).find(d => d > 今日() && 今日の段取り(d).some(合う));
     if (!d) return 報(true, 'つかんで動かす：1時間以上の昼の作業の札が無い');
     const x = 今日の段取り(d).find(合う);
-    開く('weeks'); ui.週の日 = d; 描く();
+    日を開く(d);
     const el = document.querySelector(`.tl-item[data-d="${d}"][data-s="${x.始}"]`); if (!el) throw new Error('作業の札が無い');
     const r = el.getBoundingClientRect(), 一 = Number(el.closest('.tl-body').dataset.hour);
     const 押 = (type, y) => document.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.left + 20, clientY: y, button: 0 }));

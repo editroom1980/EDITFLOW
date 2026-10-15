@@ -753,3 +753,15 @@ html[data-theme="light"] .ag-day{background:#fff}
 .tl-item.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:5;outline:2px solid #706BFF}
 .toast-undo{margin-left:12px;background:transparent;border:1px solid currentColor;color:inherit;border-radius:6px;padding:2px 10px;font:inherit;font-weight:700;cursor:pointer;pointer-events:auto}
 .toast{pointer-events:auto}
+/* iPhone：下の欄をホームバーのスワイプから離し、横に送らずに収める（2026-10-16） */
+@media (max-width: 760px) {
+  .nav{height:calc(66px + env(safe-area-inset-bottom));padding:6px 4px calc(10px + env(safe-area-inset-bottom));overflow:hidden;touch-action:manipulation}
+  .nav-item{flex:1 1 0;min-width:0;padding:6px 2px;font-size:0;letter-spacing:0}
+  .nav-item .jp{font-size:12px}
+  .nav-item .badge{font-size:10px}
+  .statusbar{bottom:calc(66px + env(safe-area-inset-bottom))}
+  .main{bottom:calc(96px + env(safe-area-inset-bottom))}
+  .sheet-footer{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  .sheet{padding-bottom:0}
+}
+@media (max-width: 760px) { .form-row input[type=date],.form-row input.in[onfocus*="date"]{min-width:136px} .form-row{flex-wrap:wrap} }
