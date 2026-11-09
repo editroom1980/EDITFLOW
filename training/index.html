@@ -55,7 +55,7 @@ header.top{display:flex;justify-content:space-between;align-items:baseline;gap:1
 .tab[aria-pressed="true"]{border-color:var(--go);background:var(--raise)}
 .tab:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--go);outline-offset:2px}
 .detail{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}
-@media (max-width:760px){.detail{grid-template-columns:1fr}}
+@media (max-width:760px){.detail{grid-template-columns:1fr}.detail .side{order:-1}}
 .detail h2{font-size:24px;font-weight:900}
 .detail .lead{color:var(--muted);margin-top:4px}
 .plan{margin-top:14px;display:flex;flex-direction:column;border-top:1px solid var(--line)}
@@ -447,7 +447,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=2ddd6370', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=800dfef9', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
