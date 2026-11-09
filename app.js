@@ -619,7 +619,8 @@ function 渡した(u, 種類) {
 }
 function 時間外を許可(q) {
   直す('EDITFLOW設定.json', [{ 道: ['時間外を認めた', q.id], 値: { 時間外: q.時間外, 深夜: q.深夜, 日: 今日() }, 作る: true }],
-    `${q.ラベル}：時間外 ${時間(q.時間外)}${q.深夜 ? '・深夜 ' + 時間(q.深夜) : ''} を認めた`, { 計算: false });
+    `${q.ラベル}：時間外 ${時間(q.時間外)}${q.深夜 ? '・深夜 ' + 時間(q.深夜) : ''} を許可した。時間外に割り振っている`, { 計算: false });
+  計算(true);   // 許可した時間外を、すぐ割り振ってカレンダーに入れる
 }
 function 認めたか(q) {
   const a = (設定().時間外を認めた || {})[q.id];
@@ -860,7 +861,7 @@ function 問題の札(q) {
     <div class="issue-nums">
       ${q.足りない > 0 ? `<span class="tag red">不足 ${時間(q.足りない)}</span>` : ''}
       ${q.深夜 > 0 ? `<span class="tag red">深夜（徹夜） ${時間(q.深夜)}</span>` : ''}
-      ${q.時間外 > 0 ? `<span class="tag orange">時間外 ${時間(q.時間外)}</span>` : ''}
+      ${q.時間外 > 0 ? `<span class="tag orange">時間外 ${時間(q.時間外)}</span>` : ''}${(q.時間外 > 0 || q.深夜 > 0) && !認 ? '<span class="tag dim" title="時間外・深夜の作業は、許可した締切にだけ割り振る">許可するまで時間外には入れない</span>' : ''}
       ${認 ? `<span class="tag green">時間外を認めた（${md((設定().時間外を認めた[q.id] || {}).日)}）</span>` : ''}
     </div>
     <div class="issue-acts">
@@ -1871,7 +1872,7 @@ document.addEventListener('click', e => {
     case 'delivered': if (u) 渡した(u, d.k); break;
     case 'undeliver': if (u) 直す('編集案件.json', [{ 道: ['案件', { 名前: u.名前 }, '締切', { 種類: d.k }, '済'], 消す: true }].concat(u.元.状態 === '納品済' ? [{ 道: u.道.concat(['状態']), 値: '作業中' }] : []), `${u.名前}：${d.k} を「渡していない」に戻した`); break;
     case 'allowOT': { const q = (P().問題 || []).find(q => q.id === d.id); if (q) 時間外を許可(q); break; }
-    case 'unallowOT': 直す('EDITFLOW設定.json', [{ 道: ['時間外を認めた', d.id], 消す: true }], '時間外の許可を取り消した', { 計算: false }); break;
+    case 'unallowOT': 直す('EDITFLOW設定.json', [{ 道: ['時間外を認めた', d.id], 消す: true }], '時間外の許可を取り消した。時間外の作業を外している', { 計算: false }); 計算(true); break;
     case 'calc': 計算(false); break;
     case 'reflect': 計算(true); break;
     case 'palette': 命令窓を開く(); break;
