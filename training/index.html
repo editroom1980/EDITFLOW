@@ -22,94 +22,125 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Barlow+Condensed:wght@500;600;700&display=swap">
 <style>
-/* 構成：ホーム＝今日のメニューと「始める」→ 今週（帯と目標の輪）→ 数字3つ → 体幹の段階 → 8週間のマス目 → ほかのメニュー。
-   運動中＝上に全種目の帯、左に動く人、右に種目名と残り秒の輪（動く＝緑・休み＝黄・準備と伸ばす＝青）。終わり＝お祝いと記録・きつさ */
+/* 構成：下のタブで「トレーニング｜食事｜買い物」を切り替える。
+   トレーニング＝本日のセッション → 週間目標 → 指標3つ → コア → アクティビティ → メニュー一覧
+   食事＝本日の条件（トレーニング日・たんぱく質目標）→ 調理時間5段階・ジャンル・テイスト → 提案3件 → 献立
+   買い物＝7日間の献立（自動作成・入れ替え）→ 売り場別の買い物リスト
+   運動中は全画面（輪＝残り秒。ワーク緑・レスト黄・ウォームアップとクールダウン青）*/
 :root{
-  --bg:#0E1517; --surface:#151F23; --raise:#1C292E; --ink:#E7EEF0; --muted:#8C9FA5; --line:#28363B;
-  --go:#7BD389; --go-ink:#0E1517; --rest:#F0B44C; --prep:#6FB6F2; --far:#E7EEF0; --heat0:#1A2529;
+  --bg:#0D1416; --surface:#141E21; --raise:#1B272B; --ink:#E8EFF0; --muted:#8A9DA3; --line:#26343A;
+  --go:#7BD389; --go-ink:#0D1416; --rest:#F0B44C; --prep:#6FB6F2; --food:#F29E5B; --far:#E8EFF0; --heat0:#19252A;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
   --f-num:"Barlow Condensed","Hiragino Sans",sans-serif;
+  --nav-h:64px;
   color-scheme:dark;
 }
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
-  --bg:#F2F6F5; --surface:#FFFFFF; --raise:#E8EFEE; --ink:#13201F; --muted:#5A6C6A; --line:#D3DEDC;
-  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --prep:#2468A8; --far:#13201F; --heat0:#E3EBEA; color-scheme:light}}
+  --bg:#F1F5F4; --surface:#FFFFFF; --raise:#E7EEED; --ink:#122020; --muted:#5A6C6A; --line:#D2DDDB;
+  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --prep:#2468A8; --food:#B85A1B; --far:#122020; --heat0:#E2EAE9; color-scheme:light}}
 :root[data-theme="light"]{
-  --bg:#F2F6F5; --surface:#FFFFFF; --raise:#E8EFEE; --ink:#13201F; --muted:#5A6C6A; --line:#D3DEDC;
-  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --prep:#2468A8; --far:#13201F; --heat0:#E3EBEA; color-scheme:light}
+  --bg:#F1F5F4; --surface:#FFFFFF; --raise:#E7EEED; --ink:#122020; --muted:#5A6C6A; --line:#D2DDDB;
+  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --prep:#2468A8; --food:#B85A1B; --far:#122020; --heat0:#E2EAE9; color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
-button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--go);outline-offset:2px}
-p{margin:0}
+button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+p{margin:0;text-wrap:pretty}
 h1,h2,h3{margin:0;line-height:1.3;text-wrap:balance}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
-.label{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px}
+.label{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.06em;border-radius:999px;padding:3px 10px;background:var(--raise);color:var(--muted)}
+.pill.t-go{background:color-mix(in srgb,var(--go) 18%,transparent);color:var(--go)}
+.pill.t-food{background:color-mix(in srgb,var(--food) 18%,transparent);color:var(--food)}
+.pill.t-prep{background:color-mix(in srgb,var(--prep) 18%,transparent);color:var(--prep)}
+abbr[title]{text-decoration:underline dotted color-mix(in srgb,var(--muted) 60%,transparent);text-underline-offset:3px;cursor:help}
 
-/* ── ホーム ── */
-.wrap{max-width:1040px;margin:0 auto;padding-block:22px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
-header.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-header.top h1{font-size:22px;font-weight:900;letter-spacing:.04em}
-.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+/* ── 共通の枠 ── */
+.wrap{max-width:1040px;margin:0 auto;padding-block:20px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.vhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:4px 2px 2px}
+.vhead h1{font-size:28px;font-weight:900;letter-spacing:.02em}
+.vhead .d{font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
 @media (max-width:860px){.grid{grid-template-columns:1fr}}
-.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));display:flex;justify-content:center}
+nav.tabs .in{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:min(520px,100%)}
+nav.tabs button{appearance:none;border:0;background:none;border-radius:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);cursor:pointer;min-height:52px}
+nav.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs button[aria-current="page"]{color:var(--ink);background:var(--raise)}
+nav.tabs button[aria-current="page"] svg{stroke:var(--go)}
+nav.tabs button[data-v="food"][aria-current="page"] svg{stroke:var(--food)}
+nav.tabs button[data-v="shop"][aria-current="page"] svg{stroke:var(--prep)}
 
-.hero{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--go) 45%,var(--line));background:
-  radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--go) 18%,transparent) 0%,transparent 60%),var(--surface);display:flex;flex-direction:column;gap:10px}
+/* ── トレーニング ── */
+.hero{position:relative;overflow:hidden;border-color:color-mix(in srgb,var(--go) 40%,var(--line));
+  background:radial-gradient(110% 90% at 100% 0%,color-mix(in srgb,var(--go) 16%,transparent) 0%,transparent 62%),var(--surface);display:flex;flex-direction:column;gap:12px}
 .hero.off{border-color:var(--line);background:var(--surface)}
-.hero .when{font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--go)}
-.hero.off .when{color:var(--muted)}
-.hero .title{display:flex;align-items:baseline;gap:12px}
-.hero .k{font-family:var(--f-num);font-weight:700;font-size:64px;line-height:.9;color:var(--go)}
-.hero .name{font-size:clamp(22px,4.6vw,30px);font-weight:900;line-height:1.25}
-.hero .facts{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--muted)}
-.hero .facts b{color:var(--ink);font-family:var(--f-num);font-size:18px;font-weight:600;margin-right:2px}
-.hero .one{font-size:14px}
-.hero .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:4px}
-.go{appearance:none;border:0;border-radius:14px;background:var(--go);color:var(--go-ink);font-size:20px;font-weight:900;letter-spacing:.06em;padding:15px 28px;cursor:pointer;flex:1 1 220px}
-.go:active{transform:scale(.98)}
-.toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);cursor:pointer;user-select:none}
-.toggle input{width:20px;height:20px;accent-color:var(--go)}
-.advice{border-radius:12px;padding:10px 14px;background:color-mix(in srgb,var(--rest) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--rest) 40%,var(--line));font-size:14px}
+.hero .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hero .title{display:flex;align-items:baseline;gap:12px;min-width:0}
+.hero .k{font-family:var(--f-num);font-weight:700;font-size:68px;line-height:.85;color:var(--go)}
+.hero .name{font-size:clamp(22px,4.6vw,30px);font-weight:900;line-height:1.2}
+.hero .sub{font-size:14px;color:var(--muted)}
+.facts{display:flex;flex-wrap:wrap;gap:4px 18px}
+.facts span{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.facts b{display:block;color:var(--ink);font-family:var(--f-num);font-size:26px;font-weight:600;line-height:1.05;letter-spacing:0}
+.facts b small{font-size:14px;color:var(--muted);margin-left:1px}
+.hero .actions{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.go{appearance:none;border:0;border-radius:16px;background:var(--go);color:var(--go-ink);font-size:19px;font-weight:900;letter-spacing:.12em;padding:15px 28px;cursor:pointer;flex:1 1 200px;display:flex;align-items:center;justify-content:center;gap:10px}
+.go svg{width:18px;height:18px;fill:currentColor}
+.go:active{transform:scale(.985)}
+.go.food{background:var(--food)}
+.go.ghost{background:var(--raise);color:var(--ink)}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+.switch input{appearance:none;width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;cursor:pointer;transition:background .2s;margin:0}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--ink);transition:transform .2s}
+.switch input:checked{background:var(--go)}
+.switch input:checked::after{transform:translateX(16px);background:var(--go-ink)}
+.advice{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:12px 14px;font-size:14px;background:color-mix(in srgb,var(--rest) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--rest) 35%,var(--line))}
+.advice b{color:var(--rest);white-space:nowrap}
 
-.week{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
-.goal{position:relative;width:96px;height:96px}
+.week{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
+.week .head{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}
+.goal{position:relative;width:92px;height:92px}
 .goal svg{width:100%;height:100%;transform:rotate(-90deg)}
-.goal .bg{fill:none;stroke:var(--line);stroke-width:10}
-.goal .fg{fill:none;stroke:var(--go);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s ease}
-.goal .v{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
-.goal .v b{font-family:var(--f-num);font-size:30px}
-.goal .v span{font-size:11px;color:var(--muted);margin-top:2px}
-.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.goal .bg{fill:none;stroke:var(--line);stroke-width:9}
+.goal .fg{fill:none;stroke:var(--go);stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .8s ease}
+.goal .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-num);font-size:30px;font-weight:700}
+.goal .v small{font-size:16px;color:var(--muted)}
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
-.day .dot{width:34px;height:34px;flex:none;border-radius:10px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-num);font-size:18px;font-weight:700;color:var(--muted)}
-.day.plan .dot{border-style:solid;border-color:color-mix(in srgb,var(--go) 40%,var(--line));color:color-mix(in srgb,var(--go) 70%,var(--muted))}
-.day.done .dot{background:var(--go);border-color:var(--go);color:var(--go-ink)}
+.day .dot{width:34px;height:34px;flex:none;border-radius:11px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-num);font-size:18px;font-weight:700;color:var(--muted)}
+.day.plan .dot{border-style:solid;border-color:color-mix(in srgb,var(--go) 40%,var(--line));color:color-mix(in srgb,var(--go) 75%,var(--muted))}
+.day.fin .dot{background:var(--go);border-color:var(--go);color:var(--go-ink)}
 .day.today .w{color:var(--ink);font-weight:700}
-.day.today .dot{box-shadow:0 0 0 2px var(--bg),0 0 0 4px color-mix(in srgb,var(--ink) 50%,transparent)}
-.weekmsg{grid-column:1/-1;font-size:14px}
+.day.today .dot{box-shadow:0 0 0 2px var(--bg),0 0 0 4px color-mix(in srgb,var(--ink) 45%,transparent)}
+.weekmsg{grid-column:1/-1;font-size:14px;color:var(--muted)}
+.weekmsg b{color:var(--ink)}
 
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.stat .label{letter-spacing:.1em}
 .stat b{font-family:var(--f-num);font-size:34px;line-height:1;font-weight:700}
-.stat b small{font-size:15px;font-weight:600;color:var(--muted);margin-left:2px}
-.stat span{font-size:12px;color:var(--muted)}
+.stat b small{font-size:14px;font-weight:600;color:var(--muted);margin-left:2px}
 
-.ladder{display:flex;flex-direction:column;gap:10px}
+.ladder{display:flex;flex-direction:column;gap:12px}
 .steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
 .steps i{height:8px;border-radius:4px;background:var(--line)}
-.steps i.on{background:var(--prep)}
+.steps i.on{background:color-mix(in srgb,var(--prep) 55%,var(--line))}
 .steps i.now{background:var(--prep);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--prep)}
 .ladder .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.ladder .nm{font-weight:700}
-.mini{appearance:none;border:1px solid var(--line);background:var(--raise);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:14px}
-.mini[disabled]{opacity:.35;cursor:default}
+.ladder .nm{font-weight:700;font-size:17px}
+.ladder .nx{font-size:13px;color:var(--muted)}
+.stepper{display:flex;gap:6px}
+.mini{appearance:none;border:1px solid var(--line);background:var(--raise);border-radius:12px;width:40px;height:40px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
+.mini[disabled]{opacity:.3;cursor:default}
 
-.heat{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;max-width:300px}
+.heat{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;max-width:300px;margin-top:10px}
 .heat .c{display:grid;grid-template-rows:repeat(7,1fr);gap:4px}
 .heat i{aspect-ratio:1;border-radius:4px;background:var(--heat0)}
 .heat i.l1{background:color-mix(in srgb,var(--go) 35%,var(--heat0))}
@@ -119,25 +150,127 @@ header.top h1{font-size:22px;font-weight:900;letter-spacing:.04em}
 .heat i.f{opacity:.3}
 .legend{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;max-width:300px}
 
-details.menus{padding:0}
-details.menus summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:700}
-details.menus summary::-webkit-details-marker{display:none}
-details.menus summary::after{content:"＋";color:var(--muted)}
-details.menus[open] summary::after{content:"－"}
+details.fold{padding:0}
+details.fold summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:700}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s}
+details.fold[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
 .menulist{display:flex;flex-direction:column;border-top:1px solid var(--line)}
-.mrow{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;text-align:left;width:100%}
-.mrow:last-child{border-bottom:0}
+.mrow{appearance:none;display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 18px;border:0;border-bottom:1px solid var(--line);cursor:pointer;background:none;text-align:left;width:100%}
+.mrow[aria-current="true"]{background:var(--raise)}
 .mrow .k{font-family:var(--f-num);font-size:30px;font-weight:700;color:var(--go);line-height:1}
-.mrow .n{font-weight:700}
+.mrow .n{font-weight:700;display:block}
 .mrow .s{font-size:12px;color:var(--muted)}
 .mrow .t{font-family:var(--f-num);font-size:18px;color:var(--muted)}
-.plan{display:flex;flex-direction:column;padding:0 18px 14px}
-.plan .ph{font-size:12px;color:var(--muted);padding:10px 0 2px;letter-spacing:.06em}
-.plan .it{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
-.plan .it .t{font-family:var(--f-num);color:var(--muted)}
-.settings{display:flex;flex-direction:column;gap:10px}
+.plan{display:flex;flex-direction:column;padding:4px 18px 14px}
+.plan .ph{font-size:11px;font-weight:700;color:var(--muted);padding:12px 0 2px;letter-spacing:.14em}
+.plan .it{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.plan .it .c{color:var(--muted);font-size:12px;display:block}
+.plan .it .t{font-family:var(--f-num);color:var(--muted);white-space:nowrap}
+.settings{display:flex;flex-direction:column;gap:12px;padding:0 18px 16px}
 .settings label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
-.settings input{width:20px;height:20px;accent-color:var(--go)}
+
+/* ── 食事 ── */
+.ctx{display:flex;flex-direction:column;gap:12px;border-color:color-mix(in srgb,var(--food) 35%,var(--line));
+  background:radial-gradient(110% 90% at 100% 0%,color-mix(in srgb,var(--food) 13%,transparent) 0%,transparent 62%),var(--surface)}
+.ctx .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.meter{display:flex;flex-direction:column;gap:6px}
+.meter .bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.meter .bar i{display:block;height:100%;background:var(--food);border-radius:5px;transition:width .6s ease}
+.meter .nums{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--muted)}
+.meter .nums b{font-family:var(--f-num);font-size:24px;color:var(--ink);font-weight:700}
+.daymeals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.slot{appearance:none;border:1px dashed var(--line);background:none;border-radius:14px;padding:10px;text-align:left;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:2px}
+.slot.set{border-style:solid;background:var(--raise)}
+.slot .label{letter-spacing:.12em}
+.slot .n{font-size:13px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.slot .p{font-family:var(--f-num);font-size:15px;color:var(--food)}
+.filters{display:flex;flex-direction:column;gap:14px}
+.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;background:var(--raise);border-radius:14px;padding:4px}
+.seg button{appearance:none;border:0;background:none;border-radius:11px;padding:8px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0;color:var(--muted)}
+.seg button b{font-family:var(--f-num);font-size:20px;line-height:1.1;color:var(--ink)}
+.seg button span{font-size:11px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line),0 0 0 1px var(--line)}
+.seg button[aria-pressed="true"] b{color:var(--food)}
+.seg.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.seg.three button{font-size:14px;font-weight:700;padding:9px 2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+details.more-f summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--muted)}
+details.more-f summary::-webkit-details-marker{display:none}
+details.more-f summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .2s}
+details.more-f[open] summary::before{transform:rotate(45deg)}
+.chip{appearance:none;border:1px solid var(--line);background:none;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--food);color:var(--ink);background:color-mix(in srgb,var(--food) 16%,transparent)}
+.fl{display:flex;flex-direction:column;gap:8px}
+.fl .label{display:flex;justify-content:space-between}
+input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px 12px;width:100%}
+.picks{display:flex;flex-direction:column;gap:10px}
+.pick{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;text-align:left;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;width:100%}
+.pick:first-child{border-color:color-mix(in srgb,var(--food) 45%,var(--line))}
+.pick .n{font-size:17px;font-weight:900;line-height:1.35}
+.pick .m{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--muted)}
+.pick .m b{font-family:var(--f-num);font-size:18px;color:var(--ink);font-weight:600;margin-right:2px}
+.pick .m b.p{color:var(--food)}
+.pick .tags{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.pick .chev{width:10px;height:10px;border-right:2px solid var(--muted);border-top:2px solid var(--muted);transform:rotate(45deg)}
+.more{appearance:none;border:0;background:none;color:var(--muted);font-size:14px;cursor:pointer;padding:6px;align-self:center;text-decoration:underline;text-underline-offset:4px}
+
+/* ── 作り方（シート）── */
+.sheet{position:fixed;inset:0;z-index:30;background:color-mix(in srgb,#000 55%,transparent);display:flex;align-items:flex-end;justify-content:center}
+.sheet .panel{background:var(--surface);width:min(640px,100%);max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;
+  padding:18px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+@media (min-width:700px){.sheet{align-items:center}.sheet .panel{border-radius:24px;max-height:88vh}}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--line);align-self:center}
+.sheet .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sheet h2{font-size:24px;font-weight:900}
+.x{appearance:none;border:0;background:var(--raise);border-radius:50%;width:36px;height:36px;cursor:pointer;flex:none;position:relative}
+.x::before,.x::after{content:"";position:absolute;left:11px;top:17px;width:14px;height:2px;background:var(--ink);transform:rotate(45deg)}
+.x::after{transform:rotate(-45deg)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tiles div{background:var(--raise);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:2px}
+.tiles b{font-family:var(--f-num);font-size:24px;line-height:1.05}
+.tiles b.p{color:var(--food)}
+.tiles span{font-size:11px;color:var(--muted)}
+.effort{display:flex;gap:3px;height:24px;align-items:center}
+.effort i{flex:1;height:8px;border-radius:4px;background:var(--line)}
+.effort i.on{background:var(--food)}
+.ing{display:flex;flex-direction:column}
+.ing div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.ing div span:last-child{font-size:14px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ing div.base span:first-child{color:var(--food);font-weight:700}
+.howto{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:st}
+.howto li{text-wrap:pretty;counter-increment:st;display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:14px;background:var(--raise);cursor:pointer;font-size:15px}
+.howto li::before{content:counter(st);width:28px;height:28px;border-radius:50%;background:var(--food);color:var(--go-ink);font-family:var(--f-num);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center}
+.howto li.ok{opacity:.45;text-decoration:line-through}
+.howto li.ok::before{content:"✓"}
+.tip{font-size:14px;border-left:3px solid var(--food);padding:4px 0 4px 12px;color:var(--muted)}
+.addrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.addrow select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+
+/* ── 買い物 ── */
+.weekplan{display:flex;flex-direction:column}
+.wp{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.wp:last-child{border-bottom:0}
+.wp .d{font-family:var(--f-num);font-size:18px;font-weight:600;line-height:1.1}
+.wp .d small{display:block;font-family:var(--f-body);font-size:11px;color:var(--muted);font-weight:700}
+.wp .n{font-weight:700;font-size:15px;overflow-wrap:anywhere;cursor:pointer}
+.wp .n.none{color:var(--muted);font-weight:400}
+.wp .n small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.wp .ops{display:flex;gap:6px}
+.icon{appearance:none;border:1px solid var(--line);background:var(--raise);border-radius:12px;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.icon svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.shop{display:flex;flex-direction:column;gap:6px}
+.shop h3{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--muted);padding-top:10px}
+.si{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.si input{appearance:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--line);margin:0;cursor:pointer;display:grid;place-content:center}
+.si input:checked{background:var(--prep);border-color:var(--prep)}
+.si input:checked::after{content:"";width:6px;height:11px;border-right:2px solid var(--go-ink);border-bottom:2px solid var(--go-ink);transform:rotate(45deg) translate(-1px,-1px)}
+.si.ok .n{color:var(--muted);text-decoration:line-through}
+.si .q{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.si .n small{display:block;font-size:11px;color:var(--muted)}
+.empty{font-size:14px;color:var(--muted);text-align:center;padding:20px 8px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--bg);font-size:14px;font-weight:700;border-radius:999px;padding:10px 18px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 
 /* ── 運動中 ── */
 .run{position:fixed;inset:0;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;gap:10px;z-index:20;--state:var(--go);
@@ -146,126 +279,187 @@ details.menus[open] summary::after{content:"－"}
 .run.is-rest{--state:var(--rest)}
 .run.is-prep{--state:var(--prep)}
 .bar{display:flex;flex-direction:column;gap:6px;grid-row:1}
-.stage,.run > .done{grid-row:2}
+.run .stage,.run > .done{grid-row:2}
 .ctrl{grid-row:3}
-.bar .meta{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--muted)}
+.bar .meta{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);letter-spacing:.04em}
 .segs{display:flex;gap:2px;height:10px}
-.seg{border-radius:2px;background:var(--line);min-width:2px}
-.seg.k-go{background:color-mix(in srgb,var(--go) 35%,var(--line))}
-.seg.k-rest{background:color-mix(in srgb,var(--rest) 25%,var(--line))}
-.seg.k-prep{background:color-mix(in srgb,var(--prep) 30%,var(--line))}
-.seg.done{opacity:.25}
-.seg.now{background:var(--state);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--state)}
+.sg{border-radius:2px;background:var(--line);min-width:2px}
+.sg.k-go{background:color-mix(in srgb,var(--go) 35%,var(--line))}
+.sg.k-rest{background:color-mix(in srgb,var(--rest) 25%,var(--line))}
+.sg.k-prep{background:color-mix(in srgb,var(--prep) 30%,var(--line))}
+.sg.past{opacity:.25}
+.sg.now{background:var(--state);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--state)}
 .stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center;min-height:0}
 .figbox{position:relative;width:100%;height:100%;min-height:180px;display:flex;align-items:center;justify-content:center}
 .figbox::before{content:"";position:absolute;width:min(78%,52vh);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--state) 16%,transparent) 0%,transparent 70%)}
 .figbox svg{position:relative;width:100%;height:100%;max-height:56vh}
 .info{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center}
-.phase{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--state)}
+.phase{font-size:13px;font-weight:700;letter-spacing:.18em;color:var(--state)}
 .ex{font-size:clamp(26px,4.6vw,46px);font-weight:900;line-height:1.2;overflow-wrap:anywhere}
-.target{font-family:var(--f-num);font-size:20px;color:var(--muted)}
+.target{font-family:var(--f-num);font-size:20px;color:var(--muted);letter-spacing:.04em}
 .ringbox{position:relative;width:min(70vw,38vh,300px);aspect-ratio:1;max-width:100%;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ringbox svg{width:100%;height:100%;transform:rotate(-90deg)}
 .ring-bg{fill:none;stroke:var(--line);stroke-width:10}
 .ring{fill:none;stroke:var(--state);stroke-width:10;stroke-linecap:round}
 .count{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--f-num);font-weight:700;font-size:clamp(72px,min(22vw,15vh),150px);line-height:1;color:var(--state);margin:0}
-.count small{font-family:var(--f-body);font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.1em;margin-top:6px}
-.run.paused .count{opacity:.45}
+.count small{font-family:var(--f-body);font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.14em;margin-top:6px}
+.run.paused .count span{opacity:.4}
 .cue{font-size:clamp(16px,2.2vw,21px);max-width:32em}
-.next{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--muted)}
-.cheer{min-height:1.6em;font-size:16px;font-weight:700;color:var(--state)}
+.next{font-size:14px;color:var(--muted)}
+.cheer{min-height:1.5em;font-size:15px;font-weight:700;letter-spacing:.12em;color:var(--state)}
 .ctrl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.ctrl button{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;font-size:16px;padding:10px 20px;cursor:pointer;min-width:92px}
+.ctrl button{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;font-size:15px;padding:10px 20px;cursor:pointer;min-width:92px}
 .ctrl button.main{background:var(--state);color:var(--go-ink);border-color:var(--state);font-weight:900;min-width:130px}
-/* 動く人 */
 .ground{stroke:var(--line);stroke-width:3;stroke-linecap:round}
 .shadow{fill:var(--ink);opacity:.12}
 .limb{stroke:var(--ink);stroke-linecap:round;stroke-linejoin:round;fill:none}
 .limb.far{stroke:var(--far);opacity:.32}
 .headc{fill:var(--ink)}
 .breath{fill:none;stroke:var(--rest);stroke-width:3;opacity:.55}
-
-/* ── 終わり ── */
-.run > .done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;overflow:auto;min-height:0;position:relative}
-.check{width:88px;height:88px}
+.run > .done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;overflow:auto;min-height:0}
+.check{width:84px;height:84px}
 .check circle{fill:none;stroke:var(--go);stroke-width:6;stroke-dasharray:252;stroke-dashoffset:252;animation:draw .7s ease forwards}
 .check path{fill:none;stroke:var(--go);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:draw .4s .6s ease forwards}
 @keyframes draw{to{stroke-dashoffset:0}}
-.run > .done h2{font-size:clamp(28px,5vw,40px);font-weight:900}
+.run > .done h2{font-size:clamp(28px,5vw,40px);font-weight:900;letter-spacing:.04em}
 .sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(520px,100%)}
-.sum div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px}
+.sum div{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px}
 .sum b{display:block;font-family:var(--f-num);font-size:30px;line-height:1.1}
-.sum span{font-size:12px;color:var(--muted)}
+.sum span{font-size:11px;color:var(--muted);letter-spacing:.08em}
 .rpe{display:flex;flex-direction:column;gap:8px;width:min(520px,100%)}
 .rpe .opts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.rpe button{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 4px;cursor:pointer;font-size:13px;line-height:1.3}
+.rpe button{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:8px 4px;cursor:pointer;font-size:12px;line-height:1.3}
 .rpe button b{display:block;font-family:var(--f-num);font-size:22px}
 .rpe button[aria-pressed="true"]{background:var(--go);color:var(--go-ink);border-color:var(--go)}
+.after{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.linkbtn{appearance:none;border:1px solid color-mix(in srgb,var(--food) 50%,var(--line));background:none;border-radius:999px;padding:6px 14px;color:var(--food);font-weight:700;cursor:pointer;font-size:13px}
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:25}
 .confetti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:fall 2.4s ease-in forwards}
 @keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.2}}
 
-/* 縦の画面・狭い画面（元の決まりより後ろに置く） */
+/* 縦の画面・狭い画面（元の決まりより後ろ） */
 @media (max-width:760px),(orientation:portrait){
   .stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:4px}
   .ringbox{width:min(54vw,27vh,240px)}
   .count{font-size:clamp(56px,min(16vw,9vh),110px)}
   .ex{font-size:clamp(24px,7vw,36px)}
   .ctrl{flex-wrap:nowrap;gap:6px}
-  .ctrl button{min-width:0;flex:1;padding:10px 6px;font-size:15px}
+  .ctrl button{min-width:0;flex:1;padding:10px 6px;font-size:14px}
   .ctrl button.main{min-width:0;flex:1.4}
 }
+.wp .n,.pick .n,.slot .n,.sheet h2,.hero .name,.mrow .n,.howto li{text-wrap:pretty}
+.wp .n,.pick .n,.slot .n,.sheet h2{word-break:keep-all;overflow-wrap:anywhere}
 @media (max-width:420px){
-  .day .dot{width:30px;height:30px;font-size:16px}
-  .hero .k{font-size:52px}
+  .wp{grid-template-columns:46px minmax(0,1fr) auto;gap:8px}
+  .wp .ops{gap:4px}
+  .icon{width:34px;height:34px}
+  .wp .n{font-size:14px}
+  #v-shop .toolbar .go{flex-basis:100%}
+  .hero .k{font-size:56px}
   .stat b{font-size:28px}
   .week{grid-template-columns:1fr}
-  .goal{width:84px;height:84px;justify-self:start}
+  .goal{width:80px;height:80px;justify-self:start}
+  .day .dot{width:30px;height:30px;font-size:16px}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .vhead h1{font-size:24px}
 }
 @media (prefers-reduced-motion: reduce){
   .check circle,.check path{animation:none;stroke-dashoffset:0}
   .confetti{display:none}
-  .goal .fg{transition:none}
+  .goal .fg,.meter .bar i,.switch input,.switch input::after{transition:none}
 }
 </style>
 
-<div class="wrap" id="home">
-  <header class="top"><h1>ながら宅トレ</h1><p class="muted" id="today"></p></header>
+<!-- ── トレーニング ── -->
+<div class="wrap" id="v-train" data-view="train">
+  <header class="vhead"><h1>トレーニング</h1><p class="d" id="today1"></p></header>
   <div class="grid">
     <div class="col">
       <section class="card hero" id="hero" aria-live="polite"></section>
-      <p class="advice" id="advice" hidden></p>
-      <section class="card week" id="week" aria-label="今週"></section>
+      <div class="advice" id="advice" hidden></div>
+      <section class="card week" id="week" aria-label="週間目標"></section>
       <div class="stats" id="stats"></div>
     </div>
     <div class="col">
-      <section class="card ladder" id="ladder" aria-label="体幹の段階"></section>
-      <section class="card" aria-label="8週間の記録">
-        <p class="label">8週間の記録</p>
-        <div class="heat" id="heat" style="margin-top:10px"></div>
+      <section class="card ladder" id="ladder" aria-label="コア・プログレッション"></section>
+      <section class="card" aria-label="アクティビティ">
+        <p class="label">アクティビティ ─ 8週</p>
+        <div class="heat" id="heat"></div>
         <div class="legend"><span>8週前</span><span>今週</span></div>
       </section>
-      <details class="card menus" id="menus"><summary>ほかのメニュー・中身を見る</summary><div id="menulist"></div></details>
-      <details class="card menus"><summary>案内の設定</summary>
-        <div class="settings" style="padding:0 18px 16px">
-          <label for="o-voice">声で案内する<input type="checkbox" id="o-voice"></label>
-          <label for="o-beep">残り3秒で音を鳴らす<input type="checkbox" id="o-beep"></label>
-          <label for="o-cheer">途中で声をかける（半分・ラスト10秒）<input type="checkbox" id="o-cheer"></label>
+      <details class="card fold" id="menus"><summary>メニュー一覧</summary><div id="menulist"></div></details>
+      <details class="card fold"><summary>音声とサウンド</summary>
+        <div class="settings">
+          <label for="o-voice">音声ガイド<input class="sw" type="checkbox" id="o-voice"></label>
+          <label for="o-beep">カウントダウン音<input class="sw" type="checkbox" id="o-beep"></label>
+          <label for="o-cheer"><span><abbr title="ハーフ（折り返し）とラスト10秒で音声コール">中間コール</abbr></span><input class="sw" type="checkbox" id="o-cheer"></label>
         </div>
       </details>
     </div>
   </div>
 </div>
 
+<!-- ── 食事 ── -->
+<div class="wrap" id="v-food" data-view="food" hidden>
+  <header class="vhead"><h1>食事</h1><p class="d" id="today2"></p></header>
+  <div class="grid">
+    <div class="col">
+      <section class="card ctx" id="ctx"></section>
+      <section class="card filters" id="filters"></section>
+    </div>
+    <div class="col">
+      <div class="picks" id="picks"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 買い物 ── -->
+<div class="wrap" id="v-shop" data-view="shop" hidden>
+  <header class="vhead"><h1>買い物</h1><p class="d" id="today3"></p></header>
+  <div class="grid">
+    <div class="col">
+      <section class="card" aria-label="7日間の献立">
+        <div class="toolbar"><p class="label">献立 ─ 7日間（夕食）</p><span class="pill t-prep" id="wp-count"></span></div>
+        <div class="weekplan" id="weekplan" style="margin-top:8px"></div>
+        <div class="toolbar" style="margin-top:14px">
+          <button type="button" class="go food" id="b-auto">未設定日を自動作成</button>
+          <button type="button" class="more" id="b-redo">全日再作成</button>
+        </div>
+      </section>
+    </div>
+    <div class="col">
+      <section class="card shop" aria-label="買い物リスト">
+        <div class="toolbar"><p class="label">買い物リスト</p><span class="pill" id="shop-left"></span></div>
+        <div id="shoplist"></div>
+        <div class="toolbar" style="margin-top:10px">
+          <label class="switch" for="o-pantry"><input type="checkbox" id="o-pantry">常備調味料を表示</label>
+          <button type="button" class="more" id="b-reset">チェックをリセット</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="画面">
+  <div class="in">
+    <button type="button" data-v="train"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>トレーニング</button>
+    <button type="button" data-v="food"><svg viewBox="0 0 24 24"><path d="M3 12h18a9 9 0 0 1-18 0Z"/><path d="M8 8c0-2 2-2 2-4M13 8c0-2 2-2 2-4"/></svg>食事</button>
+    <button type="button" data-v="shop"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.8L20 8H6.2"/><circle cx="9" cy="20" r="1.2"/><circle cx="17" cy="20" r="1.2"/></svg>買い物</button>
+  </div>
+</nav>
+
+<div class="sheet" id="sheet" hidden><div class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="sh-title"></div></div>
+<div class="toast" id="toast" hidden></div>
+
 <div class="run" id="run" hidden>
   <div class="bar" id="r-bar"><div class="segs" id="r-segs" aria-hidden="true"></div><div class="meta"><span class="num" id="r-pos"></span><span id="r-round"></span><span class="num" id="r-left"></span></div></div>
   <div class="stage" id="r-stage">
-    <div class="figbox"><svg id="fig" viewBox="0 0 280 240" role="img" aria-label="動きの見本"></svg></div>
+    <div class="figbox"><svg id="fig" viewBox="0 0 280 240" role="img" aria-label="フォームの見本"></svg></div>
     <div class="info">
       <p class="phase" id="r-phase"></p>
       <p class="ex" id="r-ex"></p>
       <p class="target" id="r-target"></p>
-      <div class="ringbox" id="r-ringbox" role="button" aria-label="押すと一時停止" tabindex="0"><svg viewBox="0 0 200 200" aria-hidden="true"><circle class="ring-bg" cx="100" cy="100" r="88"/><circle class="ring" id="r-ring" cx="100" cy="100" r="88"/></svg><p class="count"><span id="r-count"></span><small id="r-paused" hidden>一時停止中</small></p></div>
+      <div class="ringbox" id="r-ringbox" role="button" aria-label="一時停止" tabindex="0"><svg viewBox="0 0 200 200" aria-hidden="true"><circle class="ring-bg" cx="100" cy="100" r="88"/><circle class="ring" id="r-ring" cx="100" cy="100" r="88"/></svg><p class="count"><span id="r-count"></span><small id="r-paused" hidden>一時停止中</small></p></div>
       <p class="cue" id="r-cue"></p>
       <p class="cheer" id="r-cheer"></p>
       <p class="next" id="r-next"></p>
@@ -277,13 +471,14 @@ details.menus[open] summary::after{content:"－"}
     <button type="button" id="b-plus" hidden>＋15秒</button>
     <button type="button" id="b-pause" class="main">一時停止</button>
     <button type="button" id="b-next">次へ</button>
-    <button type="button" id="b-stop">やめる</button>
+    <button type="button" id="b-stop">終了</button>
   </div>
 </div>
 <div class="confetti" id="confetti" aria-hidden="true"></div>
 
 <script>
-const 運動 = {"準備": [{"名前": "足踏み", "秒": 90, "動き": "march", "合図": "腕も振って、少しずつ大きく"}, {"名前": "肩回し", "秒": 60, "動き": "armcircle", "合図": "前に30秒、後ろに30秒"}, {"名前": "股関節回し", "秒": 60, "動き": "hipcircle", "合図": "腰に手を当てて大きく回す"}, {"名前": "ゆっくりスクワット", "秒": 60, "動き": "squat", "合図": "浅く、ゆっくり"}], "伸ばす": [{"名前": "太もも前を伸ばす", "秒": 60, "動き": "stretchq", "合図": "片足ずつ30秒。壁に手をついて"}, {"名前": "もも裏を伸ばす", "秒": 60, "動き": "stretchh", "合図": "脚を前に出し、背中を丸めずに倒す"}, {"名前": "胸と肩を伸ばす", "秒": 60, "動き": "stretchc", "合図": "手を後ろで組んで胸を開く"}, {"名前": "ゆっくり呼吸", "秒": 60, "動き": "rest", "合図": "4秒吸って、6秒吐く"}], "体幹の段階": [{"名前": "デッドバグ", "秒": 40, "動き": "deadbug", "合図": "仰向けで、反対の手足をゆっくり伸ばす。腰は床につけたまま"}, {"名前": "ホロウボディ", "秒": 30, "動き": "hollow", "合図": "手足を浮かせて止まる。腰を床に押しつける"}, {"名前": "レッグレイズ", "秒": 40, "動き": "legraise", "合図": "脚を伸ばしたまま上げ下げ。下ろすときは3秒"}, {"名前": "ドラゴンフラッグ（膝曲げで下ろす）", "秒": 40, "動き": "dragon", "合図": "ソファの脚をつかみ、5秒かけて下ろす"}, {"名前": "ドラゴンフラッグ（脚を伸ばして下ろす）", "秒": 40, "動き": "dragon", "合図": "5秒かけて下ろす。腰が反ったらやめる"}, {"名前": "ドラゴンフラッグ", "秒": 40, "動き": "dragon", "合図": "上げて、5秒かけて下ろす"}], "メニュー": [{"記号": "A", "名前": "脚・胸", "ひとこと": "大きな筋肉を動かす日。ドラマ1話分", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "スクワット", "秒": 50, "動き": "squat", "合図": "3秒で下ろし、速く立つ。12〜15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "腕立て伏せ", "秒": 45, "動き": "pushup", "合図": "膝をついてもよい。8〜15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "リバースランジ", "秒": 50, "動き": "lunge", "合図": "後ろに引いて沈む。左右交互に各8〜10回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "ヒップリフト", "秒": 45, "動き": "bridge", "合図": "上で1秒止める。15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "プランク", "秒": 40, "動き": "plank", "合図": "頭からかかとまで一直線"}], "周の休み": 75}, {"体幹": 3}, {"伸ばす": true}], "分": 36, "MET": 5.0}, {"記号": "C", "名前": "心肺インターバル", "ひとこと": "年とともに落ちやすい心肺の力を上げる。跳ばない", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "もも上げ（ややきつく）", "秒": 60, "動き": "march", "合図": "話すと文が途切れる速さ"}, {"名前": "シャドーボクシング（ややきつく）", "秒": 60, "動き": "boxing", "合図": "左右交互に速く打つ"}, {"名前": "もも上げ（ややきつく）", "秒": 60, "動き": "march", "合図": "腕も大きく振る"}, {"名前": "シャドーボクシング（ややきつく）", "秒": 60, "動き": "boxing", "合図": "最後まで速さを保つ"}, {"名前": "足踏み（楽に）", "秒": 180, "動き": "march", "合図": "息を整える。テレビを見ながらでよい"}], "周の休み": 0}, {"伸ばす": true}], "分": 36, "MET": 7.0}, {"記号": "B", "名前": "背中・肩・瞬発力", "ひとこと": "逆三角形をつくる日", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "リュックロウ", "秒": 50, "動き": "row", "合図": "本を入れたリュックを持ち、前かがみで肘を後ろへ。12回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "パイク腕立て", "秒": 45, "動き": "pike", "合図": "お尻を高く上げた腕立て。8〜12回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "片足ルーマニアンデッドリフト", "秒": 50, "動き": "rdl", "合図": "左右25秒ずつ。もも裏を伸ばす"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "スーパーマン", "秒": 40, "動き": "superman", "合図": "うつ伏せで手足を浮かせ2秒止める"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "速く立つスクワット", "秒": 30, "動き": "squatfast", "合図": "ゆっくり座って一気に立つ。5回"}], "周の休み": 75}, {"体幹": 3}, {"名前": "片足立ち（左）", "秒": 30, "動き": "balance", "合図": "目を閉じて"}, {"名前": "片足立ち（右）", "秒": 30, "動き": "balance", "合図": "目を閉じて"}, {"伸ばす": true}], "分": 36, "MET": 5.0}, {"記号": "D", "名前": "サーキット（インサニティの軽い版）", "ひとこと": "40秒動いて20秒休む。強さは10段階の7〜8", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "スクワットからつま先立ち", "秒": 40, "動き": "squat", "合図": "立ったらかかとを上げる"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "マウンテンクライマー", "秒": 40, "動き": "climber", "合図": "ゆっくりでよい"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "もも上げ", "秒": 40, "動き": "march", "合図": "腕も振る"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "プランクから腕立て", "秒": 40, "動き": "pushup", "合図": "肘→手→腕立て1回→戻る"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "シャドーボクシング", "秒": 40, "動き": "boxing", "合図": "速く"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "立ったまま始めるバーピー", "秒": 40, "動き": "burpee", "合図": "しゃがんで足を後ろへ、戻って立つ。跳ばない"}], "周の休み": 60}, {"体幹": 3}, {"伸ばす": true}], "分": 37, "MET": 6.5}, {"記号": "S", "名前": "すきま運動", "ひとこと": "忙しい日の15分。撮影や市役所の日に", "流れ": [{"名前": "足踏み", "秒": 60, "動き": "march", "合図": "腕も振って"}, {"回す": 3, "中": [{"名前": "スクワット", "秒": 45, "動き": "squat", "合図": "12〜15回"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "腕立て伏せ", "秒": 40, "動き": "pushup", "合図": "膝をついてもよい"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "ヒップリフト", "秒": 40, "動き": "bridge", "合図": "上で1秒止める"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "プランク", "秒": 30, "動き": "plank", "合図": "一直線"}], "周の休み": 45}, {"名前": "太もも前を伸ばす", "秒": 60, "動き": "stretchq", "合図": "片足ずつ30秒"}, {"名前": "胸と肩を伸ばす", "秒": 60, "動き": "stretchc", "合図": "胸を開く"}], "分": 14, "MET": 4.5}], "いまの段": 1, "終わったら": "肉か魚・卵・プロテインで、たんぱく質を20〜30g", "順番": ["A", "C", "B", "D"], "すきま": "S", "体重": 64, "週の回数": 4};
+const 運動 = {"準備": [{"名前": "足踏み", "秒": 90, "動き": "march", "合図": "腕振りを徐々に大きく"}, {"名前": "肩回し", "秒": 60, "動き": "armcircle", "合図": "前30秒・後ろ30秒"}, {"名前": "股関節回し", "秒": 60, "動き": "hipcircle", "合図": "腰に手を当てて大きく回旋"}, {"名前": "ゆっくりスクワット", "秒": 60, "動き": "squat", "合図": "浅め・ゆっくり"}], "伸ばす": [{"名前": "太もも前を伸ばす", "秒": 60, "動き": "stretchq", "合図": "片脚30秒ずつ・壁で支える"}, {"名前": "もも裏を伸ばす", "秒": 60, "動き": "stretchh", "合図": "背中を丸めず前傾"}, {"名前": "胸と肩を伸ばす", "秒": 60, "動き": "stretchc", "合図": "手を後ろで組み胸を開く"}, {"名前": "ゆっくり呼吸", "秒": 60, "動き": "rest", "合図": "4秒吸う・6秒吐く"}], "体幹の段階": [{"名前": "デッドバグ", "秒": 40, "動き": "deadbug", "合図": "仰向けで、反対の手足をゆっくり伸ばす。腰は床につけたまま"}, {"名前": "ホロウボディ", "秒": 30, "動き": "hollow", "合図": "手足を浮かせて止まる。腰を床に押しつける"}, {"名前": "レッグレイズ", "秒": 40, "動き": "legraise", "合図": "脚を伸ばしたまま上げ下げ。下ろすときは3秒"}, {"名前": "ドラゴンフラッグ（膝曲げで下ろす）", "秒": 40, "動き": "dragon", "合図": "ソファの脚をつかみ、5秒かけて下ろす"}, {"名前": "ドラゴンフラッグ（脚を伸ばして下ろす）", "秒": 40, "動き": "dragon", "合図": "5秒かけて下ろす。腰が反ったらやめる"}, {"名前": "ドラゴンフラッグ", "秒": 40, "動き": "dragon", "合図": "上げて、5秒かけて下ろす"}], "メニュー": [{"記号": "A", "名前": "下半身・プッシュ", "ひとこと": "スクワット系とプッシュ系、4ラウンド", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "スクワット", "秒": 50, "動き": "squat", "合図": "3秒で下ろし、速く立つ。12〜15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "腕立て伏せ", "秒": 45, "動き": "pushup", "合図": "膝つき可。8〜15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "リバースランジ", "秒": 50, "動き": "lunge", "合図": "後ろに引いて沈む。左右交互に各8〜10回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "ヒップリフト", "秒": 45, "動き": "bridge", "合図": "上で1秒止める。15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "プランク", "秒": 40, "動き": "plank", "合図": "頭からかかとまで一直線"}], "周の休み": 75}, {"体幹": 3}, {"伸ばす": true}], "分": 36, "MET": 5.0}, {"記号": "C", "名前": "心肺インターバル", "ひとこと": "4分ワーク×4本。ジャンプなし", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "もも上げ（ややきつく）", "秒": 60, "動き": "march", "合図": "会話が途切れる強度"}, {"名前": "シャドーボクシング（ややきつく）", "秒": 60, "動き": "boxing", "合図": "左右交互・高速"}, {"名前": "もも上げ（ややきつく）", "秒": 60, "動き": "march", "合図": "腕振りを大きく"}, {"名前": "シャドーボクシング（ややきつく）", "秒": 60, "動き": "boxing", "合図": "ペース維持"}, {"名前": "足踏み（リカバリー）", "秒": 180, "動き": "march", "合図": "呼吸を整える"}], "周の休み": 0}, {"伸ばす": true}], "分": 36, "MET": 7.0}, {"記号": "B", "名前": "背中・肩・パワー", "ひとこと": "プル系とヒンジ系、4ラウンド", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "リュックロウ", "秒": 50, "動き": "row", "合図": "本を入れたリュックを持ち、前かがみで肘を後ろへ。12回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "パイク腕立て", "秒": 45, "動き": "pike", "合図": "お尻を高く上げた腕立て。8〜12回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "片足ルーマニアンデッドリフト", "秒": 50, "動き": "rdl", "合図": "左右25秒ずつ。もも裏を伸ばす"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "スーパーマン", "秒": 40, "動き": "superman", "合図": "うつ伏せで手足を浮かせ2秒止める"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "速く立つスクワット", "秒": 30, "動き": "squatfast", "合図": "ゆっくり座って一気に立つ。5回"}], "周の休み": 75}, {"体幹": 3}, {"名前": "片足立ち（左）", "秒": 30, "動き": "balance", "合図": "閉眼"}, {"名前": "片足立ち（右）", "秒": 30, "動き": "balance", "合図": "閉眼"}, {"伸ばす": true}], "分": 36, "MET": 5.0}, {"記号": "D", "名前": "サーキット", "ひとこと": "40秒ワーク／20秒レスト、6種目", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "スクワットからつま先立ち", "秒": 40, "動き": "squat", "合図": "立ち上がりでカーフレイズ"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "マウンテンクライマー", "秒": 40, "動き": "climber", "合図": "ペースは任意"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "もも上げ", "秒": 40, "動き": "march", "合図": "腕も振る"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "プランクから腕立て", "秒": 40, "動き": "pushup", "合図": "肘→手→プッシュアップ1回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "シャドーボクシング", "秒": 40, "動き": "boxing", "合図": "高速"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "立ったまま始めるバーピー", "秒": 40, "動き": "burpee", "合図": "ジャンプなし・腕立てなし"}], "周の休み": 60}, {"体幹": 3}, {"伸ばす": true}], "分": 37, "MET": 6.5}, {"記号": "S", "名前": "クイック", "ひとこと": "15分の短縮セッション", "流れ": [{"名前": "足踏み", "秒": 60, "動き": "march", "合図": "腕振りあり"}, {"回す": 3, "中": [{"名前": "スクワット", "秒": 45, "動き": "squat", "合図": "12〜15回"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "腕立て伏せ", "秒": 40, "動き": "pushup", "合図": "膝つき可"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "ヒップリフト", "秒": 40, "動き": "bridge", "合図": "上で1秒止める"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "呼吸を整える・給水"}, {"名前": "プランク", "秒": 30, "動き": "plank", "合図": "頭からかかとまで一直線"}], "周の休み": 45}, {"名前": "太もも前を伸ばす", "秒": 60, "動き": "stretchq", "合図": "片脚30秒ずつ"}, {"名前": "胸と肩を伸ばす", "秒": 60, "動き": "stretchc", "合図": "胸を開く"}], "分": 14, "MET": 4.5}], "いまの段": 1, "終わったら": "たんぱく質20〜30gを補給", "順番": ["A", "C", "B", "D"], "すきま": "S", "体重": 64, "週の回数": 4, "レシピ": [{"id": "y01", "名前": "コンビニ高たんぱくセット", "区分": "夕", "忙しさ": 1, "分": 3, "味": "和", "傾向": "さっぱり", "主": "鶏", "たんぱく質": 41, "kcal": 330, "材料": [["サラダチキン", 1, "パック", "コンビニ"], ["ゆで卵", 1, "個", "コンビニ"], ["豆腐バー", 1, "本", "コンビニ"], ["カット野菜", 1, "袋", "コンビニ"]], "作り方": ["サラダチキンを食べやすく裂く", "カット野菜にのせ、ゆで卵と豆腐バーを添える", "ドレッシングは半分だけかける"], "コツ": "帰りが遅い日の切り札。ドレッシングはノンオイルか半量に", "主食込み": false, "作り置き": false}, {"id": "y02", "名前": "サバ缶の玉ねぎポン酢＋冷やっこ", "区分": "夕", "忙しさ": 1, "分": 3, "味": "和", "傾向": "さっぱり", "主": "魚", "たんぱく質": 38, "kcal": 420, "材料": [["サバ缶（水煮）", 1, "缶", "乾物缶"], ["玉ねぎ", 0.25, "個", "野菜"], ["絹豆腐", 0.5, "丁", "卵豆乳"], ["ポン酢", 0, "", "調味料"]], "作り方": ["玉ねぎを薄切りにする（辛ければ水にさらす）", "サバ缶を汁ごと器に出し、玉ねぎをのせてポン酢をかける", "豆腐を添える"], "コツ": "缶の汁にもたんぱく質と DHA。捨てずに使う", "主食込み": false, "作り置き": false}, {"id": "y03", "名前": "まぐろ赤身の漬け丼", "区分": "夕", "忙しさ": 1, "分": 5, "味": "和", "傾向": "さっぱり", "主": "魚", "たんぱく質": 32, "kcal": 480, "材料": [["まぐろ赤身（刺身）", 120, "g", "肉魚"], ["卵黄", 1, "個", "卵豆乳"], ["刻みのり", 0, "", "乾物缶"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["しょうゆ大さじ1・みりん小さじ1を混ぜ、まぐろを3分漬ける", "ご飯にのせ、卵黄とのりをのせる"], "コツ": "ご飯込み。赤身は脂が少なく高たんぱく", "主食込み": true, "作り置き": false}, {"id": "y04", "名前": "サラダチキンの豆腐ごま塩だれ", "区分": "夕", "忙しさ": 1, "分": 3, "味": "和", "傾向": "あっさり", "主": "鶏", "たんぱく質": 33, "kcal": 300, "材料": [["サラダチキン", 1, "パック", "コンビニ"], ["絹豆腐", 0.5, "丁", "卵豆乳"], ["長ねぎ", 0.25, "本", "野菜"], ["ごま油", 0, "", "調味料"], ["塩", 0, "", "調味料"]], "作り方": ["ねぎを刻み、ごま油小さじ1・塩少しと混ぜる", "豆腐とサラダチキンを切って並べ、たれをかける"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y05", "名前": "鶏むねのレンジ蒸し ねぎポン酢", "区分": "夕", "忙しさ": 2, "分": 10, "味": "和", "傾向": "さっぱり", "主": "鶏", "たんぱく質": 36, "kcal": 230, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["長ねぎ", 0.5, "本", "野菜"], ["冷凍ブロッコリー", 80, "g", "冷凍"], ["酒", 0, "", "調味料"], ["ポン酢", 0, "", "調味料"]], "作り方": ["鶏むねにフォークで穴をあけ、酒大さじ1・塩少しをもみ込む", "耐熱皿にのせ、ふんわりラップで600W 3分→裏返して2分", "そのまま3分置いて余熱で火を通す", "ブロッコリーは別にレンジ1分半。切った鶏にねぎとポン酢をかける"], "コツ": "加熱しすぎるとパサつく。余熱で仕上げる", "主食込み": false, "作り置き": false}, {"id": "y06", "名前": "豚こまともやしのレンジ蒸し＋納豆", "区分": "夕", "忙しさ": 2, "分": 10, "味": "和", "傾向": "さっぱり", "主": "豚", "たんぱく質": 31, "kcal": 380, "材料": [["豚こま（赤身）", 120, "g", "肉魚"], ["もやし", 1, "袋", "野菜"], ["納豆", 1, "パック", "卵豆乳"], ["ポン酢", 0, "", "調味料"]], "作り方": ["耐熱皿にもやしを敷き、豚こまを広げてのせる", "酒少しをふり、ラップで600W 4分", "ポン酢をかけ、納豆を添える"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y07", "名前": "鮭のレンジちゃんちゃん蒸し", "区分": "夕", "忙しさ": 2, "分": 10, "味": "和", "傾向": "甘辛", "主": "魚", "たんぱく質": 27, "kcal": 300, "材料": [["生鮭（冷凍可）", 1, "切れ", "肉魚"], ["キャベツ", 2, "枚", "野菜"], ["きのこ", 0.5, "パック", "野菜"], ["味噌", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["味噌大さじ1・みりん大さじ1を混ぜる", "耐熱皿にざく切りキャベツときのこ、鮭をのせ、味噌だれをかける", "ラップで600W 5分"], "コツ": "冷凍鮭はそのままでOK（1分長く）", "主食込み": false, "作り置き": false}, {"id": "y08", "名前": "レンジ棒棒鶏", "区分": "夕", "忙しさ": 2, "分": 10, "味": "中", "傾向": "こってり", "主": "鶏", "たんぱく質": 37, "kcal": 330, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["きゅうり", 1, "本", "野菜"], ["練りごま", 0, "", "調味料"], ["しょうゆ", 0, "", "調味料"], ["酢", 0, "", "調味料"]], "作り方": ["鶏むねをレンジ蒸しにする（鶏むねのレンジ蒸しと同じ）", "きゅうりを千切り", "練りごま大さじ1・しょうゆ・酢各小さじ2・砂糖少しを混ぜ、裂いた鶏にかける"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y09", "名前": "レンジ麻婆豆腐", "区分": "夕", "忙しさ": 2, "分": 10, "味": "中", "傾向": "ピリ辛", "主": "豆", "たんぱく質": 32, "kcal": 420, "材料": [["豚ひき肉（赤身）", 80, "g", "肉魚"], ["木綿豆腐", 1, "丁", "卵豆乳"], ["長ねぎ", 0.25, "本", "野菜"], ["豆板醤", 0, "", "調味料"], ["鶏がらスープの素", 0, "", "調味料"]], "作り方": ["耐熱ボウルにひき肉・豆板醤小さじ1・しょうゆ大さじ1・鶏がら小さじ1・水大さじ4・片栗粉小さじ1を混ぜる", "ラップで600W 2分→混ぜる", "さいの目の豆腐を入れて2分半。ねぎをのせる"], "コツ": "木綿豆腐のほうがたんぱく質が多い", "主食込み": false, "作り置き": false}, {"id": "y10", "名前": "たらと豆腐のレンジ酒蒸し", "区分": "夕", "忙しさ": 2, "分": 10, "味": "和", "傾向": "あっさり", "主": "魚", "たんぱく質": 28, "kcal": 230, "材料": [["たら（切り身）", 1, "切れ", "肉魚"], ["絹豆腐", 0.5, "丁", "卵豆乳"], ["長ねぎ", 0.25, "本", "野菜"], ["酒", 0, "", "調味料"], ["ポン酢", 0, "", "調味料"]], "作り方": ["耐熱皿に豆腐とたらをのせ、酒大さじ1をふる", "ねぎをのせ、ラップで600W 4分", "ポン酢をかける"], "コツ": "脂が少ないので、運動のあとでも重くない", "主食込み": false, "作り置き": false}, {"id": "y11", "名前": "鶏むねとブロッコリーのチーズ蒸し", "区分": "夕", "忙しさ": 2, "分": 10, "味": "洋", "傾向": "こってり", "主": "鶏", "たんぱく質": 40, "kcal": 360, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["冷凍ブロッコリー", 100, "g", "冷凍"], ["ピザ用チーズ", 20, "g", "卵豆乳"], ["塩こしょう", 0, "", "調味料"]], "作り方": ["鶏むねをそぎ切りにし、塩こしょう", "耐熱皿にブロッコリーと並べ、チーズをのせる", "ラップで600W 4分→ラップを外して1分"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y12", "名前": "えびと卵のレンジ中華炒め", "区分": "夕", "忙しさ": 2, "分": 10, "味": "中", "傾向": "あっさり", "主": "魚", "たんぱく質": 31, "kcal": 300, "材料": [["冷凍むきえび", 100, "g", "冷凍"], ["卵", 2, "個", "卵豆乳"], ["長ねぎ", 0.25, "本", "野菜"], ["鶏がらスープの素", 0, "", "調味料"]], "作り方": ["えびを流水で解凍", "耐熱ボウルに卵・鶏がら小さじ1/2・水大さじ2を溶き、えびとねぎを入れる", "ラップで600W 1分半→混ぜて1分"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y13", "名前": "豚のしょうが焼き＋千切りキャベツ", "区分": "夕", "忙しさ": 3, "分": 15, "味": "和", "傾向": "甘辛", "主": "豚", "たんぱく質": 30, "kcal": 420, "材料": [["豚こま（赤身）", 150, "g", "肉魚"], ["キャベツ", 2, "枚", "野菜"], ["玉ねぎ", 0.25, "個", "野菜"], ["しょうが（チューブ）", 0, "", "調味料"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["しょうゆ・みりん各大さじ1、しょうが2cmを混ぜる", "フライパンで薄切り玉ねぎと豚こまを炒める", "色が変わったらたれを入れて絡める", "千切りキャベツに盛る"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y14", "名前": "鶏むねの塩レモン炒め", "区分": "夕", "忙しさ": 3, "分": 15, "味": "洋", "傾向": "さっぱり", "主": "鶏", "たんぱく質": 36, "kcal": 300, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["冷凍ブロッコリー", 80, "g", "冷凍"], ["レモン汁", 0, "", "調味料"], ["にんにく（チューブ）", 0, "", "調味料"]], "作り方": ["鶏むねをそぎ切りにし、片栗粉を薄くまぶす", "オリーブ油小さじ1で両面を焼く", "ブロッコリーを加え、にんにく少し・塩・レモン汁大さじ1で味付け"], "コツ": "片栗粉をまぶすと、むね肉でもしっとり", "主食込み": false, "作り置き": false}, {"id": "y15", "名前": "牛こまとピーマンのオイスター炒め", "区分": "夕", "忙しさ": 3, "分": 15, "味": "中", "傾向": "甘辛", "主": "牛", "たんぱく質": 26, "kcal": 400, "材料": [["牛こま", 120, "g", "肉魚"], ["ピーマン", 3, "個", "野菜"], ["オイスターソース", 0, "", "調味料"], ["しょうゆ", 0, "", "調味料"]], "作り方": ["ピーマンを細切り", "牛こまを炒め、色が変わったらピーマンを加える", "オイスターソース大さじ1・しょうゆ小さじ1で絡める"], "コツ": "牛肉は鉄と亜鉛も多い。疲れやすい時期に", "主食込み": false, "作り置き": false}, {"id": "y16", "名前": "サバ缶のトマト煮＋目玉焼き", "区分": "夕", "忙しさ": 3, "分": 15, "味": "洋", "傾向": "こってり", "主": "魚", "たんぱく質": 36, "kcal": 480, "材料": [["サバ缶（水煮）", 1, "缶", "乾物缶"], ["トマト缶", 0.5, "缶", "乾物缶"], ["玉ねぎ", 0.5, "個", "野菜"], ["卵", 1, "個", "卵豆乳"], ["コンソメ", 0, "", "調味料"]], "作り方": ["玉ねぎを薄切りにして炒める", "トマト缶・サバ缶（汁ごと）・コンソメ小さじ1を入れて5分煮る", "別に目玉焼きを焼いてのせる"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y17", "名前": "鶏むねのタンドリー風", "区分": "夕", "忙しさ": 3, "分": 15, "味": "エスニック", "傾向": "ピリ辛", "主": "鶏", "たんぱく質": 38, "kcal": 320, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["無糖ヨーグルト", 50, "g", "卵豆乳"], ["カレー粉", 0, "", "調味料"], ["ケチャップ", 0, "", "調味料"]], "作り方": ["ヨーグルト大さじ3・カレー粉小さじ1・ケチャップ小さじ1・塩少しを混ぜ、そぎ切りの鶏を5分漬ける", "フライパンで両面を焼き、ふたをして3分"], "コツ": "前の晩に漬けておくと、さらにやわらかい", "主食込み": false, "作り置き": false}, {"id": "y18", "名前": "豚キムチ炒め＋卵", "区分": "夕", "忙しさ": 3, "分": 15, "味": "韓", "傾向": "ピリ辛", "主": "豚", "たんぱく質": 34, "kcal": 450, "材料": [["豚こま（赤身）", 130, "g", "肉魚"], ["キムチ", 100, "g", "卵豆乳"], ["卵", 1, "個", "卵豆乳"], ["ニラか長ねぎ", 0.5, "束", "野菜"]], "作り方": ["豚こまを炒める", "キムチとニラ（ねぎ）を加えて炒める", "溶き卵を回し入れ、半熟で止める"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y19", "名前": "鮭のムニエル＋ほうれん草ソテー", "区分": "夕", "忙しさ": 3, "分": 15, "味": "洋", "傾向": "あっさり", "主": "魚", "たんぱく質": 27, "kcal": 340, "材料": [["生鮭（冷凍可）", 1, "切れ", "肉魚"], ["冷凍ほうれん草", 60, "g", "冷凍"], ["小麦粉", 0, "", "調味料"], ["バター", 0, "", "調味料"]], "作り方": ["鮭に塩こしょうと小麦粉を薄くまぶす", "バター5gで両面を焼く", "空いた所でほうれん草を炒める"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y20", "名前": "厚揚げと豚こまの甘辛炒め", "区分": "夕", "忙しさ": 3, "分": 15, "味": "和", "傾向": "甘辛", "主": "豆", "たんぱく質": 35, "kcal": 470, "材料": [["厚揚げ", 1, "枚", "卵豆乳"], ["豚こま（赤身）", 80, "g", "肉魚"], ["ピーマン", 2, "個", "野菜"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["厚揚げを一口大に切る", "豚こまと厚揚げを焼き色がつくまで炒め、ピーマンを加える", "しょうゆ・みりん各大さじ1で絡める"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y21", "名前": "えびとブロッコリーのガーリック炒め", "区分": "夕", "忙しさ": 3, "分": 15, "味": "洋", "傾向": "こってり", "主": "魚", "たんぱく質": 24, "kcal": 260, "材料": [["冷凍むきえび", 120, "g", "冷凍"], ["冷凍ブロッコリー", 100, "g", "冷凍"], ["卵", 1, "個", "卵豆乳"], ["にんにく（チューブ）", 0, "", "調味料"]], "作り方": ["えびを解凍して水気をふく", "オリーブ油小さじ1とにんにくで、えびとブロッコリーを炒める", "塩こしょう。炒り卵を加えて混ぜる"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y22", "名前": "親子丼", "区分": "夕", "忙しさ": 3, "分": 15, "味": "和", "傾向": "甘辛", "主": "鶏", "たんぱく質": 40, "kcal": 620, "材料": [["鶏むね肉", 120, "g", "肉魚"], ["卵", 2, "個", "卵豆乳"], ["玉ねぎ", 0.5, "個", "野菜"], ["だし", 0, "", "調味料"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["水100ml・だし小さじ1/2・しょうゆ・みりん各大さじ1を小さいフライパンで煮立てる", "薄切り玉ねぎと小さく切った鶏を入れ、ふたをして4分", "溶き卵を回し入れ、半熟でご飯にのせる"], "コツ": "ご飯込み。むね肉を小さめに切ると早く火が通る", "主食込み": true, "作り置き": false}, {"id": "y23", "名前": "鶏むねのから揚げ（揚げ焼き）", "区分": "夕", "忙しさ": 4, "分": 25, "味": "和", "傾向": "こってり", "主": "鶏", "たんぱく質": 36, "kcal": 420, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["キャベツ", 2, "枚", "野菜"], ["片栗粉", 0, "", "調味料"], ["しょうゆ", 0, "", "調味料"], ["しょうが（チューブ）", 0, "", "調味料"]], "作り方": ["一口大の鶏にしょうゆ大さじ1・しょうが・にんにく少しをもみ込み10分", "片栗粉をまぶす", "油大さじ2で、転がしながら6〜7分揚げ焼き", "千切りキャベツを添える"], "コツ": "揚げずに少ない油で。運動の前の日でも重すぎない", "主食込み": false, "作り置き": false}, {"id": "y24", "名前": "豚しゃぶサラダ ごまだれ", "区分": "夕", "忙しさ": 4, "分": 20, "味": "和", "傾向": "さっぱり", "主": "豚", "たんぱく質": 30, "kcal": 380, "材料": [["豚ロース しゃぶしゃぶ用", 130, "g", "肉魚"], ["レタスか水菜", 0.5, "袋", "野菜"], ["トマト", 1, "個", "野菜"], ["ごまだれ", 0, "", "調味料"]], "作り方": ["湯を沸かし、火を止めてから豚肉を1枚ずつ入れる（80℃くらいでやわらかく）", "色が変わったら水気を切る", "野菜に盛り、ごまだれをかける"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y25", "名前": "ガパオライス", "区分": "夕", "忙しさ": 4, "分": 20, "味": "エスニック", "傾向": "ピリ辛", "主": "鶏", "たんぱく質": 34, "kcal": 640, "材料": [["鶏ひき肉", 120, "g", "肉魚"], ["ピーマン", 2, "個", "野菜"], ["玉ねぎ", 0.25, "個", "野菜"], ["卵", 1, "個", "卵豆乳"], ["オイスターソース", 0, "", "調味料"], ["ナンプラーかしょうゆ", 0, "", "調味料"]], "作り方": ["玉ねぎ・ピーマンを粗く刻む", "にんにくと鶏ひきを炒め、野菜を加える", "オイスター大さじ1・ナンプラー小さじ1・砂糖少しで味付け", "ご飯に盛り、目玉焼きをのせる"], "コツ": "ご飯込み。バジルがあれば最後に", "主食込み": true, "作り置き": false}, {"id": "y26", "名前": "牛肉と豆腐のすき焼き風煮", "区分": "夕", "忙しさ": 4, "分": 20, "味": "和", "傾向": "甘辛", "主": "牛", "たんぱく質": 37, "kcal": 520, "材料": [["牛こま", 100, "g", "肉魚"], ["焼き豆腐か木綿豆腐", 0.5, "丁", "卵豆乳"], ["長ねぎ", 0.5, "本", "野菜"], ["しらたき", 0.5, "袋", "野菜"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["しょうゆ・みりん各大さじ2、水大さじ4を煮立てる", "ねぎ・豆腐・しらたきを入れて5分", "牛肉を広げて入れ、色が変わったらできあがり"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y27", "名前": "チキンのトマト煮", "区分": "夕", "忙しさ": 4, "分": 25, "味": "洋", "傾向": "あっさり", "主": "鶏", "たんぱく質": 36, "kcal": 360, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["玉ねぎ", 0.5, "個", "野菜"], ["きのこ", 0.5, "パック", "野菜"], ["トマト缶", 0.5, "缶", "乾物缶"], ["コンソメ", 0, "", "調味料"]], "作り方": ["鶏をそぎ切りにして焼く", "玉ねぎ・きのこを加えて炒める", "トマト缶・コンソメ小さじ1を入れ、ふたをして10分"], "コツ": "倍量作って翌日の昼にも", "主食込み": false, "作り置き": false}, {"id": "y28", "名前": "鮭と野菜のホイル焼き", "区分": "夕", "忙しさ": 4, "分": 20, "味": "和", "傾向": "あっさり", "主": "魚", "たんぱく質": 27, "kcal": 300, "材料": [["生鮭（冷凍可）", 1, "切れ", "肉魚"], ["きのこ", 0.5, "パック", "野菜"], ["玉ねぎ", 0.25, "個", "野菜"], ["バター", 0, "", "調味料"], ["ポン酢", 0, "", "調味料"]], "作り方": ["アルミホイルに玉ねぎ・鮭・きのこをのせ、バター5gをのせる", "包んでトースターかフライパン（ふた・水少し）で15分", "ポン酢をかける"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y29", "名前": "プルコギ", "区分": "夕", "忙しさ": 4, "分": 20, "味": "韓", "傾向": "甘辛", "主": "牛", "たんぱく質": 27, "kcal": 450, "材料": [["牛こま", 120, "g", "肉魚"], ["玉ねぎ", 0.5, "個", "野菜"], ["にんじん", 0.25, "本", "野菜"], ["しょうゆ", 0, "", "調味料"], ["砂糖", 0, "", "調味料"], ["ごま油", 0, "", "調味料"]], "作り方": ["しょうゆ大さじ1・砂糖小さじ2・ごま油・にんにく少しで牛肉をもみ、10分置く", "野菜と一緒に炒める", "白ごまをふる"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y30", "名前": "鶏むねのグリーンカレー", "区分": "夕", "忙しさ": 4, "分": 25, "味": "エスニック", "傾向": "ピリ辛", "主": "鶏", "たんぱく質": 36, "kcal": 480, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["グリーンカレーの素", 1, "袋", "乾物缶"], ["ピーマン", 2, "個", "野菜"], ["きのこ", 0.5, "パック", "野菜"]], "作り方": ["鶏を一口大に切って炒める", "野菜を加え、袋の表示どおりに煮る", "ご飯は少なめで"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y31", "名前": "鶏ハム（作り置き4食分）", "区分": "夕", "忙しさ": 5, "分": 40, "味": "和", "傾向": "さっぱり", "主": "鶏", "たんぱく質": 35, "kcal": 210, "材料": [["鶏むね肉", 600, "g", "肉魚"], ["塩", 0, "", "調味料"], ["砂糖", 0, "", "調味料"], ["冷凍ブロッコリー", 80, "g", "冷凍"]], "作り方": ["鶏むね2枚に塩・砂糖各小さじ1をすり込み、ラップできつく巻く", "沸騰した湯に入れて2分→火を止め、ふたをして30分置く", "冷めたら切る。1食150gで、冷蔵3日・冷凍2週間"], "コツ": "4食分。間食や朝にも使える", "主食込み": false, "作り置き": true}, {"id": "y32", "名前": "具だくさん豚汁＋卵かけご飯", "区分": "夕", "忙しさ": 5, "分": 30, "味": "和", "傾向": "あっさり", "主": "豚", "たんぱく質": 32, "kcal": 560, "材料": [["豚こま（赤身）", 100, "g", "肉魚"], ["大根", 0.1, "本", "野菜"], ["にんじん", 0.25, "本", "野菜"], ["木綿豆腐", 0.5, "丁", "卵豆乳"], ["卵", 1, "個", "卵豆乳"], ["味噌", 0, "", "調味料"]], "作り方": ["大根・にんじんをいちょう切り", "豚こまを炒め、野菜と水400mlを入れて10分煮る", "豆腐を入れ、味噌大さじ1.5を溶く", "ご飯に卵をかけて添える"], "コツ": "ご飯込み。多めに作って翌朝も", "主食込み": true, "作り置き": true}, {"id": "y33", "名前": "鶏むねと大根の煮物", "区分": "夕", "忙しさ": 5, "分": 35, "味": "和", "傾向": "甘辛", "主": "鶏", "たんぱく質": 35, "kcal": 330, "材料": [["鶏むね肉", 150, "g", "肉魚"], ["大根", 0.2, "本", "野菜"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"], ["だし", 0, "", "調味料"]], "作り方": ["大根を1.5cmの半月に切り、レンジで5分", "水200ml・だし・しょうゆ・みりん各大さじ1.5で大根を10分煮る", "一口大の鶏を入れ、ふたをして10分"], "コツ": "冷める時に味がしみる。作り置き向き", "主食込み": false, "作り置き": true}, {"id": "y34", "名前": "鶏むねチャーシュー（作り置き）", "区分": "夕", "忙しさ": 5, "分": 40, "味": "中", "傾向": "甘辛", "主": "鶏", "たんぱく質": 36, "kcal": 260, "材料": [["鶏むね肉", 600, "g", "肉魚"], ["しょうゆ", 0, "", "調味料"], ["砂糖", 0, "", "調味料"], ["長ねぎ", 0.5, "本", "野菜"]], "作り方": ["鶏むね2枚の表面を焼く", "しょうゆ・水各100ml・砂糖大さじ2・ねぎの青い所を入れ、ふたをして弱火10分", "火を止めて20分置き、煮汁ごと保存"], "コツ": "4食分。煮汁で煮卵も作れる", "主食込み": false, "作り置き": true}, {"id": "y35", "名前": "チリコンカン", "区分": "夕", "忙しさ": 5, "分": 30, "味": "洋", "傾向": "ピリ辛", "主": "牛", "たんぱく質": 30, "kcal": 470, "材料": [["牛ひき肉（赤身）", 100, "g", "肉魚"], ["大豆の水煮", 1, "袋", "乾物缶"], ["玉ねぎ", 0.5, "個", "野菜"], ["トマト缶", 1, "缶", "乾物缶"], ["チリパウダーかカレー粉", 0, "", "調味料"]], "作り方": ["玉ねぎとひき肉を炒める", "大豆・トマト缶・コンソメ・チリパウダーを入れて15分煮る", "2〜3食分。冷凍できる"], "コツ": "豆と肉の両方でたんぱく質", "主食込み": false, "作り置き": true}, {"id": "y36", "名前": "鶏もも・白菜・豆腐の鍋", "区分": "夕", "忙しさ": 5, "分": 30, "味": "和", "傾向": "あっさり", "主": "鶏", "たんぱく質": 36, "kcal": 420, "材料": [["鶏もも肉（皮なし）", 150, "g", "肉魚"], ["白菜", 0.125, "個", "野菜"], ["木綿豆腐", 0.5, "丁", "卵豆乳"], ["きのこ", 0.5, "パック", "野菜"], ["ポン酢", 0, "", "調味料"], ["だし", 0, "", "調味料"]], "作り方": ["鍋に水600ml・だしを入れ、鶏・白菜の芯を入れて10分", "豆腐・白菜の葉・きのこを入れて5分", "ポン酢で。〆は雑炊で翌朝にも"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y37", "名前": "サムゲタン風スープ", "区分": "夕", "忙しさ": 5, "分": 35, "味": "韓", "傾向": "あっさり", "主": "鶏", "たんぱく質": 32, "kcal": 430, "材料": [["鶏もも肉（皮なし）", 150, "g", "肉魚"], ["長ねぎ", 0.5, "本", "野菜"], ["しょうが（チューブ）", 0, "", "調味料"], ["鶏がらスープの素", 0, "", "調味料"]], "作り方": ["鍋に水700ml・鶏・ねぎ・しょうが・米大さじ2を入れて火にかける", "煮立ったら弱火で20分", "塩・こしょう・鶏がらで味をととのえる"], "コツ": "体が温まる。冬の運動のあとに", "主食込み": false, "作り置き": false}, {"id": "y38", "名前": "牛ももステーキ＋温野菜", "区分": "夕", "忙しさ": 4, "分": 20, "味": "洋", "傾向": "こってり", "主": "牛", "たんぱく質": 34, "kcal": 420, "材料": [["牛もも肉（ステーキ用）", 150, "g", "肉魚"], ["冷凍ブロッコリー", 80, "g", "冷凍"], ["にんじん", 0.25, "本", "野菜"], ["塩こしょう", 0, "", "調味料"]], "作り方": ["肉を常温に15分置き、塩こしょう", "強火で片面2分ずつ焼き、アルミホイルで包んで5分休ませる", "温野菜（レンジ2分）を添える"], "コツ": "赤身のもも肉は脂が少ない。週1回のごほうびに", "主食込み": false, "作り置き": false}, {"id": "y39", "名前": "鶏ひきと豆腐のつくね", "区分": "夕", "忙しさ": 4, "分": 20, "味": "和", "傾向": "甘辛", "主": "鶏", "たんぱく質": 33, "kcal": 380, "材料": [["鶏ひき肉", 120, "g", "肉魚"], ["木綿豆腐", 0.25, "丁", "卵豆乳"], ["長ねぎ", 0.25, "本", "野菜"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["ひき肉・水切りした豆腐・刻んだねぎ・片栗粉小さじ1を混ぜ、6個に丸める", "両面を焼き、ふたをして4分", "しょうゆ・みりん各大さじ1を絡める"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y40", "名前": "たらのキムチチゲ", "区分": "夕", "忙しさ": 4, "分": 20, "味": "韓", "傾向": "ピリ辛", "主": "魚", "たんぱく質": 30, "kcal": 300, "材料": [["たら（切り身）", 1, "切れ", "肉魚"], ["キムチ", 100, "g", "卵豆乳"], ["木綿豆腐", 0.5, "丁", "卵豆乳"], ["ニラか長ねぎ", 0.5, "束", "野菜"], ["鶏がらスープの素", 0, "", "調味料"]], "作り方": ["鍋で水400ml・鶏がら・キムチを煮立てる", "たらと豆腐を入れて6分", "ニラを入れて火を止める"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "y41", "名前": "まぐろとアボカドのポキ丼", "区分": "夕", "忙しさ": 2, "分": 8, "味": "エスニック", "傾向": "さっぱり", "主": "魚", "たんぱく質": 31, "kcal": 600, "材料": [["まぐろ赤身（刺身）", 100, "g", "肉魚"], ["アボカド", 0.5, "個", "野菜"], ["しょうゆ", 0, "", "調味料"], ["ごま油", 0, "", "調味料"]], "作り方": ["まぐろとアボカドを角切り", "しょうゆ大さじ1・ごま油小さじ1で和える", "ご飯にのせる"], "コツ": "ご飯込み", "主食込み": true, "作り置き": false}, {"id": "y42", "名前": "ささっと牛丼（赤身）", "区分": "夕", "忙しさ": 3, "分": 12, "味": "和", "傾向": "甘辛", "主": "牛", "たんぱく質": 28, "kcal": 620, "材料": [["牛こま", 120, "g", "肉魚"], ["玉ねぎ", 0.5, "個", "野菜"], ["卵", 1, "個", "卵豆乳"], ["しょうゆ", 0, "", "調味料"], ["みりん", 0, "", "調味料"]], "作り方": ["しょうゆ・みりん各大さじ1.5、水大さじ4で薄切り玉ねぎを3分煮る", "牛肉を入れて2分", "ご飯にのせ、生卵か温玉を添える"], "コツ": "ご飯込み。外の牛丼より脂が少ない", "主食込み": true, "作り置き": false}, {"id": "a01", "名前": "プロテイン豆乳＋バナナ", "区分": "朝", "忙しさ": 1, "分": 2, "味": "洋", "傾向": "あっさり", "主": "乳", "たんぱく質": 31, "kcal": 330, "材料": [["ホエイプロテイン", 1, "杯", "乾物缶"], ["無調整豆乳", 200, "ml", "卵豆乳"], ["バナナ", 1, "本", "野菜"]], "作り方": ["豆乳でプロテインを溶く（冬はレンジで人肌に）", "バナナを添える"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "a02", "名前": "ギリシャヨーグルト＋ゆで卵2個", "区分": "朝", "忙しさ": 1, "分": 2, "味": "洋", "傾向": "さっぱり", "主": "卵", "たんぱく質": 24, "kcal": 260, "材料": [["ギリシャヨーグルト（無糖）", 1, "個", "卵豆乳"], ["ゆで卵", 2, "個", "卵豆乳"], ["冷凍ベリー", 40, "g", "冷凍"]], "作り方": ["ヨーグルトにベリーをのせる", "ゆで卵を添える（日曜にまとめてゆでておく）"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "a03", "名前": "納豆卵ごはん＋具だくさん味噌汁", "区分": "朝", "忙しさ": 2, "分": 5, "味": "和", "傾向": "あっさり", "主": "豆", "たんぱく質": 25, "kcal": 480, "材料": [["納豆", 1, "パック", "卵豆乳"], ["卵", 1, "個", "卵豆乳"], ["絹豆腐", 0.25, "丁", "卵豆乳"], ["冷凍ほうれん草", 30, "g", "冷凍"], ["味噌", 0, "", "調味料"]], "作り方": ["味噌汁：水200ml・豆腐・ほうれん草をレンジ3分、味噌を溶く", "ご飯に納豆と卵をのせる"], "コツ": "ご飯込み（小盛り）", "主食込み": true, "作り置き": false}, {"id": "a04", "名前": "温かいオートミール", "区分": "朝", "忙しさ": 2, "分": 5, "味": "洋", "傾向": "あっさり", "主": "乳", "たんぱく質": 25, "kcal": 420, "材料": [["オートミール", 30, "g", "乾物缶"], ["無調整豆乳", 150, "ml", "卵豆乳"], ["冷凍ほうれん草", 40, "g", "冷凍"], ["きなこ", 0, "", "乾物缶"], ["無糖ヨーグルト", 100, "g", "卵豆乳"], ["卵", 1, "個", "卵豆乳"]], "作り方": ["豆乳・水50ml・オートミール・ほうれん草をレンジ600W 2分半", "きなこ大さじ1をのせる", "ヨーグルトとゆで卵を添える"], "コツ": "主食込み", "主食込み": true, "作り置き": false}, {"id": "a05", "名前": "朝の集中スムージー＋ゆで卵", "区分": "朝", "忙しさ": 2, "分": 5, "味": "洋", "傾向": "さっぱり", "主": "乳", "たんぱく質": 20, "kcal": 340, "材料": [["冷凍ほうれん草", 40, "g", "冷凍"], ["にんじん", 0.3, "本", "野菜"], ["冷凍ブルーベリー", 40, "g", "冷凍"], ["バナナ", 0.3, "本", "野菜"], ["無調整豆乳", 100, "ml", "卵豆乳"], ["無糖ヨーグルト", 80, "g", "卵豆乳"], ["卵", 1, "個", "卵豆乳"]], "作り方": ["材料を全部ミキサーにかける（冬は豆乳を人肌に温める）", "ゆで卵を添える"], "コツ": "いつものレシピ", "主食込み": false, "作り置き": false, "季節": "夏"}, {"id": "a06", "名前": "チーズオムレツ＋トースト", "区分": "朝", "忙しさ": 3, "分": 10, "味": "洋", "傾向": "こってり", "主": "卵", "たんぱく質": 25, "kcal": 450, "材料": [["卵", 3, "個", "卵豆乳"], ["ピザ用チーズ", 15, "g", "卵豆乳"], ["食パン（6枚切り）", 1, "枚", "乾物缶"], ["ミニトマト", 4, "個", "野菜"]], "作り方": ["卵を溶き、塩こしょう", "フライパンで半熟に混ぜ、チーズをのせて包む", "トーストとトマトを添える"], "コツ": "主食込み", "主食込み": true, "作り置き": false}, {"id": "a07", "名前": "鮭の塩焼き定食", "区分": "朝", "忙しさ": 3, "分": 12, "味": "和", "傾向": "あっさり", "主": "魚", "たんぱく質": 30, "kcal": 520, "材料": [["塩鮭（切り身）", 1, "切れ", "肉魚"], ["納豆", 1, "パック", "卵豆乳"], ["インスタント味噌汁", 1, "袋", "乾物缶"]], "作り方": ["鮭をグリルかフライパン（ホイル）で8分焼く", "ご飯小盛り・納豆・味噌汁と"], "コツ": "ご飯込み", "主食込み": true, "作り置き": false}, {"id": "a08", "名前": "しらす卵焼き＋豆腐の味噌汁", "区分": "朝", "忙しさ": 4, "分": 15, "味": "和", "傾向": "あっさり", "主": "卵", "たんぱく質": 26, "kcal": 450, "材料": [["卵", 2, "個", "卵豆乳"], ["しらす", 20, "g", "肉魚"], ["絹豆腐", 0.25, "丁", "卵豆乳"], ["長ねぎ", 0.1, "本", "野菜"], ["だし", 0, "", "調味料"]], "作り方": ["卵にしらす・だし少しを混ぜて卵焼きにする", "豆腐とねぎの味噌汁を作る", "ご飯小盛りと"], "コツ": "ご飯込み", "主食込み": true, "作り置き": false}, {"id": "s01", "名前": "プロテイン（豆乳割り）", "区分": "間食", "忙しさ": 1, "分": 1, "味": "洋", "傾向": "あっさり", "主": "乳", "たんぱく質": 29, "kcal": 250, "材料": [["ホエイプロテイン", 1, "杯", "乾物缶"], ["無調整豆乳", 200, "ml", "卵豆乳"]], "作り方": ["豆乳で溶く。冬は人肌に温めてから"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "s02", "名前": "ギリシャヨーグルト＋ゆで卵", "区分": "間食", "忙しさ": 1, "分": 1, "味": "洋", "傾向": "さっぱり", "主": "卵", "たんぱく質": 17, "kcal": 150, "材料": [["ギリシャヨーグルト（無糖）", 1, "個", "卵豆乳"], ["ゆで卵", 1, "個", "卵豆乳"]], "作り方": ["そのまま"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "s03", "名前": "鶏ハム100g", "区分": "間食", "忙しさ": 1, "分": 1, "味": "和", "傾向": "さっぱり", "主": "鶏", "たんぱく質": 23, "kcal": 120, "材料": [["鶏ハム（作り置き）", 100, "g", "肉魚"]], "作り方": ["作り置きを切って食べる"], "コツ": "鶏ハムの作り置きがある日に", "主食込み": false, "作り置き": false}, {"id": "s04", "名前": "枝豆（冷凍）", "区分": "間食", "忙しさ": 1, "分": 3, "味": "和", "傾向": "あっさり", "主": "豆", "たんぱく質": 17, "kcal": 200, "材料": [["冷凍枝豆", 150, "g", "冷凍"]], "作り方": ["レンジで解凍"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "s05", "名前": "サラダチキン（半分）＋チーズ", "区分": "間食", "忙しさ": 1, "分": 1, "味": "和", "傾向": "あっさり", "主": "鶏", "たんぱく質": 18, "kcal": 160, "材料": [["サラダチキン", 0.5, "パック", "コンビニ"], ["プロセスチーズ", 1, "個", "卵豆乳"]], "作り方": ["そのまま"], "コツ": "", "主食込み": false, "作り置き": false}, {"id": "s06", "名前": "サバ缶おにぎり", "区分": "間食", "忙しさ": 1, "分": 3, "味": "和", "傾向": "あっさり", "主": "魚", "たんぱく質": 16, "kcal": 280, "材料": [["サバ缶（水煮）", 0.5, "缶", "乾物缶"], ["のり", 1, "枚", "乾物缶"]], "作り方": ["ご飯100gにサバ缶をほぐして混ぜ、にぎる"], "コツ": "運動の2時間前の補食に", "主食込み": true, "作り置き": false}, {"id": "s07", "名前": "豆乳＋ミックスナッツ", "区分": "間食", "忙しさ": 1, "分": 1, "味": "洋", "傾向": "あっさり", "主": "豆", "たんぱく質": 12, "kcal": 260, "材料": [["無調整豆乳", 200, "ml", "卵豆乳"], ["素焼きミックスナッツ", 20, "g", "乾物缶"]], "作り方": ["そのまま"], "コツ": "", "主食込み": false, "作り置き": false}]};
+const レシピ = 運動['レシピ'] || [];
 
 /* ── 保存（この端末だけ）── */
 const 保存 = {
@@ -291,9 +486,14 @@ const 保存 = {
   set(k, v){ try{ localStorage.setItem('nagara:' + k, JSON.stringify(v)) }catch(e){} }
 };
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* 献立の名前：語の途中で折り返さないよう、区切り（＋・の・と・括弧）の後ろだけで折る */
+const 名 = s => esc(s).replace(/([＋・のと）])/g, '$1<wbr>').replace(/（/g, '<wbr>（');
 const 設定 = {段: 保存.get('段', 運動['いまの段'] || 1), 声: 保存.get('声', true), 音: 保存.get('音', true), 励まし: 保存.get('励まし', true), 短く: false};
 const 目標 = 運動['週の回数'] || 4;
-const 達成ライン = Math.max(1, 目標 - 1);   // 週にこの回数以上で「続いた週」
+const 達成ライン = Math.max(1, 目標 - 1);
+const 体重 = 運動['体重'] || 64;
+const P目標 = Math.round(体重 * 1.6);
 const 順 = [...運動['順番'], 運動['すきま']].filter(k => 運動['メニュー'].some(m => m['記号'] === k));
 const メ = k => 運動['メニュー'].find(m => m['記号'] === k);
 let 選 = 順[0];
@@ -306,8 +506,20 @@ const 週の始め = d => { const x = new Date(d); x.setHours(0,0,0,0); x.setDat
 const 足す日 = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
 const 日の名 = s => { const d = new Date(s + 'T00:00'); return `${d.getMonth()+1}/${d.getDate()}（${曜[d.getDay()]}）` };
 const 分秒 = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+const 今日 = () => 日付(new Date());
 
-/* ── メニューを1段ずつに広げる（短く＝周を1つ減らす）── */
+/* ── 表示の名前（データの区切りを、トレーニングの用語で出す）── */
+function 区切り名(c){
+  if (!c) return '';
+  if (c === '準備') return 'ウォームアップ';
+  if (c === '伸ばす') return 'クールダウン';
+  let m = c.match(/^体幹 (\d+)\/(\d+)$/); if (m) return `コア ${m[1]}/${m[2]}`;
+  if (c === '体幹') return 'コア';
+  m = c.match(/^(\d+)周目 \/ (\d+)$/); if (m) return `ラウンド ${m[1]}/${m[2]}`;
+  return c;
+}
+
+/* ── メニューを1段ずつに広げる（短く＝1ラウンド減）── */
 function 展開(流れ, 段, 短く){
   const out = [];
   for (const x of 流れ){
@@ -318,13 +530,13 @@ function 展開(流れ, 段, 短く){
       const s = 段階[Math.min(段, 段階.length) - 1];
       for (let i = 0; i < x['体幹']; i++){
         out.push({...s, 区切り:`体幹 ${i+1}/${x['体幹']}`});
-        if (i < x['体幹'] - 1) out.push({名前:'休み', 秒:20, 動き:'rest', 合図:'息を整える', 区切り:'体幹'});
+        if (i < x['体幹'] - 1) out.push({名前:'休み', 秒:20, 動き:'rest', 合図:'呼吸を整える', 区切り:'体幹'});
       }
     } else if (x['回す'] !== undefined){
       const n = 短く ? Math.max(1, x['回す'] - 1) : x['回す'];
       for (let i = 0; i < n; i++){
         展開(x['中'], 段, false).forEach(s => out.push({...s, 区切り: s.区切り || `${i+1}周目 / ${n}`}));
-        if (x['周の休み'] && i < n - 1) out.push({名前:'休み', 秒:x['周の休み'], 動き:'rest', 合図:'次の周の前に、水を一口', 区切り:`${i+1}周目 / ${n}`});
+        if (x['周の休み'] && i < n - 1) out.push({名前:'休み', 秒:x['周の休み'], 動き:'rest', 合図:'給水', 区切り:`${i+1}周目 / ${n}`});
       }
     } else out.push({...x});
   }
@@ -332,10 +544,10 @@ function 展開(流れ, 段, 短く){
 }
 const 合計秒 = 段々 => 段々.reduce((a, s) => a + s.秒, 0);
 const 種目数 = 段々 => new Set(段々.filter(s => s.名前 !== '休み').map(s => s.名前)).size;
-const kcal = (記, 秒) => Math.round((メ(記)['MET'] || 5) * (運動['体重'] || 64) * 秒 / 3600 * 1.05);
+const kcal = (記, 秒) => Math.round((メ(記)['MET'] || 5) * 体重 * 秒 / 3600 * 1.05);
 const 種類 = s => s.名前 === '休み' ? 'rest' : (s.区切り === '準備' || s.区切り === '伸ばす') ? 'prep' : 'go';
 
-/* ── 記録 ── */
+/* ── トレーニングの記録 ── */
 const 記録 = () => 保存.get('記録', []);
 function 記録する(e){ const a = 記録(); a.push(e); 保存.set('記録', a.slice(-400)) }
 const やった = e => e['割合'] >= 0.6;
@@ -344,12 +556,9 @@ function 日ごと(){
   for (const e of 記録()) if (やった(e)){ m[e['日']] = m[e['日']] || {分:0, 記:[]}; m[e['日']].分 += e['秒'] / 60; m[e['日']].記.push(e['記']) }
   return m;
 }
-function 週の数(始め, 日ご){
-  let n = 0; for (let i = 0; i < 7; i++) if (日ご[日付(足す日(始め, i))]) n++; return n;
-}
+function 週の数(始め, 日ご){ let n = 0; for (let i = 0; i < 7; i++) if (日ご[日付(足す日(始め, i))]) n++; return n }
 function 数字(){
   const 日ご = 日ごと(), 今週 = 週の始め(new Date());
-  // 続いた週：今週は達成していれば数え、まだなら先週から数える（途中の週で途切れを責めない）
   let 連続 = 0, w = 今週;
   if (週の数(w, 日ご) < 達成ライン) w = 足す日(w, -7);
   while (週の数(w, 日ご) >= 達成ライン){ 連続++; w = 足す日(w, -7) }
@@ -357,87 +566,84 @@ function 数字(){
   return {今週: 週の数(今週, 日ご), 連続, 回: 全.length, 分: Math.round(全.reduce((a, e) => a + e['秒'], 0) / 60), 日ご};
 }
 
-/* ── ホーム ── */
+/* ── 予定 ── */
+function 予定の日(d){ const x = 予定[d]; return x && メ(x['記号']) ? x : null }
 function 今日の予定(){
-  const 今日 = 日付(new Date());
-  const x = 予定[今日] && メ(予定[今日]['記号']) ? 予定[今日] : null;
-  const 次 = Object.keys(予定).filter(d => d > 今日 && メ(予定[d]['記号'])).sort()[0];
-  return {今日, x, 次, y: 次 ? 予定[次] : null};
+  const t = 今日(), x = 予定の日(t);
+  const 次 = Object.keys(予定).filter(d => d > t && 予定の日(d)).sort()[0];
+  return {t, x, 次, y: 次 ? 予定[次] : null};
 }
+
+/* ════════ トレーニング ════════ */
+const 再生 = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>';
 function ヒーロー(){
-  const {今日, x, 次, y} = 今日の予定();
-  const 済 = !!数字().日ご[今日];
+  const {t, x, 次, y} = 今日の予定();
+  const 済 = !!数字().日ご[t];
+  const 記 = 選, m = メ(記), 段々 = 展開(m['流れ'], 設定.段, 設定.短く), 秒 = 合計秒(段々);
+  let pill;
+  if (済) pill = '<span class="pill">完了</span>';
+  else if (x && x['記号'] === 記) pill = `<span class="pill t-go">本日 ${x['始']}</span>`;
+  else if (x) pill = `<span class="pill">本日の予定 ${x['記号']}・${x['始']}</span>`;
+  else if (y && y['記号'] === 記) pill = `<span class="pill">次回 ${日の名(次)} ${y['始']}</span>`;
+  else pill = '<span class="pill">休養日</span>';
   const h = $('hero');
-  const 記 = 選;
-  const m = メ(記), 段々 = 展開(m['流れ'], 設定.段, 設定.短く), 秒 = 合計秒(段々);
-  let when;
-  if (済) when = '今日の分は終わりました';
-  else if (x && x['記号'] === 記) when = `今日やるメニュー　${x['始']}〜`;
-  else if (x) when = `今日は ${x['記号']}（${x['始']}〜）。いまは ${記} を選んでいます`;
-  else if (y && y['記号'] === 記) when = `今日は歩く日。次は ${日の名(次)} ${y['始']}〜`;
-  else when = 'えらんだメニュー';
   h.classList.toggle('off', 済);
   h.innerHTML = `
-    <p class="when"></p>
-    <div class="title"><span class="k"></span><span class="name"></span></div>
-    <p class="facts"><span><b>${Math.round(秒/60)}</b>分</span><span><b>${種目数(段々)}</b>種目</span><span>約<b>${kcal(記, 秒)}</b>kcal</span></p>
-    <p class="one muted"></p>
+    <div class="top">${pill}${x && x['軽い'] ? '<span class="pill t-prep"><abbr title="疲労を抜くため、ボリュームを落とす週。短縮を自動で適用">ディロード週</abbr></span>' : ''}</div>
+    <div class="title"><span class="k">${esc(記)}</span><span class="name">${esc(m['名前'])}</span></div>
+    <p class="sub">${esc(m['ひとこと'] || '')}</p>
+    <div class="facts"><span><b>${Math.round(秒/60)}<small>分</small></b>時間</span><span><b>${種目数(段々)}</b>種目</span><span><b>${kcal(記, 秒)}<small>kcal</small></b>消費（推定）</span></div>
     <div class="actions">
-      <button type="button" class="go" id="b-start">${済 ? 'もう1回やる' : '始める'}</button>
-      <label class="toggle" for="o-short"><input type="checkbox" id="o-short">時間が無い日は1周減らす</label>
+      <button type="button" class="go${済 ? ' ghost' : ''}" id="b-start">${再生}${済 ? 'もう一度' : 'スタート'}</button>
+      <label class="switch" for="o-short" title="ラウンド数を1つ減らす"><input type="checkbox" id="o-short">短縮（−1ラウンド）</label>
     </div>`;
-  h.querySelector('.when').textContent = when;
-  h.querySelector('.k').textContent = 記;
-  h.querySelector('.name').textContent = m['名前'];
-  h.querySelector('.one').textContent = (x && x['軽い'] ? '軽くする週：1周減らしておきました。' : '') + (m['ひとこと'] || '');
   const sh = h.querySelector('#o-short'); sh.checked = 設定.短く;
   sh.addEventListener('change', () => { 設定.短く = sh.checked; 描き直す() });
   h.querySelector('#b-start').addEventListener('click', 始める);
 }
 function 今週(){
-  const s = 数字(), 始め = 週の始め(new Date()), 今日 = 日付(new Date());
+  const s = 数字(), 始め = 週の始め(new Date()), t = 今日();
   const 周 = 2 * Math.PI * 40, 割 = Math.min(1, s.今週 / 目標);
   let cells = '';
   for (let i = 0; i < 7; i++){
     const d = 日付(足す日(始め, i)), 予 = 予定[d], 済 = s.日ご[d];
-    const cls = ['day', 予 ? 'plan' : '', 済 ? 'done' : '', d === 今日 ? 'today' : ''].join(' ');
-    const 印 = 済 ? '✓' : (予 ? 予['記号'] : '');
-    cells += `<div class="${cls}"><span class="w">${曜[(i + 1) % 7]}</span><span class="dot">${印}</span><span class="num">${Number(d.slice(8))}</span></div>`;
+    cells += `<div class="day ${予 ? 'plan' : ''} ${済 ? 'fin' : ''} ${d === t ? 'today' : ''}"><span class="w">${曜[(i + 1) % 7]}</span><span class="dot">${済 ? '✓' : (予 ? esc(予['記号']) : '')}</span><span class="num">${Number(d.slice(8))}</span></div>`;
   }
   const 残り = Math.max(0, 達成ライン - s.今週);
-  const msg = s.今週 >= 目標 ? '今週の目標を達成しました。' : 残り === 0 ? `「続いた週」になりました。あと ${目標 - s.今週} 回で目標。` : `あと ${残り} 回で「続いた週」。予定の日（薄い記号）にやればそろいます。`;
+  const msg = s.今週 >= 目標 ? '<b>週間目標を達成</b>' :
+    残り === 0 ? `<b>継続ライン到達</b>・目標まで残り${目標 - s.今週}回` :
+    `<abbr title="週${達成ライン}回以上で継続週としてカウント">継続ライン</abbr>まで残り<b>${残り}回</b>`;
   $('week').innerHTML = `
+    <div class="head"><p class="label">週間目標</p><span class="pill">${日の名(日付(始め)).replace(/（.）/, '')}〜</span></div>
     <div class="goal"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="40"/><circle class="fg" cx="50" cy="50" r="40" stroke-dasharray="${周.toFixed(1)}" stroke-dashoffset="${(周 * (1 - 割)).toFixed(1)}"/></svg>
-      <div class="v"><b>${s.今週}/${目標}</b><span>今週</span></div></div>
+      <div class="v">${s.今週}<small>/${目標}</small></div></div>
     <div class="days">${cells}</div>
-    <p class="weekmsg muted">${msg}</p>`;
+    <p class="weekmsg">${msg}</p>`;
   $('stats').innerHTML = `
-    <div class="stat"><b>${s.連続}<small>週</small></b><span>週${達成ライン}回以上が続いている</span></div>
-    <div class="stat"><b>${s.回}<small>回</small></b><span>これまでの合計</span></div>
-    <div class="stat"><b>${s.分 >= 60 ? (s.分 / 60).toFixed(1) + '<small>時間</small>' : s.分 + '<small>分</small>'}</b><span>動いた時間</span></div>`;
+    <div class="stat"><span class="label"><abbr title="週${達成ライン}回以上を達成した週の連続数">継続</abbr></span><b>${s.連続}<small>週</small></b></div>
+    <div class="stat"><span class="label">セッション</span><b>${s.回}<small>回</small></b></div>
+    <div class="stat"><span class="label">合計時間</span><b>${s.分 >= 60 ? (s.分 / 60).toFixed(1) + '<small>h</small>' : s.分 + '<small>分</small>'}</b></div>`;
 }
 function 体幹(){
   const 段階 = 運動['体幹の段階'], n = 段階.length, 段 = Math.min(設定.段, n);
   let bars = ''; for (let i = 1; i <= n; i++) bars += `<i class="${i < 段 ? 'on' : i === 段 ? 'now' : ''}"></i>`;
   $('ladder').innerHTML = `
-    <p class="label">体幹の段階 ── ドラゴンフラッグまで</p>
+    <div class="row"><p class="label"><abbr title="デッドバグからドラゴンフラッグまでの6段階。3セット完遂で次のレベルへ">コア・プログレッション</abbr></p><span class="pill t-prep">Lv.${段}/${n}</span></div>
     <div class="steps">${bars}</div>
-    <div class="row"><div><p class="nm"></p><p class="muted" style="font-size:13px"></p></div>
-      <div style="display:flex;gap:6px"><button type="button" class="mini" id="b-down" ${段 <= 1 ? 'disabled' : ''} aria-label="段を下げる">－</button><button type="button" class="mini" id="b-up" ${段 >= n ? 'disabled' : ''} aria-label="段を上げる">＋</button></div></div>`;
-  $('ladder').querySelector('.nm').textContent = `${段}段：${段階[段 - 1]['名前']}`;
-  $('ladder').querySelector('.muted').textContent = 段 < n ? `3セットきれいにできたら＋。次は「${段階[段]['名前']}」` : 'ゴールの段です';
+    <div class="row"><div><p class="nm">${esc(段階[段 - 1]['名前'])}</p><p class="nx">${段 < n ? '次：' + esc(段階[段]['名前']) : 'ゴール'}</p></div>
+      <div class="stepper"><button type="button" class="mini" id="b-down" ${段 <= 1 ? 'disabled' : ''} aria-label="レベルを下げる">−</button><button type="button" class="mini" id="b-up" ${段 >= n ? 'disabled' : ''} aria-label="レベルを上げる">＋</button></div></div>`;
   $('b-down').addEventListener('click', () => { 設定.段 = Math.max(1, 段 - 1); 保存.set('段', 設定.段); 描き直す() });
   $('b-up').addEventListener('click', () => { 設定.段 = Math.min(n, 段 + 1); 保存.set('段', 設定.段); 描き直す() });
 }
 function マス目(){
-  const s = 数字(), 始め = 足す日(週の始め(new Date()), -49), 今日 = 日付(new Date());
+  const s = 数字(), 始め = 足す日(週の始め(new Date()), -49), t = 今日();
   let html = '';
   for (let w = 0; w < 8; w++){
     html += '<div class="c">';
     for (let i = 0; i < 7; i++){
       const d = 日付(足す日(始め, w * 7 + i)), 分 = s.日ご[d] ? s.日ご[d].分 : 0;
       const lv = 分 === 0 ? '' : 分 < 20 ? 'l1' : 分 < 35 ? 'l2' : 'l3';
-      html += `<i class="${lv} ${d === 今日 ? 't' : ''} ${d > 今日 ? 'f' : ''}" title="${d}${分 ? ' ' + Math.round(分) + '分' : ''}"></i>`;
+      html += `<i class="${lv} ${d === t ? 't' : ''} ${d > t ? 'f' : ''}" title="${d}${分 ? '・' + Math.round(分) + '分' : ''}"></i>`;
     }
     html += '</div>';
   }
@@ -448,23 +654,20 @@ function メニュー一覧(){
   const list = document.createElement('div'); list.className = 'menulist';
   for (const k of 順){
     const m = メ(k), 段々 = 展開(m['流れ'], 設定.段, 設定.短く);
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'mrow';
-    b.innerHTML = `<span class="k">${k}</span><span><span class="n"></span><br><span class="s"></span></span><span class="t">${Math.round(合計秒(段々)/60)}分</span>`;
-    b.querySelector('.n').textContent = m['名前']; b.querySelector('.s').textContent = m['ひとこと'] || '';
-    if (k === 選) b.style.background = 'var(--raise)';
-    b.addEventListener('click', () => { 選 = k; try{ history.replaceState(null, '', '#' + k.toLowerCase()) }catch(e){} 描き直す(); window.scrollTo({top:0, behavior:'smooth'}) });
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'mrow'; b.setAttribute('aria-current', String(k === 選));
+    b.innerHTML = `<span class="k">${esc(k)}</span><span><span class="n">${esc(m['名前'])}</span><span class="s">${esc(m['ひとこと'] || '')}</span></span><span class="t">${Math.round(合計秒(段々)/60)}分</span>`;
+    b.addEventListener('click', () => { 選 = k; 描き直す(); window.scrollTo({top:0, behavior:'smooth'}) });
     list.appendChild(b);
   }
   box.appendChild(list);
   const plan = document.createElement('div'); plan.className = 'plan';
   let 前 = null;
   for (const s of 展開(メ(選)['流れ'], 設定.段, 設定.短く)){
-    const ph = /体幹/.test(s.区切り || '') ? '体幹' : s.区切り;
-    if (ph && ph !== 前){ const p = document.createElement('p'); p.className = 'ph'; p.textContent = `${選} の中身　${ph}`; plan.appendChild(p); 前 = ph }
+    const ph = 区切り名(/体幹/.test(s.区切り || '') ? '体幹' : s.区切り);
+    if (ph && ph !== 前){ const p = document.createElement('p'); p.className = 'ph'; p.textContent = `${選}｜${ph}`; plan.appendChild(p); 前 = ph }
     if (s.名前 === '休み') continue;
     const r = document.createElement('div'); r.className = 'it';
-    r.innerHTML = `<span></span><span class="t">${分秒(s.秒)}</span>`;
-    r.firstChild.textContent = s.名前 + (s.合図 ? `（${s.合図}）` : '');
+    r.innerHTML = `<span>${esc(s.名前)}<span class="c">${esc(s.合図 || '')}</span></span><span class="t">${分秒(s.秒)}</span>`;
     plan.appendChild(r);
   }
   box.appendChild(plan);
@@ -474,14 +677,258 @@ function 助言(){
   const el = $('advice');
   if (近い.length === 2 && 近い.every(e => e['きつさ'] <= 2)){
     el.hidden = false;
-    el.textContent = `${選} が楽になってきました。次からは各種目の回数を2回ずつ増やすか、ゆっくり下ろす秒数を1秒のばしましょう。` + (設定.段 < 運動['体幹の段階'].length ? '体幹の段を＋にするのもおすすめです。' : '');
+    el.innerHTML = `<b>負荷アップ推奨</b><span>各種目＋2レップ、または下ろす局面を＋1秒。${設定.段 < 運動['体幹の段階'].length ? 'コアのレベルアップも候補。' : ''}</span>`;
   } else if (近い.length === 2 && 近い.every(e => e['きつさ'] >= 5)){
     el.hidden = false;
-    el.textContent = `${選} がきつすぎるようです。「1周減らす」を入れるか、回数を少なめにしてかまいません。続けることが一番の近道です。`;
+    el.innerHTML = '<b>負荷ダウン推奨</b><span>短縮（−1ラウンド）を使用。継続を優先。</span>';
   } else el.hidden = true;
 }
+
+/* ════════ 食事 ════════ */
+const 好み = Object.assign({忙しさ: 3, 味: [], 傾向: [], 除外: '', 区分: '夕'}, 保存.get('好み', {}));
+const 献立 = () => 保存.get('献立', {});
+function 献立に入れる(d, 区分, id){ const k = 献立(); k[d] = k[d] || {}; if (id) k[d][区分] = id; else delete k[d][区分]; 保存.set('献立', k) }
+const R食 = id => レシピ.find(r => r.id === id);
+const 時間の段 = [['1', '3分', '加熱なし'], ['2', '10分', 'レンジ'], ['3', '15分', 'フライパン'], ['4', '25分', 'しっかり'], ['5', '30分+', '作り置き']];
+const ジャンル = ['和', '洋', '中', '韓', 'エスニック'];
+const テイスト = ['さっぱり', 'あっさり', 'こってり', '甘辛', 'ピリ辛'];
+function 日の型(d){
+  const x = 予定の日(d), k = x ? x['記号'] : null;
+  if (k === 'A' || k === 'B') return {名: 'トレーニング日', 記: k, 主食: 180, cls: 'go', 一言: '主食多め・たんぱく質35g以上'};
+  if (k) return {名: 'コンディショニング日', 記: k, 主食: 150, cls: 'prep', 一言: '主食標準'};
+  return {名: '休養日', 記: null, 主食: 100, cls: '', 一言: '主食控えめ'};
+}
+const 夏 = () => { const m = new Date().getMonth() + 1; return m >= 4 && m <= 10 };
+function 候補(区分, d, 使用済み = new Set(), 主の数 = {}){
+  const 型 = 日の型(d);
+  const 除外 = 好み.除外.split(/[、,\s]+/).filter(Boolean);
+  const k = 献立();
+  const 前日 = k[日付(足す日(new Date(d + 'T00:00'), -1))] || {};
+  const 前日の主 = 前日['夕'] && R食(前日['夕']) ? R食(前日['夕'])['主'] : null;
+  const 最近 = new Set();
+  for (let i = 1; i <= 4; i++){ const x = k[日付(足す日(new Date(d + 'T00:00'), -i))] || {}; Object.values(x).forEach(v => 最近.add(v)) }
+  return レシピ.filter(r => r['区分'] === 区分)
+    .filter(r => !r['季節'] || (r['季節'] === '夏' ? 夏() : !夏()))
+    .filter(r => r['忙しさ'] <= 好み.忙しさ)
+    .filter(r => !除外.some(w => r['材料'].some(m => m[0].includes(w)) || r['名前'].includes(w)))
+    .map(r => {
+      let p = 10 - (好み.忙しさ - r['忙しさ']) * 1.4;
+      if (好み.味.length) p += 好み.味.includes(r['味']) ? 4 : -3;
+      if (好み.傾向.length) p += 好み.傾向.includes(r['傾向']) ? 3 : -2;
+      p += r['たんぱく質'] * (型.記 ? 0.22 : 0.12);
+      if (最近.has(r.id)) p -= 9;
+      if (使用済み.has(r.id)) p -= 20;
+      if (前日の主 && r['主'] === 前日の主) p -= 3;
+      p -= (主の数[r['主']] || 0) * 2.5;
+      return {r, p};
+    }).sort((a, b) => b.p - a.p).map(x => x.r);
+}
+function 主食P(g){ return Math.round(g * 0.025) }
+function 日のたんぱく質(d){
+  const x = 献立()[d] || {}, 型 = 日の型(d);
+  let P = 0;
+  for (const 区分 of ['朝', '間食', '夕']){
+    const r = x[区分] && R食(x[区分]); if (!r) continue;
+    P += r['たんぱく質'] + (区分 === '夕' && !r['主食込み'] ? 主食P(型.主食) : 0);
+  }
+  return P;
+}
+function 食事の状況(){
+  const d = 今日(), 型 = 日の型(d), x = 献立()[d] || {}, P = 日のたんぱく質(d);
+  const slots = [['朝', '朝食'], ['間食', '間食'], ['夕', '夕食']].map(([k, n]) => {
+    const r = x[k] && R食(x[k]);
+    return `<button type="button" class="slot ${r ? 'set' : ''}" data-k="${k}"><span class="label">${n}</span><span class="n">${r ? 名(r['名前']) : '未設定'}</span>${r ? `<span class="p num">P ${r['たんぱく質']}g</span>` : ''}</button>`;
+  }).join('');
+  $('ctx').innerHTML = `
+    <div class="row"><span class="pill ${型.cls ? 't-' + 型.cls : ''}">${型.名}${型.記 ? '・' + 型.記 : ''}</span><span class="muted" style="font-size:13px"><abbr title="ご飯の量の目安。主食込みのメニューを除く">主食</abbr> ${型.主食}g・${型.一言}</span></div>
+    <div class="meter"><div class="nums"><span><abbr title="体重×1.6g。筋肥大の効果がほぼ頭打ちになる量">たんぱく質</abbr>　<b>${P}</b> / ${P目標}g</span><span>${P >= P目標 ? '目標達成' : '残り ' + (P目標 - P) + 'g'}</span></div>
+      <div class="bar"><i style="width:${Math.min(100, P / P目標 * 100).toFixed(1)}%"></i></div></div>
+    <div class="daymeals">${slots}</div>`;
+  $('ctx').querySelectorAll('.slot').forEach(b => b.addEventListener('click', () => {
+    const r = x[b.dataset.k] && R食(x[b.dataset.k]);
+    if (r) シート(r, b.dataset.k, d); else { 好み.区分 = b.dataset.k; 保存.set('好み', 好み); 食事() }
+  }));
+}
+function 絞り込み(){
+  const f = $('filters');
+  f.innerHTML = `
+    <div class="seg three" role="group" aria-label="区分">${[['朝', '朝食'], ['間食', '間食'], ['夕', '夕食']].map(([k, n]) => `<button type="button" data-k="${k}" aria-pressed="${好み.区分 === k}">${n}</button>`).join('')}</div>
+    <div class="fl"><p class="label"><span>調理時間</span><span>${時間の段[好み.忙しさ - 1][2]}</span></p>
+      <div class="seg" role="group" aria-label="調理時間">${時間の段.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${String(好み.忙しさ) === v}"><b>${v}</b><span>${t}</span></button>`).join('')}</div></div>
+    <details class="more-f" ${好み.味.length || 好み.傾向.length || 好み.除外 ? 'open' : ''}><summary>詳細条件${好み.味.length + 好み.傾向.length + (好み.除外 ? 1 : 0) ? `<span class="pill t-food">${好み.味.length + 好み.傾向.length + (好み.除外 ? 1 : 0)}</span>` : ''}</summary><div class="filters" style="margin-top:12px">
+    <div class="fl"><p class="label"><span>ジャンル</span></p><div class="chips" data-g="味">${ジャンル.map(v => `<button type="button" class="chip" aria-pressed="${好み.味.includes(v)}">${v}</button>`).join('')}</div></div>
+    <div class="fl"><p class="label"><span>テイスト</span></p><div class="chips" data-g="傾向">${テイスト.map(v => `<button type="button" class="chip" aria-pressed="${好み.傾向.includes(v)}">${v}</button>`).join('')}</div></div>
+    <div class="fl"><p class="label"><span>除外食材</span></p><input class="text" id="o-ex" type="text" placeholder="例：えび、キムチ" value="${esc(好み.除外)}"></div></div></details>`;
+  f.querySelectorAll('.seg.three button').forEach(b => b.addEventListener('click', () => { 好み.区分 = b.dataset.k; 保存.set('好み', 好み); 食事() }));
+  f.querySelectorAll('.seg:not(.three) button').forEach(b => b.addEventListener('click', () => { 好み.忙しさ = +b.dataset.v; 保存.set('好み', 好み); 食事() }));
+  f.querySelectorAll('.chips').forEach(g => g.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+    const a = 好み[g.dataset.g], v = b.textContent; const i = a.indexOf(v); i >= 0 ? a.splice(i, 1) : a.push(v);
+    保存.set('好み', 好み); 食事();
+  })));
+  const ex = f.querySelector('#o-ex');
+  ex.addEventListener('change', () => { 好み.除外 = ex.value.trim(); 保存.set('好み', 好み); 食事() });
+}
+let 全部見る = false;
+function 提案(){
+  const d = 今日(), 区分 = 好み.区分, list = 候補(区分, d), 型 = 日の型(d);
+  const 今の = (献立()[d] || {})[区分];
+  const box = $('picks');
+  const n = 全部見る ? list.length : Math.min(3, list.length);
+  box.innerHTML = `<div class="toolbar"><p class="label">提案 ─ ${({朝: '朝食', 間食: '間食', 夕: '夕食'})[区分]}</p><span class="pill">${list.length}件</span></div>`;
+  if (!list.length){ box.innerHTML += '<p class="empty">該当なし。調理時間を延ばすか条件を解除</p>'; return }
+  list.slice(0, n).forEach((r, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pick';
+    const 主食 = 区分 === '夕' && !r['主食込み'] ? `<span>主食 <b>${型.主食}</b>g</span>` : '';
+    b.innerHTML = `<span class="n">${名(r['名前'])}</span><span class="chev" aria-hidden="true"></span>
+      <span class="m"><span>P <b class="p">${r['たんぱく質']}</b>g</span><span><b>${r['kcal']}</b>kcal</span><span><b>${r['分']}</b>分</span>${主食}</span>
+      <span class="tags">${i === 0 ? '<span class="pill t-food">ベスト</span>' : ''}${今の === r.id ? '<span class="pill t-go">献立済み</span>' : ''}<span class="pill">${esc(r['味'])}</span><span class="pill">${esc(r['傾向'])}</span>${r['作り置き'] ? '<span class="pill t-prep">作り置き</span>' : ''}${r['主食込み'] ? '<span class="pill">主食込み</span>' : ''}</span>`;
+    b.addEventListener('click', () => シート(r, 区分, d));
+    box.appendChild(b);
+  });
+  if (list.length > 3){
+    const m = document.createElement('button'); m.type = 'button'; m.className = 'more';
+    m.textContent = 全部見る ? '上位3件のみ表示' : `すべて表示（${list.length}件）`;
+    m.addEventListener('click', () => { 全部見る = !全部見る; 提案() });
+    box.appendChild(m);
+  }
+}
+function 食事(){ 食事の状況(); 絞り込み(); 提案() }
+
+/* 量の表示 */
+function 量(x, 単位){
+  if (!x) return '';
+  if (単位 === 'g' || 単位 === 'ml') return `${Math.round(x / (x >= 100 ? 10 : 1)) * (x >= 100 ? 10 : 1)}${単位}`;
+  const 整 = Math.floor(x + 1e-9), 端 = x - 整;
+  const 分数 = [[0, ''], [0.1, '少量'], [0.125, '1/8'], [0.25, '1/4'], [0.3, '1/3'], [0.333, '1/3'], [0.5, '1/2'], [0.667, '2/3'], [0.75, '3/4'], [1, '']];
+  let best = 分数[0]; for (const f of 分数) if (Math.abs(f[0] - 端) < Math.abs(best[0] - 端)) best = f;
+  if (best[0] === 1) return `${整 + 1}${単位}`;
+  if (!best[1]) return `${整}${単位}`;
+  if (best[1] === '少量') return 整 ? `${整}${単位}強` : '少量';
+  return `${整 ? 整 + 'と' : ''}${best[1]}${単位}`;
+}
+
+/* ── 作り方（シート）── */
+function シート(r, 区分, d){
+  const 型 = 日の型(d);
+  const 主食行 = 区分 === '夕' && !r['主食込み'] ? `<div class="base"><span>ご飯（${型.名}）</span><span>${型.主食}g</span></div>` : '';
+  const 日々 = Array.from({length: 7}, (_, i) => 日付(足す日(new Date(), i)));
+  const p = $('panel');
+  p.innerHTML = `
+    <span class="grab" aria-hidden="true"></span>
+    <div class="hd"><div><p class="label">${({朝: '朝食', 間食: '間食', 夕: '夕食'})[r['区分']]}・${esc(r['味'])}・${esc(r['傾向'])}</p><h2 id="sh-title">${名(r['名前'])}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
+    <div class="tiles"><div><b class="p">${r['たんぱく質'] + (主食行 ? 主食P(型.主食) : 0)}g</b><span>たんぱく質${主食行 ? '（主食込み）' : ''}</span></div><div><b>${r['kcal'] + (主食行 ? Math.round(型.主食 * 1.56) : 0)}</b><span>kcal</span></div><div><b>${r['分']}分</b><span>調理時間</span></div><div><span class="effort" aria-label="手間 ${r['忙しさ']}/5">${[1,2,3,4,5].map(i => `<i class="${i <= r['忙しさ'] ? 'on' : ''}"></i>`).join('')}</span><span>手間 ${r['忙しさ']}/5</span></div></div>
+    <section><p class="label">材料（1人分）</p><div class="ing">${主食行}${r['材料'].map(m => `<div><span>${esc(m[0])}</span><span>${量(m[1], m[2]) || (m[3] === '調味料' ? '適量' : '')}</span></div>`).join('')}</div></section>
+    <section><p class="label" style="margin-bottom:8px">手順</p><ol class="howto">${r['作り方'].map(s => `<li>${esc(s)}</li>`).join('')}</ol></section>
+    ${r['コツ'] ? `<p class="tip">${esc(r['コツ'])}</p>` : ''}
+    <div class="addrow"><select id="sh-day" aria-label="日付">${日々.map(x => `<option value="${x}" ${x === d ? 'selected' : ''}>${x === 今日() ? '本日' : 日の名(x)}</option>`).join('')}</select>
+      <button type="button" class="go food" id="sh-add">献立に追加</button></div>`;
+  $('sheet').hidden = false; document.body.style.overflow = 'hidden';
+  p.querySelectorAll('.howto li').forEach(li => li.addEventListener('click', () => li.classList.toggle('ok')));
+  $('sh-x').addEventListener('click', シートを閉じる);
+  $('sh-add').addEventListener('click', () => {
+    const dd = $('sh-day').value; 献立に入れる(dd, r['区分'], r.id);
+    シートを閉じる(); 知らせ(`${dd === 今日() ? '本日' : 日の名(dd)}の${({朝: '朝食', 間食: '間食', 夕: '夕食'})[r['区分']]}に追加`); 全体();
+  });
+  $('sh-x').focus();
+}
+function シートを閉じる(){ $('sheet').hidden = true; document.body.style.overflow = '' }
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) シートを閉じる() });
+let 知らせの時計 = null;
+function 知らせ(t){ const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(知らせの時計); 知らせの時計 = setTimeout(() => el.hidden = true, 2200) }
+
+/* ════════ 買い物 ════════ */
+const 売り場の順 = ['肉魚', '卵豆乳', '野菜', '冷凍', '乾物缶', 'コンビニ', '調味料'];
+const 売り場の名 = {肉魚: '肉・魚', 卵豆乳: '卵・豆腐・乳製品', 野菜: '野菜・果物', 冷凍: '冷凍食品', 乾物缶: '缶詰・乾物', コンビニ: 'コンビニ', 調味料: '常備調味料'};
+const 七日 = () => Array.from({length: 7}, (_, i) => 日付(足す日(new Date(), i)));
+const 外食 = d => (予定[d] && 予定[d]['夕食']) || (外食の日[d] || null);
+let 外食の日 = {};
+function 自動作成(全部){
+  const k = 献立(), 使用 = new Set(), 主の数 = {};
+  const 数える = id => { const r = R食(id); if (r){ 使用.add(id); 主の数[r['主']] = (主の数[r['主']] || 0) + 1 } };
+  for (const d of 七日()) if (!全部 && k[d] && k[d]['夕']) 数える(k[d]['夕']);
+  let n = 0;
+  for (const d of 七日()){
+    if (外食(d)){ if (全部) 献立に入れる(d, '夕', null); continue }
+    if (!全部 && k[d] && k[d]['夕']) continue;
+    const c = 候補('夕', d, 使用, 主の数)[0]; if (!c) continue;
+    献立に入れる(d, '夕', c.id); 数える(c.id); n++;
+  }
+  知らせ(n ? `${n}日分を作成` : '未設定日なし');
+  全体();
+}
+function 入れ替え(d){
+  const k = 献立(), 今 = k[d] && k[d]['夕'];
+  const 使用 = new Set(七日().map(x => (k[x] || {})['夕']).filter(Boolean));
+  const 次 = 候補('夕', d, 使用).find(r => r.id !== 今);
+  if (次){ 献立に入れる(d, '夕', 次.id); 全体() }
+}
+function 買い物(){
+  const k = 献立(), wp = $('weekplan');
+  let 数 = 0;
+  wp.innerHTML = 七日().map(d => {
+    const x = k[d] || {}, r = x['夕'] && R食(x['夕']), 型 = 日の型(d);
+    if (r) 数++;
+    const ほか = ['朝', '間食'].map(z => x[z] && R食(x[z]) ? R食(x[z])['名前'] : null).filter(Boolean).join('／');
+    const 外 = 外食(d);
+    if (外 && !r) return `<div class="wp"><div class="d">${Number(d.slice(5,7))}/${Number(d.slice(8))}<small>${d === 今日() ? '本日' : 曜[new Date(d + 'T00:00').getDay()] + '曜'}</small></div><div class="n none">${esc(外)}</div><div class="ops"></div></div>`;
+    return `<div class="wp"><div class="d">${Number(d.slice(5,7))}/${Number(d.slice(8))}<small>${d === 今日() ? '本日' : 曜[new Date(d + 'T00:00').getDay()] + '曜'}${型.記 ? '・' + 型.記 : ''}</small></div>
+      <div class="n ${r ? '' : 'none'}" data-d="${d}">${r ? 名(r['名前']) : '未設定'}${ほか ? `<small>${esc(ほか)}</small>` : ''}</div>
+      <div class="ops">${r ? `<button type="button" class="icon" data-swap="${d}" aria-label="入れ替え" title="入れ替え"><svg viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg></button><button type="button" class="icon" data-del="${d}" aria-label="削除" title="削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>` : `<button type="button" class="icon" data-swap="${d}" aria-label="自動で設定" title="自動で設定"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`}</div></div>`;
+  }).join('');
+  $('wp-count').textContent = `${数}/7`;
+  wp.querySelectorAll('[data-swap]').forEach(b => b.addEventListener('click', () => 入れ替え(b.dataset.swap)));
+  wp.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => { 献立に入れる(b.dataset.del, '夕', null); 全体() }));
+  wp.querySelectorAll('.n[data-d]').forEach(n => n.addEventListener('click', () => { const r = (献立()[n.dataset.d] || {})['夕']; if (r) シート(R食(r), '夕', n.dataset.d) }));
+
+  // 合計
+  const 合 = {};
+  for (const d of 七日()){
+    const x = k[d] || {};
+    for (const id of Object.values(x)){
+      const r = R食(id); if (!r) continue;
+      for (const [名, 数, 単位, 場] of r['材料']){
+        const key = 名 + '|' + 単位;
+        合[key] = 合[key] || {名, 単位, 場, 数: 0, 品: new Set()};
+        合[key].数 += 数 || 0; 合[key].品.add(r['名前']);
+      }
+    }
+  }
+  const 済 = 保存.get('買い物済', {}), 調味料も = 保存.get('調味料も', false);
+  $('o-pantry').checked = 調味料も;
+  const 品々 = Object.entries(合).filter(([, v]) => 調味料も || v.場 !== '調味料');
+  const 残 = 品々.filter(([key]) => !済[key]).length;
+  $('shop-left').textContent = 品々.length ? `残り ${残}/${品々.length}` : '0品';
+  if (!品々.length){ $('shoplist').innerHTML = '<p class="empty">献立が未設定。「未設定日を自動作成」で開始</p>'; return }
+  let html = '';
+  for (const 場 of 売り場の順){
+    const 群 = 品々.filter(([, v]) => v.場 === 場); if (!群.length) continue;
+    html += `<h3>${売り場の名[場]}</h3>` + 群.map(([key, v]) => `<label class="si ${済[key] ? 'ok' : ''}"><input type="checkbox" data-key="${esc(key)}" ${済[key] ? 'checked' : ''}><span class="n">${esc(v.名)}<small>${esc([...v.品].slice(0, 2).join('・'))}${v.品.size > 2 ? ' ほか' : ''}</small></span><span class="q">${量(v.数, v.単位)}</span></label>`).join('');
+  }
+  $('shoplist').innerHTML = html;
+  $('shoplist').querySelectorAll('input[data-key]').forEach(c => c.addEventListener('change', () => {
+    const s = 保存.get('買い物済', {}); if (c.checked) s[c.dataset.key] = true; else delete s[c.dataset.key]; 保存.set('買い物済', s); 買い物();
+  }));
+}
+$('b-auto').addEventListener('click', () => 自動作成(false));
+$('b-redo').addEventListener('click', () => 自動作成(true));
+$('b-reset').addEventListener('click', () => { 保存.set('買い物済', {}); 買い物() });
+$('o-pantry').addEventListener('change', e => { 保存.set('調味料も', e.target.checked); 買い物() });
+
+/* ════════ 画面の切り替え ════════ */
+let 今の画面 = 'train';
+function 画面(v, 動かさない){
+  今の画面 = v;
+  ['train', 'food', 'shop'].forEach(x => $('v-' + x).hidden = x !== v);
+  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.v === v ? 'page' : 'false'));
+  if (!動かさない) window.scrollTo(0, 0);
+  if (v === 'food') 食事();
+  if (v === 'shop') 買い物();
+  try{ history.replaceState(null, '', v === 'train' ? '#' + 選.toLowerCase() : '#' + v) }catch(e){}
+}
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => 画面(b.dataset.v)));
 function 描き直す(){ ヒーロー(); 今週(); 体幹(); マス目(); メニュー一覧(); 助言() }
-function 今日の表示(){ const d = new Date(); $('today').textContent = `${d.getMonth()+1}月${d.getDate()}日（${曜[d.getDay()]}）` }
+function 全体(){ 描き直す(); if (今の画面 === 'food') 食事(); if (今の画面 === 'shop') 買い物() }
+function 今日の表示(){ const d = new Date(), t = `${d.getMonth()+1}月${d.getDate()}日（${曜[d.getDay()]}）`; ['today1', 'today2', 'today3'].forEach(id => $(id).textContent = t) }
 
 const 長 = {胴:50, もも:40, すね:40, 上腕:28, 前腕:26, 頭:13, 地面:212};
 const 立 = {hx:0, t:0, a1:6, f1:12, a2:-6, f2:12, l1:3, k1:0, l2:-3, k2:0};
@@ -589,22 +1036,20 @@ function 話す(文){
 }
 let 起きて = null;
 async function 画面を消さない(){ try{ 起きて = await navigator.wakeLock.request('screen') }catch(e){} }
-const 励まし文 = {半分: ['半分です', 'いいペース。あと半分', '半分。呼吸を止めずに'], 十秒: ['ラスト10秒', 'あと10秒、きれいな形で', 'ラスト10秒。もう少し']};
-const ひとつ = a => a[Math.floor(Math.random() * a.length)];
 
 /* ── タイマー ── */
-const R = {段々:[], i:0, 残り:0, 走る:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1, 半分:false, 十秒:false, 終わり:false, 始めた:null, 記:null};
+const R = {段々:[], i:0, 残り:0, 走る:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1, 半分:false, 十秒:false, 終わり:false, 記:null};
 function 帯を作る(){
   const box = $('r-segs'); box.innerHTML = '';
-  R.段々.forEach(s => { const d = document.createElement('div'); d.className = 'seg k-' + 種類(s); d.style.flex = String(s.秒); box.appendChild(d) });
+  R.段々.forEach(s => { const d = document.createElement('div'); d.className = 'sg k-' + 種類(s); d.style.flex = String(s.秒); box.appendChild(d) });
 }
-function 帯を合わせる(){ [...$('r-segs').children].forEach((d, i) => { d.classList.toggle('done', i < R.i); d.classList.toggle('now', i === R.i); if (i === R.i) d.style.flex = String(R.段々[i].秒) }) }
+function 帯を合わせる(){ [...$('r-segs').children].forEach((d, i) => { d.classList.toggle('past', i < R.i); d.classList.toggle('now', i === R.i); if (i === R.i) d.style.flex = String(R.段々[i].秒) }) }
 function 何種目目(){
-  // いまの周の中で何種目目か（休みは数えない）
   const s = R.段々[R.i]; if (!s || !s.区切り) return '';
+  if (s.名前 === '休み') return 区切り名(s.区切り);
   const 同じ = R.段々.filter(x => x.区切り === s.区切り && x.名前 !== '休み');
   const 前 = R.段々.slice(0, R.i + 1).filter(x => x.区切り === s.区切り && x.名前 !== '休み').length;
-  return s.名前 === '休み' ? s.区切り : `${s.区切り}　${Math.max(1, 前)}/${同じ.length}種目`;
+  return `${区切り名(s.区切り)}・種目 ${Math.max(1, 前)}/${同じ.length}`;
 }
 function 段を見せる(){
   const s = R.段々[R.i], 次 = R.段々[R.i + 1];
@@ -612,26 +1057,25 @@ function 段を見せる(){
   $('run').classList.toggle('is-rest', 休み);
   $('run').classList.toggle('is-prep', 種類(s) === 'prep');
   帯を合わせる();
-  $('r-phase').textContent = 休み ? '休み' : (s.区切り || '');
-  $('r-ex').textContent = 休み ? (次 ? `次は ${次.名前}` : '休み') : s.名前;
+  $('r-phase').textContent = 休み ? 'レスト' : 区切り名(s.区切り).replace(/ \d+\/\d+$/, '').replace(/^ラウンド.*/, 'ワーク');
+  $('r-ex').textContent = 休み ? (次 ? 次.名前 : 'レスト') : s.名前;
   const 回 = (s.合図 || '').match(/(左右各?|各)?\d+〜?\d*回/);
-  $('r-target').textContent = !休み && 回 ? `目安 ${回[0]}` : '';
+  $('r-target').textContent = 休み ? '次の種目' : 回 ? `目標 ${回[0]}` : '';
   $('r-cue').textContent = s.合図 || '';
   $('r-cheer').textContent = '';
-  $('r-next').textContent = 次 ? `次：${次.名前}（${分秒(次.秒)}）` : '次：おわり';
+  $('r-next').textContent = 次 ? `次 → ${次.名前 === '休み' ? 'レスト' : 次.名前}　${分秒(次.秒)}` : '次 → フィニッシュ';
   $('r-pos').textContent = `${R.i + 1} / ${R.段々.length}`;
   $('r-round').textContent = 何種目目();
   $('b-plus').hidden = !休み;
   部品.呼吸.style.display = 'none';
   R.半分 = false; R.十秒 = false;
-  話す(休み ? (次 ? `休み。次は${次.名前}` : '休み') : s.名前);
+  話す(休み ? (次 ? `レスト。次は${次.名前}` : 'レスト') : s.名前);
 }
 function 表示を更新(){
   const s = R.段々[R.i];
   $('r-count').textContent = Math.max(0, Math.ceil(R.残り / 1000));
   const 済 = R.段々.slice(0, R.i).reduce((a, x) => a + x.秒, 0) * 1000 + (s.秒 * 1000 - R.残り);
-  const 全 = 合計秒(R.段々) * 1000;
-  const 周 = 2 * Math.PI * 88;
+  const 全 = 合計秒(R.段々) * 1000, 周 = 2 * Math.PI * 88;
   $('r-ring').setAttribute('stroke-dasharray', 周.toFixed(1));
   $('r-ring').setAttribute('stroke-dashoffset', (周 * (1 - Math.max(0, R.残り) / (s.秒 * 1000))).toFixed(1));
   $('r-left').textContent = '残り ' + 分秒(Math.max(0, 全 - 済) / 1000);
@@ -652,7 +1096,7 @@ function 一時停止(切り替え){
 function 紙吹雪(){
   if (動かない.matches) return;
   const box = $('confetti'); box.innerHTML = '';
-  const 色 = ['var(--go)', 'var(--rest)', 'var(--prep)', 'var(--ink)'];
+  const 色 = ['var(--go)', 'var(--rest)', 'var(--prep)', 'var(--food)'];
   for (let i = 0; i < 36; i++){
     const e = document.createElement('i');
     e.style.left = Math.random() * 100 + 'vw'; e.style.background = 色[i % 4];
@@ -661,44 +1105,44 @@ function 紙吹雪(){
   }
   setTimeout(() => box.innerHTML = '', 3600);
 }
-function 終わる(全部){
+function 終わる(){
   R.走る = false; R.終わり = true;
   const 予定秒 = 合計秒(R.段々), 秒 = Math.round(R.実働 / 1000), 割合 = Math.min(1, 秒 / 予定秒);
-  const 記 = R.記, 今日 = 日付(new Date());
-  const 前の今週 = 数字().今週;
+  const 記 = R.記, t = 今日(), 前の今週 = 数字().今週;
   let 記録した = null;
   if (割合 >= 0.6 || 秒 >= 300){
-    記録した = {日: 今日, 時: `${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2,'0')}`, 記, 秒, 予定秒, 割合: Math.round(割合 * 100) / 100, きつさ: null};
+    const n = new Date();
+    記録した = {日: t, 時: `${n.getHours()}:${String(n.getMinutes()).padStart(2,'0')}`, 記, 秒, 予定秒, 割合: Math.round(割合 * 100) / 100, きつさ: null};
     記録する(記録した);
   }
   const s = 数字();
   $('run').classList.remove('is-rest', 'is-prep', 'paused'); $('r-bar').hidden = true;
-  $('r-stage').hidden = true; $('r-done').hidden = false; $('b-prev').hidden = true; $('b-next').hidden = true; $('b-plus').hidden = true; $('b-stop').hidden = true;
+  $('r-stage').hidden = true; $('r-done').hidden = false;
+  ['b-prev', 'b-next', 'b-plus', 'b-stop'].forEach(id => $(id).hidden = true);
   $('b-pause').textContent = '閉じる';
   const 達成 = s.今週 >= 達成ライン && 前の今週 < 達成ライン;
-  const 見出し = !記録した ? '今日はここまで' : 割合 < 0.95 ? 'ここまでできました' : 'おつかれさまでした';
-  const 一言 = !記録した ? '短い回は記録に入れていません。続きは次の回で。' :
-    s.今週 >= 目標 ? `今週の目標 ${目標} 回を達成。いい週です。` :
-    達成 ? `今週 ${達成ライン} 回で「続いた週」になりました。連続 ${s.連続} 週。` :
-    `今週 ${s.今週}/${目標} 回。` + (s.連続 ? `連続 ${s.連続} 週。` : '');
+  const 見出し = !記録した ? 'セッション終了' : 割合 < 0.95 ? 'セッション終了' : 'セッション完了';
+  const 一言 = !記録した ? '実施時間が短いため記録対象外' :
+    s.今週 >= 目標 ? '週間目標を達成' :
+    達成 ? `継続ライン到達・継続 ${s.連続}週` :
+    `今週 ${s.今週}/${目標}` + (s.連続 ? `・継続 ${s.連続}週` : '');
   $('r-done').innerHTML = `
     <svg class="check" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40"/><path d="M32 52 L45 64 L69 38"/></svg>
-    <h2></h2>
-    <p class="cue" id="d-msg"></p>
-    <div class="sum"><div><b class="num">${分秒(秒)}</b><span>動いた時間</span></div><div><b class="num">${kcal(記, 秒)}</b><span>kcal（目安）</span></div><div><b class="num">${s.今週}/${目標}</b><span>今週</span></div></div>
-    ${記録した ? `<div class="rpe"><p class="muted">きつさは？（次の回の目安にします）</p><div class="opts">
-      ${[['1','楽すぎ'],['2','少し楽'],['3','ちょうど'],['4','きつい'],['5','限界']].map(([n, t]) => `<button type="button" data-v="${n}" aria-pressed="false"><b>${n}</b>${t}</button>`).join('')}
-    </div><p class="muted" id="d-rpe" style="font-size:14px"></p></div>` : ''}
-    <p class="muted" id="d-after"></p>`;
-  $('r-done').querySelector('h2').textContent = 見出し;
-  $('d-msg').textContent = 一言;
-  $('d-after').textContent = 運動['終わったら'] ? `このあと：${運動['終わったら']}` : '';
+    <h2>${見出し}</h2>
+    <p class="cue">${一言}</p>
+    <div class="sum"><div><b class="num">${分秒(秒)}</b><span>時間</span></div><div><b class="num">${kcal(記, 秒)}</b><span>消費 kcal（推定）</span></div><div><b class="num">${s.今週}/${目標}</b><span>今週</span></div></div>
+    ${記録した ? `<div class="rpe"><p class="label"><abbr title="主観的運動強度。次回の負荷調整に使用">RPE</abbr> ─ 今日の強度</p><div class="opts">
+      ${[['1','楽'],['2','やや楽'],['3','適正'],['4','きつい'],['5','限界']].map(([n, t]) => `<button type="button" data-v="${n}" aria-pressed="false"><b>${n}</b>${t}</button>`).join('')}
+    </div><p class="muted" id="d-rpe" style="font-size:13px;min-height:1.4em"></p></div>` : ''}
+    ${運動['終わったら'] ? `<div class="after"><span>リカバリー：${esc(運動['終わったら'])}</span><button type="button" class="linkbtn" id="d-food">食事を見る</button></div>` : ''}`;
   $('r-done').querySelectorAll('.rpe button').forEach(b => b.addEventListener('click', () => {
     $('r-done').querySelectorAll('.rpe button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     const v = +b.dataset.v, a = 記録();
     if (a.length){ a[a.length - 1]['きつさ'] = v; 保存.set('記録', a) }
-    $('d-rpe').textContent = v <= 2 ? '楽にできました。2回続いたら回数を増やす合図です。' : v >= 5 ? '無理は禁物。次は1周減らしてもかまいません。' : 'ちょうどいい強さです。この調子で。';
+    $('d-rpe').textContent = v <= 2 ? '2回続けば負荷アップを提案' : v >= 5 ? '次回は短縮を推奨' : '適正強度';
   }));
+  const df = $('d-food');
+  if (df) df.addEventListener('click', () => { 閉じる(); 好み.区分 = new Date().getHours() >= 16 ? '夕' : '間食'; 保存.set('好み', 好み); 画面('food') });
   if (記録した){ ピッ(660, .2); setTimeout(() => ピッ(990, .3), 220); 紙吹雪(); 話す(見出し) }
 }
 function 回る(now){
@@ -709,12 +1153,12 @@ function 回る(now){
       R.残り -= 差; R.実働 += 差;
       const s = R.段々[R.i], 秒 = Math.ceil(R.残り / 1000);
       if (設定.音 && 秒 <= 3 && 秒 >= 1 && 秒 !== R.鳴らした){ R.鳴らした = 秒; ピッ(880) }
-      if (s.名前 !== '休み' && s.秒 >= 30){
-        if (設定.励まし && s.秒 >= 40 && !R.半分 && R.残り <= s.秒 * 500){ R.半分 = true; const t = ひとつ(励まし文.半分); $('r-cheer').textContent = t; 話す(t) }
-        if (設定.励まし && !R.十秒 && R.残り <= 10000){ R.十秒 = true; const t = ひとつ(励まし文.十秒); $('r-cheer').textContent = t; 話す(t) }
+      if (s.名前 !== '休み' && s.秒 >= 30 && 設定.励まし){
+        if (s.秒 >= 40 && !R.半分 && R.残り <= s.秒 * 500){ R.半分 = true; $('r-cheer').textContent = 'ハーフ'; 話す('ハーフ') }
+        if (!R.十秒 && R.残り <= 10000){ R.十秒 = true; $('r-cheer').textContent = 'ラスト10秒'; 話す('ラスト10秒') }
       }
       if (R.残り <= 0){
-        if (R.i >= R.段々.length - 1) 終わる(true);
+        if (R.i >= R.段々.length - 1) 終わる();
         else { ピッ(1320, .18); 進む(1) }
       }
       if (!R.終わり) 表示を更新();
@@ -728,32 +1172,32 @@ function 回る(now){
 function 始める(){
   R.記 = 選;
   R.段々 = 展開(メ(選)['流れ'], 設定.段, 設定.短く);
-  Object.assign(R, {i:0, 残り:R.段々[0].秒 * 1000, 走る:true, 終わり:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1, 始めた:Date.now()});
-  $('home').hidden = true; $('run').hidden = false; $('r-stage').hidden = false; $('r-done').hidden = true; $('r-bar').hidden = false;
+  Object.assign(R, {i:0, 残り:R.段々[0].秒 * 1000, 走る:true, 終わり:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1});
+  ['v-train', 'v-food', 'v-shop'].forEach(id => $(id).hidden = true);
+  document.querySelector('nav.tabs').hidden = true;
+  $('run').hidden = false; $('r-stage').hidden = false; $('r-done').hidden = true; $('r-bar').hidden = false;
   ['b-prev', 'b-next', 'b-stop'].forEach(id => $(id).hidden = false);
   $('run').classList.remove('paused'); $('r-paused').hidden = true;
   $('b-pause').textContent = '一時停止';
   帯を作る(); ピッ(1320, .15); 画面を消さない();
   段を見せる(); 表示を更新();
-  window.scrollTo(0, 0);
 }
 function 閉じる(){
-  R.走る = false; $('run').hidden = true; $('home').hidden = false;
+  R.走る = false; $('run').hidden = true;
+  document.querySelector('nav.tabs').hidden = false;
   try{ speechSynthesis.cancel() }catch(e){}
   try{ 起きて && 起きて.release() }catch(e){}
-  描き直す();
+  画面(今の画面, true); 描き直す();
 }
 $('b-pause').addEventListener('click', () => { if (R.終わり) 閉じる(); else 一時停止() });
 $('r-ringbox').addEventListener('click', () => 一時停止());
 $('r-ringbox').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); 一時停止() } });
-$('b-next').addEventListener('click', () => { if (!R.終わり){ if (R.i >= R.段々.length - 1) 終わる(true); else 進む(1) } });
+$('b-next').addEventListener('click', () => { if (!R.終わり){ if (R.i >= R.段々.length - 1) 終わる(); else 進む(1) } });
 $('b-prev').addEventListener('click', () => { if (!R.終わり) 進む(-1) });
 $('b-plus').addEventListener('click', () => { const s = R.段々[R.i]; s.秒 += 15; R.残り += 15000; 帯を合わせる(); 表示を更新() });
-$('b-stop').addEventListener('click', () => {
-  // 途中でやめても、6割以上（または5分以上）なら記録に残す
-  if (R.実働 / 1000 >= Math.min(300, 合計秒(R.段々) * 0.6)) 終わる(false); else 閉じる();
-});
+$('b-stop').addEventListener('click', () => { if (R.実働 / 1000 >= Math.min(300, 合計秒(R.段々) * 0.6)) 終わる(); else 閉じる() });
 document.addEventListener('keydown', e => {
+  if (!$('sheet').hidden && e.key === 'Escape'){ シートを閉じる(); return }
   if ($('run').hidden) return;
   if (e.key === ' '){ e.preventDefault(); $('b-pause').click() }
   else if (e.key === 'ArrowRight') $('b-next').click();
@@ -766,40 +1210,40 @@ document.addEventListener('keydown', e => {
   const el = $(id); el.checked = 設定[k];
   el.addEventListener('change', () => { 設定[k] = el.checked; 保存.set(k, el.checked) });
 });
+document.querySelectorAll('input.sw').forEach(el => { const l = el.closest('label'); l.classList.add('switch'); l.style.justifyContent = 'space-between'; l.style.width = '100%'; l.style.fontSize = '14px'; l.style.color = 'var(--ink)' });
 
-/* ── 予定（EDIT FLOW が決めた日ごとのメニュー）── */
+/* ── 起動 ── */
 function ハッシュから(){
-  const k = (location.hash || '').replace('#', '').toUpperCase();
-  if (順.includes(k)){ 選 = k; return true }
-  return false;
+  const h = (location.hash || '').replace('#', '');
+  if (h === 'food' || h === 'shop') return {v: h};
+  const k = h.toUpperCase();
+  if (順.includes(k)){ 選 = k; return {k} }
+  return {};
 }
-async function 予定を読む(ハッシュあり){
+async function 予定を読む(ハッシュ){
   try{
     const r = await fetch('予定.json?t=' + Date.now(), {cache:'no-store'});
-    if (r.ok) 予定 = (await r.json())['日'] || {};
+    if (r.ok){ const j = await r.json(); 予定 = j['日'] || {}; 外食の日 = j['外食'] || {} }
   }catch(e){}
   const {x, y} = 今日の予定();
-  if (!ハッシュあり){
-    if (x) 選 = x['記号']; else if (y) 選 = y['記号'];
-  }
+  if (!ハッシュ.k){ if (x) 選 = x['記号']; else if (y) 選 = y['記号'] }
   設定.短く = !!(x && x['軽い']);
-  描き直す();
+  全体();
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   if (!$('run').hidden){ if (R.走る) 画面を消さない(); return }
-  今日の表示(); 予定を読む(false);
+  今日の表示(); 予定を読む({});
 });
-window.addEventListener('hashchange', () => { ハッシュから(); 描き直す() });
-const ハッシュあり = ハッシュから();
-今日の表示(); 描き直す(); 予定を読む(ハッシュあり);
+const 最初 = ハッシュから();
+今日の表示(); 画面(最初.v || 'train'); 描き直す(); 予定を読む(最初);
 描く(姿勢('rest', 0));
 requestAnimationFrame(回る);
 </script>
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=91db7e28', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=1a7643d1', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
