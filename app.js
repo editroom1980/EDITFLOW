@@ -851,7 +851,7 @@ function 問題の札(q) {
   const 開 = ui.動かす[q.id];
   const 動かす理由 = !u ? 'この締切の案件が編集案件.json に見つからない' : (回 ? '定例の回の締切は、まだ動かせない（エンジンが未対応）' : '');
   const 最理由 = !u ? 'この締切の案件が見つからない' : (u.元.最優先 ? 'もう最優先にしてある' : '');
-  const 認理由 = q.足りない > 0 ? '時間外を足しても足りない。締切を変更か、最優先にする' : (認 ? 'もう認めた' : '');
+  const 認理由 = q.足りない > 0 && !認 ? '時間外を足しても足りない。締切を変更か、最優先にする' : '';
   const k = u && u.締切.find(k => k.id === q.id);
   return `<div class="issue ${色}">
     <div class="issue-head"><span class="lamp ${色 === 'ok' ? 'silver' : 色}"></span><span class="issue-title">${esc(q.ラベル)}</span>
@@ -867,7 +867,7 @@ function 問題の札(q) {
       <div class="act"><button class="btn btn-secondary btn-small" data-act="moveOpen" data-id="${esc(q.id)}" ${動かす理由 ? 'disabled' : ''} title="${esc(動かす理由 || '締切の日付と時刻を変えて再計算する')}">締切を変更</button>${動かす理由 ? `<span class="why">${esc(動かす理由)}</span>` : ''}</div>
       <div class="act">${u && u.元.最優先 ? `<button class="btn btn-secondary btn-small" data-act="unpriority" data-u="${esc(u.id)}" title="最優先を外し、締切の順に戻す">最優先を解除</button>`
         : `<button class="btn btn-secondary btn-small" data-act="priority" data-u="${esc(u ? u.id : '')}" ${!u ? 'disabled' : ''} title="${esc(!u ? 'この締切の案件が見つからない' : '締切の順より先に、この案件から割り振る')}">この案件を最優先にする</button>`}</div>
-      <div class="act"><button class="btn ${q.足りない > 0 ? 'btn-secondary' : 'btn-orange'} btn-small" data-act="allowOT" data-id="${esc(q.id)}" ${認理由 ? 'disabled' : ''} title="${esc(認理由 || 'この時間外を予定どおりやると決める。時間が増えたらまた聞く')}">時間外を許可</button>${認理由 ? `<span class="why">${esc(認理由)}</span>` : ''}</div>
+      <div class="act">${認 ? `<button class="btn btn-secondary btn-small" data-act="unallowOT" data-id="${esc(q.id)}" title="時間外の許可を取り消し、また確認が要る状態に戻す">時間外の許可を取り消す</button>` : `<button class="btn ${q.足りない > 0 ? 'btn-secondary' : 'btn-orange'} btn-small" data-act="allowOT" data-id="${esc(q.id)}" ${認理由 ? 'disabled' : ''} title="${esc(認理由 || 'この時間外を予定どおりやると決める。時間が増えたらまた聞く')}">時間外を許可</button>`}${認理由 ? `<span class="why">${esc(認理由)}</span>` : ''}</div>
       ${u ? `<div class="act"><button class="btn btn-secondary btn-small" data-act="select" data-u="${esc(u.id)}">詳細を見る</button></div>` : ''}
     </div>
     ${開 && k ? `<div class="move-box"><span class="hint">${esc(k.種類)}を</span>
@@ -1871,6 +1871,7 @@ document.addEventListener('click', e => {
     case 'delivered': if (u) 渡した(u, d.k); break;
     case 'undeliver': if (u) 直す('編集案件.json', [{ 道: ['案件', { 名前: u.名前 }, '締切', { 種類: d.k }, '済'], 消す: true }].concat(u.元.状態 === '納品済' ? [{ 道: u.道.concat(['状態']), 値: '作業中' }] : []), `${u.名前}：${d.k} を「渡していない」に戻した`); break;
     case 'allowOT': { const q = (P().問題 || []).find(q => q.id === d.id); if (q) 時間外を許可(q); break; }
+    case 'unallowOT': 直す('EDITFLOW設定.json', [{ 道: ['時間外を認めた', d.id], 消す: true }], '時間外の許可を取り消した', { 計算: false }); break;
     case 'calc': 計算(false); break;
     case 'reflect': 計算(true); break;
     case 'palette': 命令窓を開く(); break;
@@ -2359,6 +2360,15 @@ EF.ボタンで試す = async () => {
     報(u && (u.元.固定 || []).some(f => f.日付 === d && f.始 === 新始), `作業の札を1時間下へ動かす → 固定 ${JSON.stringify((u && u.元.固定 || []).slice(-1))}`);
     const 空 = (設定().作業しない時間 || []).filter(z => z.日付 === d);
     報(!空.some(z => z.始 === 時分(x.s)), '動かしたときは、元の時間を空きにしない');
+  });
+  await 試す('時間外の許可と取り消し', async () => {
+    const q = (P().問題 || []).find(q => q.足りない <= 0 && (q.時間外 > 0 || q.深夜 > 0));
+    if (!q) return 報(true, '時間外の許可：時間外の要る締切が無い');
+    if (認めたか(q)) { 開く('today'); await 押す(`[data-act="unallowOT"][data-id="${q.id}"]`, '時間外の許可を取り消す'); await 読む(); }
+    開く('today'); await 押す(`[data-act="allowOT"][data-id="${q.id}"]`, '時間外を許可'); await 読む();
+    報(!!認めたか(q), `時間外を許可 → ${!!認めたか(q)}`);
+    開く('today'); await 押す(`[data-act="unallowOT"][data-id="${q.id}"]`, '時間外の許可を取り消す'); await 読む();
+    報(!認めたか(q) && !!document.querySelector(`[data-act="allowOT"][data-id="${q.id}"]`), `時間外の許可を取り消す → ${!認めたか(q) ? '取り消せた' : '残った'}`);
   });
   await 試す('知らせから戻す', async () => {
     const u = 案().find(u => !u.元.最優先); 最優先にする(u, true); await 待つ();
