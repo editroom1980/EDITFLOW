@@ -24,17 +24,17 @@
    テレビの前に置いて離れて見る前提で、暗い地に大きな字 */
 :root{
   --bg:#0E1517; --surface:#162024; --raise:#1E2A2F; --ink:#E7EEF0; --muted:#8C9FA5; --line:#2A383D;
-  --go:#7BD389; --go-ink:#0E1517; --rest:#F0B44C; --far:#E7EEF0;
+  --go:#7BD389; --go-ink:#0E1517; --rest:#F0B44C; --prep:#6FB6F2; --far:#E7EEF0;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
   --f-num:"Barlow Condensed","Hiragino Sans",sans-serif;
   color-scheme:dark;
 }
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
   --bg:#F2F6F5; --surface:#FFFFFF; --raise:#E8EFEE; --ink:#13201F; --muted:#5A6C6A; --line:#D3DEDC;
-  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --far:#13201F; color-scheme:light}}
+  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --prep:#2468A8; --far:#13201F; color-scheme:light}}
 :root[data-theme="light"]{
   --bg:#F2F6F5; --surface:#FFFFFF; --raise:#E8EFEE; --ink:#13201F; --muted:#5A6C6A; --line:#D3DEDC;
-  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --far:#13201F; color-scheme:light}
+  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --prep:#2468A8; --far:#13201F; color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%}
@@ -77,37 +77,59 @@ select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(-
 input[type=checkbox]{width:20px;height:20px;accent-color:var(--go)}
 .note{font-size:12px;color:var(--muted)}
 
-/* 走っているとき */
-.run{position:fixed;inset:0;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;z-index:20;
+/* 走っているとき：状態の色（動く＝緑・休む＝黄・準備と伸ばす＝青）を --state に入れ、輪・数字・帯がそれに従う */
+.run{position:fixed;inset:0;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;gap:10px;z-index:20;--state:var(--go);
   padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.bar{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--muted)}
-.bar .track{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
-.bar .fill{height:100%;background:var(--go);width:0}
-.stage{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px;align-items:center;min-height:0}
-@media (max-width:760px),(orientation:portrait){.stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:8px}}
-.figbox{position:relative;width:100%;height:100%;min-height:200px;display:flex;align-items:center;justify-content:center}
-.figbox svg{width:100%;height:100%;max-height:62vh}
-.info{display:flex;flex-direction:column;gap:10px;min-width:0}
-.phase{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--go)}
-.run.is-rest .phase{color:var(--rest)}
-.ex{font-size:clamp(28px,5vw,52px);font-weight:900;line-height:1.2;overflow-wrap:anywhere}
-.count{font-family:var(--f-num);font-weight:700;font-size:clamp(96px,20vw,200px);line-height:.9;color:var(--go)}
-.run.is-rest .count{color:var(--rest)}
-.cue{font-size:clamp(16px,2.2vw,22px)}
+.run.is-rest{--state:var(--rest)}
+.run.is-prep{--state:var(--prep)}
+.bar{display:flex;flex-direction:column;gap:6px}
+.bar .meta{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+.segs{display:flex;gap:2px;height:10px}
+.seg{border-radius:2px;background:var(--line);min-width:2px}
+.seg.k-go{background:color-mix(in srgb,var(--go) 35%,var(--line))}
+.seg.k-rest{background:color-mix(in srgb,var(--rest) 25%,var(--line))}
+.seg.k-prep{background:color-mix(in srgb,var(--prep) 30%,var(--line))}
+.seg.done{opacity:.25}
+.seg.now{background:var(--state);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--state)}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center;min-height:0}
+@media (max-width:760px),(orientation:portrait){.stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:4px}}
+
+.figbox{position:relative;width:100%;height:100%;min-height:180px;display:flex;align-items:center;justify-content:center}
+.figbox::before{content:"";position:absolute;width:min(78%,52vh);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--state) 16%,transparent) 0%,transparent 70%)}
+.figbox svg{position:relative;width:100%;height:100%;max-height:56vh}
+.info{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center}
+.phase{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--state)}
+.ex{font-size:clamp(26px,4.6vw,46px);font-weight:900;line-height:1.2;overflow-wrap:anywhere}
+.ringbox{position:relative;width:min(70vw,38vh,300px);aspect-ratio:1;max-width:100%}
+.ringbox svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--line);stroke-width:10}
+.ring{fill:none;stroke:var(--state);stroke-width:10;stroke-linecap:round}
+.count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-num);font-weight:700;font-size:clamp(72px,min(22vw,15vh),150px);line-height:1;color:var(--state);margin:0}
+.cue{font-size:clamp(16px,2.2vw,21px);max-width:32em}
 .next{font-size:15px;color:var(--muted)}
 .ctrl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.ctrl button{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;font:inherit;font-size:16px;padding:10px 18px;cursor:pointer;min-width:92px}
-.ctrl button.main{background:var(--go);color:var(--go-ink);border-color:var(--go);font-weight:900}
+.ctrl button{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;font:inherit;font-size:16px;padding:10px 20px;cursor:pointer;min-width:92px}
+.ctrl button.main{background:var(--state);color:var(--go-ink);border-color:var(--state);font-weight:900;min-width:130px}
 .done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
 .done h2{font-size:clamp(28px,5vw,44px);font-weight:900}
-/* 動く人 */
-.ground{stroke:var(--line);stroke-width:3}
-.limb{stroke:var(--ink);stroke-linecap:round;fill:none}
-.limb.far{stroke:var(--far);opacity:.35}
+/* 動く人：太く丸い線。手前の手足は濃く、奥は薄く。足もとに影 */
+.ground{stroke:var(--line);stroke-width:3;stroke-linecap:round}
+.shadow{fill:var(--ink);opacity:.12}
+.limb{stroke:var(--ink);stroke-linecap:round;stroke-linejoin:round;fill:none}
+.limb.far{stroke:var(--far);opacity:.32}
 .headc{fill:var(--ink)}
-.breath{fill:none;stroke:var(--rest);stroke-width:3;opacity:.7}
-@media (prefers-reduced-motion: reduce){.bar .fill{transition:none}}
+.breath{fill:none;stroke:var(--rest);stroke-width:3;opacity:.55}
+.todayplan .tp-go{appearance:none;border:0;border-radius:12px;background:var(--go);color:var(--go-ink);font:inherit;font-size:18px;font-weight:900;padding:12px 18px;cursor:pointer;letter-spacing:.06em;margin-top:10px;align-self:flex-start}
+.todayplan.off .tp-go{background:var(--raise);color:var(--ink)}
+/* 縦の画面：輪を小さく、見本を大きく、ボタンは1段（元の決まりより後ろに置く） */
+@media (max-width:760px),(orientation:portrait){
+  .ringbox{width:min(54vw,27vh,240px)}
+  .count{font-size:clamp(56px,min(16vw,9vh),110px)}
+  .ctrl{flex-wrap:nowrap;gap:6px}
+  .ctrl button{min-width:0;flex:1;padding:10px 6px;font-size:15px}
+  .ctrl button.main{min-width:0;flex:1.4}
+}@media (prefers-reduced-motion: reduce){.bar .fill{transition:none}}
 </style>
 
 <div class="wrap" id="home">
@@ -119,6 +141,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--go)}
     <p class="tp-label" id="tp-label">今日</p>
     <p class="tp-main" id="tp-main"></p>
     <p class="tp-sub" id="tp-sub"></p>
+    <button type="button" class="tp-go" id="tp-go" hidden>このメニューを始める</button>
   </div>
   <div class="tabs" id="tabs" role="group" aria-label="メニュー"></div>
   <section class="detail" id="detail"></section>
@@ -126,13 +149,13 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--go)}
 </div>
 
 <div class="run" id="run" hidden>
-  <div class="bar"><span class="num" id="r-pos"></span><div class="track"><div class="fill" id="r-fill"></div></div><span class="num" id="r-left"></span></div>
+  <div class="bar"><div class="segs" id="r-segs" aria-hidden="true"></div><div class="meta"><span class="num" id="r-pos"></span><span class="num" id="r-left"></span></div></div>
   <div class="stage" id="r-stage">
     <div class="figbox"><svg id="fig" viewBox="0 0 280 240" role="img" aria-label="動きの見本"></svg></div>
     <div class="info">
       <p class="phase" id="r-phase"></p>
       <p class="ex" id="r-ex"></p>
-      <p class="count" id="r-count"></p>
+      <div class="ringbox"><svg viewBox="0 0 200 200" aria-hidden="true"><circle class="ring-bg" cx="100" cy="100" r="88"/><circle class="ring" id="r-ring" cx="100" cy="100" r="88"/></svg><p class="count" id="r-count"></p></div>
       <p class="cue" id="r-cue"></p>
       <p class="next" id="r-next"></p>
     </div>
@@ -186,7 +209,7 @@ const 合計秒 = 段々 => 段々.reduce((a, s) => a + s.秒, 0);
 const 分秒 = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 
 /* ── 動く人（横から見た棒人間。角度は度。手足は 0＝真下、＋＝前。胴は 0＝真上、＋＝前に倒す）── */
-const 長 = {胴:50, もも:40, すね:40, 上腕:28, 前腕:26, 頭:11, 地面:212};
+const 長 = {胴:50, もも:40, すね:40, 上腕:28, 前腕:26, 頭:13, 地面:212};
 const 立 = {hx:0, t:0, a1:6, f1:12, a2:-6, f2:12, l1:3, k1:0, l2:-3, k2:0};
 const P = o => ({...立, ...o});
 const 板 = (t, o={}) => P({hx:-6, t, l1:-t, k1:0, l2:-t, k2:0, ...o});   // 体をまっすぐにした床の姿勢
@@ -241,10 +264,11 @@ const 部品 = {};
   const g = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); 図.appendChild(e); return e };
   g('line', {x1:20, y1:長.地面 + 1, x2:260, y2:長.地面 + 1, class:'ground'});
   部品.呼吸 = g('circle', {cx:140, cy:120, r:60, class:'breath'});
-  for (const n of ['腕2', '脚2']) 部品[n] = g('polyline', {class:'limb far', 'stroke-width':9});
-  部品.胴 = g('line', {class:'limb', 'stroke-width':12});
-  部品.脚1 = g('polyline', {class:'limb', 'stroke-width':10});
-  部品.腕1 = g('polyline', {class:'limb', 'stroke-width':9});
+  部品.影 = g('ellipse', {cx:140, cy:長.地面 + 2, rx:46, ry:5, class:'shadow'});
+  for (const n of ['腕2', '脚2']) 部品[n] = g('polyline', {class:'limb far', 'stroke-width':13});
+  部品.胴 = g('line', {class:'limb', 'stroke-width':17});
+  部品.脚1 = g('polyline', {class:'limb', 'stroke-width':14});
+  部品.腕1 = g('polyline', {class:'limb', 'stroke-width':12});
   部品.頭 = g('circle', {r:長.頭, class:'headc'});
 })();
 function 描く(q){
@@ -254,6 +278,9 @@ function 描く(q){
   部品.脚1.setAttribute('points', pts(b.H, b.K1, b.F1)); 部品.脚2.setAttribute('points', pts(b.H, b.K2, b.F2));
   部品.腕1.setAttribute('points', pts(b.S, b.E1, b.W1)); 部品.腕2.setAttribute('points', pts(b.S, b.E2, b.W2));
   部品.頭.setAttribute('cx', b.C[0]); 部品.頭.setAttribute('cy', b.C[1]);
+  const xs = [b.H[0], b.F1[0], b.F2[0], b.W1[0], b.W2[0], b.C[0]];
+  const l = Math.min(...xs), rr = Math.max(...xs);
+  部品.影.setAttribute('cx', ((l + rr) / 2).toFixed(1)); 部品.影.setAttribute('rx', Math.max(30, (rr - l) / 2 + 10).toFixed(1));
 }
 const ゆるく = x => x * x * (3 - 2 * x);
 function 姿勢(名, ms){
@@ -356,16 +383,26 @@ function 描き直す(){ 札(); 中身() }
 /* ── タイマー ── */
 const R = {段々:[], i:0, 残り:0, 走る:false, 前の時:0, 経過:0, 鳴らした:-1, 終わり:false};
 const $ = id => document.getElementById(id);
+const 種類 = s => s.名前 === '休み' ? 'rest' : (s.区切り === '準備' || s.区切り === '伸ばす') ? 'prep' : 'go';
+function 帯を作る(){
+  const box = $('r-segs'); box.innerHTML = '';
+  R.段々.forEach(s => { const d = document.createElement('div'); d.className = 'seg k-' + 種類(s); d.style.flex = String(s.秒); box.appendChild(d) });
+}
+function 帯を合わせる(){
+  [...$('r-segs').children].forEach((d, i) => { d.classList.toggle('done', i < R.i); d.classList.toggle('now', i === R.i) });
+}
 function 段を見せる(){
   const s = R.段々[R.i], 次 = R.段々[R.i + 1];
   const 休み = s.名前 === '休み';
   $('run').classList.toggle('is-rest', 休み);
+  $('run').classList.toggle('is-prep', 種類(s) === 'prep');
+  帯を合わせる();
   $('r-phase').textContent = 休み ? '休み' : (s.区切り || '');
   $('r-ex').textContent = 休み ? (次 ? `次は ${次.名前}` : '休み') : s.名前;
   $('r-cue').textContent = s.合図 || '';
   $('r-next').textContent = 次 ? `次：${次.名前}（${分秒(次.秒)}）` : '次：おわり';
   $('r-pos').textContent = `${R.i + 1} / ${R.段々.length}`;
-  部品.呼吸.style.display = 休み ? '' : 'none';
+  部品.呼吸.style.display = 'none';   // 休みは輪の色で分かる。次の種目の見本に重ならないよう出さない
   話す(休み ? (次 ? `休み。次は${次.名前}` : '休み') : s.名前);
 }
 function 表示を更新(){
@@ -373,7 +410,9 @@ function 表示を更新(){
   $('r-count').textContent = Math.ceil(R.残り / 1000);
   const 済 = R.段々.slice(0, R.i).reduce((a, x) => a + x.秒, 0) * 1000 + (s.秒 * 1000 - R.残り);
   const 全 = 合計秒(R.段々) * 1000;
-  $('r-fill').style.width = (済 / 全 * 100).toFixed(2) + '%';
+  const 周 = 2 * Math.PI * 88;
+  $('r-ring').setAttribute('stroke-dasharray', 周.toFixed(1));
+  $('r-ring').setAttribute('stroke-dashoffset', (周 * (1 - Math.max(0, R.残り) / (s.秒 * 1000))).toFixed(1));
   $('r-left').textContent = '残り ' + 分秒((全 - 済) / 1000);
 }
 function 進む(差){
@@ -419,6 +458,7 @@ function 始める(){
   R.段々 = 展開(メ(選)['流れ'], 設定.段);
   R.i = 0; R.残り = R.段々[0].秒 * 1000; R.走る = true; R.終わり = false; R.前の時 = 0; R.経過 = 0; R.鳴らした = -1;
   $('home').hidden = true; $('run').hidden = false; $('r-stage').hidden = false; $('r-done').hidden = true;
+  帯を作る();
   $('b-pause').textContent = '一時停止';
   ピッ(1320, .15); 画面を消さない();
   段を見せる(); 表示を更新();
@@ -476,6 +516,13 @@ async function 今日の予定(ハッシュあり){
       $('tp-sub').textContent = 次 ? `次は ${日の名(次)} ${予[次]['記号']}（${メ(予[次]['記号']) ? メ(予[次]['記号'])['名前'] : ''}）${予[次]['始']}〜` : '';
       if (!ハッシュあり && 次 && メ(予[次]['記号'])){ 選 = 予[次]['記号']; 描き直す() }
     }
+    const 記 = x && メ(x['記号']) ? x['記号'] : (次 && メ(予[次]['記号']) ? 予[次]['記号'] : null);
+    const go = $('tp-go');
+    if (記){
+      go.hidden = false;
+      go.textContent = x ? `${記} を始める` : `${記} を今やる`;
+      go.onclick = () => { 選 = 記; 描き直す(); 始める() };
+    }
     box.hidden = false;
   }catch(e){}
 }
@@ -490,7 +537,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=6410eaec', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=23788ecb', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
