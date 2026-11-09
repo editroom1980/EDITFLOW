@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="宅トレ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E1517">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;-webkit-text-size-adjust:100%}</style>
+</head>
+<body>
+<title>ながら宅トレ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* 構成：上にメニューの札（A C B D S）→ 選んだメニューの中身と「始める」。始めると全画面のタイマー（左に動く人、右に種目名と大きな残り秒）。
+   テレビの前に置いて離れて見る前提で、暗い地に大きな字 */
+:root{
+  --bg:#0E1517; --surface:#162024; --raise:#1E2A2F; --ink:#E7EEF0; --muted:#8C9FA5; --line:#2A383D;
+  --go:#7BD389; --go-ink:#0E1517; --rest:#F0B44C; --far:#E7EEF0;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-num:"Barlow Condensed","Hiragino Sans",sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#F2F6F5; --surface:#FFFFFF; --raise:#E8EFEE; --ink:#13201F; --muted:#5A6C6A; --line:#D3DEDC;
+  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --far:#13201F; color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#F2F6F5; --surface:#FFFFFF; --raise:#E8EFEE; --ink:#13201F; --muted:#5A6C6A; --line:#D3DEDC;
+  --go:#1F8A4C; --go-ink:#FFFFFF; --rest:#B26F10; --far:#13201F; color-scheme:light}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7}
+.wrap{max-width:960px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{margin:0;line-height:1.3;text-wrap:balance}
+h1{font-size:clamp(24px,4.5vw,32px);font-weight:900;letter-spacing:.02em}
+p{margin:0}
+.muted{color:var(--muted)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+@media (max-width:640px){.tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tab{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px 12px 10px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit;min-width:0}
+.tab .k{font-family:var(--f-num);font-size:28px;font-weight:700;line-height:1;color:var(--go)}
+.tab .n{font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.tab .m{font-size:12px;color:var(--muted)}
+.tab[aria-pressed="true"]{border-color:var(--go);background:var(--raise)}
+.tab:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+.detail{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}
+@media (max-width:760px){.detail{grid-template-columns:1fr}}
+.detail h2{font-size:24px;font-weight:900}
+.detail .lead{color:var(--muted);margin-top:4px}
+.plan{margin-top:14px;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.plan .row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.plan .row .t{font-family:var(--f-num);font-size:17px;color:var(--muted)}
+.plan .row.round{color:var(--muted);font-size:13px;padding:10px 0 4px;border-bottom:0}
+.side{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.big{font-family:var(--f-num);font-size:56px;font-weight:700;line-height:1}
+.start{appearance:none;border:0;border-radius:12px;background:var(--go);color:var(--go-ink);font:inherit;font-size:20px;font-weight:900;padding:16px;cursor:pointer;letter-spacing:.06em}
+label.opt{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
+select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;max-width:180px}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--go)}
+.note{font-size:12px;color:var(--muted)}
+
+/* 走っているとき */
+.run{position:fixed;inset:0;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;z-index:20;
+  padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--muted)}
+.bar .track{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar .fill{height:100%;background:var(--go);width:0}
+.stage{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px;align-items:center;min-height:0}
+@media (max-width:760px),(orientation:portrait){.stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:8px}}
+.figbox{position:relative;width:100%;height:100%;min-height:200px;display:flex;align-items:center;justify-content:center}
+.figbox svg{width:100%;height:100%;max-height:62vh}
+.info{display:flex;flex-direction:column;gap:10px;min-width:0}
+.phase{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--go)}
+.run.is-rest .phase{color:var(--rest)}
+.ex{font-size:clamp(28px,5vw,52px);font-weight:900;line-height:1.2;overflow-wrap:anywhere}
+.count{font-family:var(--f-num);font-weight:700;font-size:clamp(96px,20vw,200px);line-height:.9;color:var(--go)}
+.run.is-rest .count{color:var(--rest)}
+.cue{font-size:clamp(16px,2.2vw,22px)}
+.next{font-size:15px;color:var(--muted)}
+.ctrl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ctrl button{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;font:inherit;font-size:16px;padding:10px 18px;cursor:pointer;min-width:92px}
+.ctrl button.main{background:var(--go);color:var(--go-ink);border-color:var(--go);font-weight:900}
+.done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.done h2{font-size:clamp(28px,5vw,44px);font-weight:900}
+/* 動く人 */
+.ground{stroke:var(--line);stroke-width:3}
+.limb{stroke:var(--ink);stroke-linecap:round;fill:none}
+.limb.far{stroke:var(--far);opacity:.35}
+.headc{fill:var(--ink)}
+.breath{fill:none;stroke:var(--rest);stroke-width:3;opacity:.7}
+@media (prefers-reduced-motion: reduce){.bar .fill{transition:none}}
+</style>
+
+<div class="wrap" id="home">
+  <header class="top">
+    <h1>ながら宅トレ</h1>
+    <p class="muted" id="today"></p>
+  </header>
+  <div class="tabs" id="tabs" role="group" aria-label="メニュー"></div>
+  <section class="detail" id="detail"></section>
+  <p class="note">部屋の中で、跳ばずにできる種目だけです。スマホかタブレットをテレビの横に置いて使ってください。リマインダーのリンクから開くと、その日のメニューが選ばれた状態で開きます。</p>
+</div>
+
+<div class="run" id="run" hidden>
+  <div class="bar"><span class="num" id="r-pos"></span><div class="track"><div class="fill" id="r-fill"></div></div><span class="num" id="r-left"></span></div>
+  <div class="stage" id="r-stage">
+    <div class="figbox"><svg id="fig" viewBox="0 0 280 240" role="img" aria-label="動きの見本"></svg></div>
+    <div class="info">
+      <p class="phase" id="r-phase"></p>
+      <p class="ex" id="r-ex"></p>
+      <p class="count" id="r-count"></p>
+      <p class="cue" id="r-cue"></p>
+      <p class="next" id="r-next"></p>
+    </div>
+  </div>
+  <div class="done" id="r-done" hidden>
+    <h2>おつかれさまでした</h2>
+    <p class="cue" id="r-after"></p>
+    <p class="muted" id="r-sum"></p>
+  </div>
+  <div class="ctrl">
+    <button type="button" id="b-prev">戻る</button>
+    <button type="button" id="b-pause" class="main">一時停止</button>
+    <button type="button" id="b-next">次へ</button>
+    <button type="button" id="b-stop">やめる</button>
+  </div>
+</div>
+
+<script>
+const 運動 = {"準備": [{"名前": "足踏み", "秒": 90, "動き": "march", "合図": "腕も振って、少しずつ大きく"}, {"名前": "肩回し", "秒": 60, "動き": "armcircle", "合図": "前に30秒、後ろに30秒"}, {"名前": "股関節回し", "秒": 60, "動き": "hipcircle", "合図": "腰に手を当てて大きく回す"}, {"名前": "ゆっくりスクワット", "秒": 60, "動き": "squat", "合図": "浅く、ゆっくり"}], "伸ばす": [{"名前": "太もも前を伸ばす", "秒": 60, "動き": "stretchq", "合図": "片足ずつ30秒。壁に手をついて"}, {"名前": "もも裏を伸ばす", "秒": 60, "動き": "stretchh", "合図": "脚を前に出し、背中を丸めずに倒す"}, {"名前": "胸と肩を伸ばす", "秒": 60, "動き": "stretchc", "合図": "手を後ろで組んで胸を開く"}, {"名前": "ゆっくり呼吸", "秒": 60, "動き": "rest", "合図": "4秒吸って、6秒吐く"}], "体幹の段階": [{"名前": "デッドバグ", "秒": 40, "動き": "deadbug", "合図": "仰向けで、反対の手足をゆっくり伸ばす。腰は床につけたまま"}, {"名前": "ホロウボディ", "秒": 30, "動き": "hollow", "合図": "手足を浮かせて止まる。腰を床に押しつける"}, {"名前": "レッグレイズ", "秒": 40, "動き": "legraise", "合図": "脚を伸ばしたまま上げ下げ。下ろすときは3秒"}, {"名前": "ドラゴンフラッグ（膝曲げで下ろす）", "秒": 40, "動き": "dragon", "合図": "ソファの脚をつかみ、5秒かけて下ろす"}, {"名前": "ドラゴンフラッグ（脚を伸ばして下ろす）", "秒": 40, "動き": "dragon", "合図": "5秒かけて下ろす。腰が反ったらやめる"}, {"名前": "ドラゴンフラッグ", "秒": 40, "動き": "dragon", "合図": "上げて、5秒かけて下ろす"}], "メニュー": [{"記号": "A", "名前": "脚・胸", "ひとこと": "大きな筋肉を動かす日。ドラマ1話分", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "スクワット", "秒": 50, "動き": "squat", "合図": "3秒で下ろし、速く立つ。12〜15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "腕立て伏せ", "秒": 45, "動き": "pushup", "合図": "膝をついてもよい。8〜15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "リバースランジ", "秒": 50, "動き": "lunge", "合図": "後ろに引いて沈む。左右交互に各8〜10回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "ヒップリフト", "秒": 45, "動き": "bridge", "合図": "上で1秒止める。15回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "プランク", "秒": 40, "動き": "plank", "合図": "頭からかかとまで一直線"}], "周の休み": 75}, {"体幹": 3}, {"伸ばす": true}], "分": 36}, {"記号": "C", "名前": "心肺インターバル", "ひとこと": "年とともに落ちやすい心肺の力を上げる。跳ばない", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "もも上げ（ややきつく）", "秒": 60, "動き": "march", "合図": "話すと文が途切れる速さ"}, {"名前": "シャドーボクシング（ややきつく）", "秒": 60, "動き": "boxing", "合図": "左右交互に速く打つ"}, {"名前": "もも上げ（ややきつく）", "秒": 60, "動き": "march", "合図": "腕も大きく振る"}, {"名前": "シャドーボクシング（ややきつく）", "秒": 60, "動き": "boxing", "合図": "最後まで速さを保つ"}, {"名前": "足踏み（楽に）", "秒": 180, "動き": "march", "合図": "息を整える。テレビを見ながらでよい"}], "周の休み": 0}, {"伸ばす": true}], "分": 36}, {"記号": "B", "名前": "背中・肩・瞬発力", "ひとこと": "逆三角形をつくる日", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "リュックロウ", "秒": 50, "動き": "row", "合図": "本を入れたリュックを持ち、前かがみで肘を後ろへ。12回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "パイク腕立て", "秒": 45, "動き": "pike", "合図": "お尻を高く上げた腕立て。8〜12回"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "片足ルーマニアンデッドリフト", "秒": 50, "動き": "rdl", "合図": "左右25秒ずつ。もも裏を伸ばす"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "スーパーマン", "秒": 40, "動き": "superman", "合図": "うつ伏せで手足を浮かせ2秒止める"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "速く立つスクワット", "秒": 30, "動き": "squatfast", "合図": "ゆっくり座って一気に立つ。5回"}], "周の休み": 75}, {"体幹": 3}, {"名前": "片足立ち（左）", "秒": 30, "動き": "balance", "合図": "目を閉じて"}, {"名前": "片足立ち（右）", "秒": 30, "動き": "balance", "合図": "目を閉じて"}, {"伸ばす": true}], "分": 36}, {"記号": "D", "名前": "サーキット（インサニティの軽い版）", "ひとこと": "40秒動いて20秒休む。強さは10段階の7〜8", "流れ": [{"準備": true}, {"回す": 4, "中": [{"名前": "スクワットからつま先立ち", "秒": 40, "動き": "squat", "合図": "立ったらかかとを上げる"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "マウンテンクライマー", "秒": 40, "動き": "climber", "合図": "ゆっくりでよい"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "もも上げ", "秒": 40, "動き": "march", "合図": "腕も振る"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "プランクから腕立て", "秒": 40, "動き": "pushup", "合図": "肘→手→腕立て1回→戻る"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "シャドーボクシング", "秒": 40, "動き": "boxing", "合図": "速く"}, {"名前": "休み", "秒": 20, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "立ったまま始めるバーピー", "秒": 40, "動き": "burpee", "合図": "しゃがんで足を後ろへ、戻って立つ。跳ばない"}], "周の休み": 60}, {"体幹": 3}, {"伸ばす": true}], "分": 37}, {"記号": "S", "名前": "すきま運動", "ひとこと": "忙しい日の15分。撮影や市役所の日に", "流れ": [{"名前": "足踏み", "秒": 60, "動き": "march", "合図": "腕も振って"}, {"回す": 3, "中": [{"名前": "スクワット", "秒": 45, "動き": "squat", "合図": "12〜15回"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "腕立て伏せ", "秒": 40, "動き": "pushup", "合図": "膝をついてもよい"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "ヒップリフト", "秒": 40, "動き": "bridge", "合図": "上で1秒止める"}, {"名前": "休み", "秒": 15, "動き": "rest", "合図": "息を整える。水を一口"}, {"名前": "プランク", "秒": 30, "動き": "plank", "合図": "一直線"}], "周の休み": 45}, {"名前": "太もも前を伸ばす", "秒": 60, "動き": "stretchq", "合図": "片足ずつ30秒"}, {"名前": "胸と肩を伸ばす", "秒": 60, "動き": "stretchc", "合図": "胸を開く"}], "分": 14}], "いまの段": 1, "終わったら": "肉か魚・卵・プロテインで、たんぱく質を20〜30g", "順番": ["A", "C", "B", "D"], "すきま": "S"};
+
+/* ── 設定の保存（この端末だけ）── */
+const 保存 = {
+  get(k, d){ try{ const v = localStorage.getItem('nagara:' + k); return v === null ? d : JSON.parse(v) }catch(e){ return d } },
+  set(k, v){ try{ localStorage.setItem('nagara:' + k, JSON.stringify(v)) }catch(e){} }
+};
+
+/* ── メニューを1段ずつに広げる ── */
+function 展開(流れ, 段){
+  const out = [];
+  let 周 = null;
+  for (const x of 流れ){
+    if (x['準備']) 運動['準備'].forEach(s => out.push({...s, 区切り:'準備'}));
+    else if (x['伸ばす']) 運動['伸ばす'].forEach(s => out.push({...s, 区切り:'伸ばす'}));
+    else if (x['体幹']){
+      const 段階 = 運動['体幹の段階'];
+      const s = 段階[Math.min(段, 段階.length) - 1];
+      for (let i = 0; i < x['体幹']; i++){
+        out.push({...s, 区切り:`体幹 ${i+1}/${x['体幹']}`});
+        if (i < x['体幹'] - 1) out.push({名前:'休み', 秒:20, 動き:'rest', 合図:'息を整える', 区切り:'体幹'});
+      }
+    } else if (x['回す'] !== undefined){
+      for (let i = 0; i < x['回す']; i++){
+        展開(x['中'], 段).forEach(s => out.push({...s, 区切り: s.区切り || `${i+1}周目 / ${x['回す']}`}));
+        if (x['周の休み'] && i < x['回す'] - 1) out.push({名前:'休み', 秒:x['周の休み'], 動き:'rest', 合図:'次の周の前に、水を一口', 区切り:`${i+1}周目 / ${x['回す']}`});
+      }
+    } else out.push({...x});
+  }
+  return out;
+}
+const 合計秒 = 段々 => 段々.reduce((a, s) => a + s.秒, 0);
+const 分秒 = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+
+/* ── 動く人（横から見た棒人間。角度は度。手足は 0＝真下、＋＝前。胴は 0＝真上、＋＝前に倒す）── */
+const 長 = {胴:50, もも:40, すね:40, 上腕:28, 前腕:26, 頭:11, 地面:212};
+const 立 = {hx:0, t:0, a1:6, f1:12, a2:-6, f2:12, l1:3, k1:0, l2:-3, k2:0};
+const P = o => ({...立, ...o});
+const 板 = (t, o={}) => P({hx:-6, t, l1:-t, k1:0, l2:-t, k2:0, ...o});   // 体をまっすぐにした床の姿勢
+const しゃがむ = {hx:-24, t:40, l1:85, k1:-105, l2:85, k2:-105, a1:85, f1:0, a2:85, f2:0};
+const 動き = {
+  march:   {周:1000, 鍵:[[0,P({l1:70,k1:-85,a1:-35,f1:45,a2:35,f2:45})],[.5,P({l2:70,k2:-85,a1:35,f1:45,a2:-35,f2:45})],[1,P({l1:70,k1:-85,a1:-35,f1:45,a2:35,f2:45})]]},
+  armcircle:{周:2000, 線形:true, 鍵:[[0,P({a1:0,f1:0,a2:0,f2:0})],[.25,P({a1:90,f1:0,a2:90,f2:0})],[.5,P({a1:180,f1:0,a2:180,f2:0})],[.75,P({a1:270,f1:0,a2:270,f2:0})],[1,P({a1:360,f1:0,a2:360,f2:0})]]},
+  hipcircle:{周:2400, 鍵:[[0,P({t:8,hx:4,a1:-40,f1:100,a2:-40,f2:100})],[.5,P({t:-6,hx:-4,a1:-40,f1:100,a2:-40,f2:100})],[1,P({t:8,hx:4,a1:-40,f1:100,a2:-40,f2:100})]]},
+  squat:   {周:4000, 鍵:[[0,P({a1:80,f1:0,a2:80,f2:0})],[.7,P(しゃがむ)],[.95,P({a1:80,f1:0,a2:80,f2:0})],[1,P({a1:80,f1:0,a2:80,f2:0})]]},
+  squatfast:{周:3600, 鍵:[[0,P({a1:20,a2:20})],[.62,P(しゃがむ)],[.74,P({a1:-20,a2:-20})],[1,P({a1:20,a2:20})]]},
+  pushup:  {周:3000, 鍵:[[0,板(65,{a1:-2,f1:0,a2:2,f2:0})],[.5,板(74,{a1:-55,f1:85,a2:-50,f2:85})],[1,板(65,{a1:-2,f1:0,a2:2,f2:0})]]},
+  plank:   {周:3200, 鍵:[[0,板(78,{a1:0,f1:90,a2:2,f2:88})],[.5,板(77,{a1:0,f1:90,a2:2,f2:88})],[1,板(78,{a1:0,f1:90,a2:2,f2:88})]]},
+  bridge:  {周:3000, 鍵:[[0,P({hx:10,t:-90,l1:143,k1:-143,l2:140,k2:-140,a1:90,f1:0,a2:90,f2:0})],[.45,P({hx:10,t:-114,l1:112,k1:-122,l2:110,k2:-120,a1:90,f1:0,a2:90,f2:0})],[.6,P({hx:10,t:-114,l1:112,k1:-122,l2:110,k2:-120,a1:90,f1:0,a2:90,f2:0})],[1,P({hx:10,t:-90,l1:143,k1:-143,l2:140,k2:-140,a1:90,f1:0,a2:90,f2:0})]]},
+  lunge:   {周:6400, 鍵:[[0,P()],[.25,P({t:4,l1:82,k1:-82,l2:-25,k2:-65,a1:12,a2:-12})],[.5,P()],[.75,P({t:4,l2:82,k2:-82,l1:-25,k1:-65,a1:-12,a2:12})],[1,P()]]},
+  row:     {周:2600, 鍵:[[0,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:0,f1:0,a2:2,f2:0})],[.45,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:-70,f1:70,a2:-66,f2:68})],[.55,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:-70,f1:70,a2:-66,f2:68})],[1,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:0,f1:0,a2:2,f2:0})]]},
+  pike:    {周:3000, 鍵:[[0,P({hx:-10,t:140,l1:-40,k1:0,l2:-38,k2:0,a1:20,f1:0,a2:22,f2:0})],[.5,P({hx:-10,t:156,l1:-30,k1:0,l2:-28,k2:0,a1:-35,f1:80,a2:-33,f2:80})],[1,P({hx:-10,t:140,l1:-40,k1:0,l2:-38,k2:0,a1:20,f1:0,a2:22,f2:0})]]},
+  rdl:     {周:4400, 鍵:[[0,P()],[.5,P({t:78,l1:8,k1:-10,l2:-80,k2:0,a1:0,f1:0,a2:0,f2:0})],[.6,P({t:78,l1:8,k1:-10,l2:-80,k2:0,a1:0,f1:0,a2:0,f2:0})],[1,P()]]},
+  superman:{周:3000, 鍵:[[0,板(90,{a1:90,f1:0,a2:90,f2:0})],[.45,P({hx:-6,t:80,l1:-100,k1:0,l2:-98,k2:0,a1:97,f1:0,a2:96,f2:0})],[.65,P({hx:-6,t:80,l1:-100,k1:0,l2:-98,k2:0,a1:97,f1:0,a2:96,f2:0})],[1,板(90,{a1:90,f1:0,a2:90,f2:0})]]},
+  boxing:  {周:1000, 鍵:[[0,P({t:8,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:40,f2:110})],[.25,P({t:10,l1:15,k1:-15,l2:-15,k2:5,a1:88,f1:4,a2:40,f2:110})],[.5,P({t:8,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:40,f2:110})],[.75,P({t:10,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:88,f2:4})],[1,P({t:8,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:40,f2:110})]]},
+  climber: {周:1000, 鍵:[[0,板(65,{a1:-2,a2:2,l1:12,k1:-95})],[.5,板(65,{a1:-2,a2:2,l2:12,k2:-95})],[1,板(65,{a1:-2,a2:2,l1:12,k1:-95})]]},
+  burpee:  {周:6000, 鍵:[[0,P()],[.2,P({hx:-10,t:62,l1:95,k1:-125,l2:95,k2:-125,a1:4,f1:0,a2:6,f2:0})],[.4,板(65,{a1:-2,a2:2})],[.6,P({hx:-10,t:62,l1:95,k1:-125,l2:95,k2:-125,a1:4,f1:0,a2:6,f2:0})],[.8,P()],[1,P()]]},
+  balance: {周:3000, 鍵:[[0,P({t:3,l2:80,k2:-90,a1:70,f1:0,a2:65,f2:0})],[.5,P({t:-2,l2:80,k2:-90,a1:70,f1:0,a2:65,f2:0})],[1,P({t:3,l2:80,k2:-90,a1:70,f1:0,a2:65,f2:0})]]},
+  deadbug: {周:4000, 鍵:[[0,P({hx:6,t:-90,a1:180,f1:0,a2:180,f2:0,l1:180,k1:-90,l2:180,k2:-90})],[.25,P({hx:6,t:-90,a1:180,f1:0,a2:265,f2:0,l1:95,k1:0,l2:180,k2:-90})],[.5,P({hx:6,t:-90,a1:180,f1:0,a2:180,f2:0,l1:180,k1:-90,l2:180,k2:-90})],[.75,P({hx:6,t:-90,a1:265,f1:0,a2:180,f2:0,l1:180,k1:-90,l2:95,k2:0})],[1,P({hx:6,t:-90,a1:180,f1:0,a2:180,f2:0,l1:180,k1:-90,l2:180,k2:-90})]]},
+  hollow:  {周:3000, 鍵:[[0,P({hx:6,t:-80,a1:260,f1:0,a2:258,f2:0,l1:100,k1:0,l2:99,k2:0})],[.5,P({hx:6,t:-79,a1:262,f1:0,a2:260,f2:0,l1:101,k1:0,l2:100,k2:0})],[1,P({hx:6,t:-80,a1:260,f1:0,a2:258,f2:0,l1:100,k1:0,l2:99,k2:0})]]},
+  legraise:{周:4000, 鍵:[[0,P({hx:6,t:-90,a1:90,f1:0,a2:90,f2:0,l1:93,k1:0,l2:92,k2:0})],[.3,P({hx:6,t:-90,a1:90,f1:0,a2:90,f2:0,l1:175,k1:0,l2:174,k2:0})],[1,P({hx:6,t:-90,a1:90,f1:0,a2:90,f2:0,l1:93,k1:0,l2:92,k2:0})]]},
+  dragon:  {周:5000, 鍵:[[0,P({hx:30,t:-150,a1:265,f1:0,a2:262,f2:0,l1:150,k1:0,l2:149,k2:0})],[.2,P({hx:30,t:-150,a1:265,f1:0,a2:262,f2:0,l1:150,k1:0,l2:149,k2:0})],[.9,P({hx:30,t:-97,a1:265,f1:0,a2:262,f2:0,l1:97,k1:0,l2:96,k2:0})],[1,P({hx:30,t:-150,a1:265,f1:0,a2:262,f2:0,l1:150,k1:0,l2:149,k2:0})]]},
+  stretchq:{周:4000, 鍵:[[0,P({t:2,l2:-12,k2:-150,a2:-30,f2:-10,a1:30,f1:20})],[.5,P({t:0,l2:-12,k2:-150,a2:-30,f2:-10,a1:30,f1:20})],[1,P({t:2,l2:-12,k2:-150,a2:-30,f2:-10,a1:30,f1:20})]]},
+  stretchh:{周:4000, 鍵:[[0,P({hx:-8,t:48,l1:32,k1:0,l2:-10,k2:20,a1:30,f1:0,a2:32,f2:0})],[.5,P({hx:-8,t:54,l1:32,k1:0,l2:-10,k2:20,a1:34,f1:0,a2:36,f2:0})],[1,P({hx:-8,t:48,l1:32,k1:0,l2:-10,k2:20,a1:30,f1:0,a2:32,f2:0})]]},
+  stretchc:{周:4000, 鍵:[[0,P({t:-4,a1:-38,f1:0,a2:-42,f2:0})],[.5,P({t:-7,a1:-46,f1:0,a2:-50,f2:0})],[1,P({t:-4,a1:-38,f1:0,a2:-42,f2:0})]]},
+  rest:    {周:5000, 鍵:[[0,P({t:0})],[.4,P({t:-2,a1:10,a2:-2})],[1,P({t:0})]]}
+};
+const rad = d => d * Math.PI / 180;
+const 足す = (p, len, ang) => [p[0] + len * Math.sin(rad(ang)), p[1] + len * Math.cos(rad(ang))];
+function 骨(q){
+  const H = [140 + q.hx, 0];
+  const S = [H[0] + 長.胴 * Math.sin(rad(q.t)), H[1] - 長.胴 * Math.cos(rad(q.t))];
+  const C = [S[0] + 15 * Math.sin(rad(q.t)), S[1] - 15 * Math.cos(rad(q.t))];
+  const K1 = 足す(H, 長.もも, q.l1), F1 = 足す(K1, 長.すね, q.l1 + q.k1);
+  const K2 = 足す(H, 長.もも, q.l2), F2 = 足す(K2, 長.すね, q.l2 + q.k2);
+  const E1 = 足す(S, 長.上腕, q.a1), W1 = 足す(E1, 長.前腕, q.a1 + q.f1);
+  const E2 = 足す(S, 長.上腕, q.a2), W2 = 足す(E2, 長.前腕, q.a2 + q.f2);
+  const 点 = [H, S, K1, F1, K2, F2, E1, W1, E2, W2, [C[0], C[1] + 長.頭]];
+  const 下 = Math.max(...点.map(p => p[1])) + 5;
+  const dy = 長.地面 - 下;
+  const m = p => [p[0], p[1] + dy];
+  return {H:m(H), S:m(S), C:m(C), K1:m(K1), F1:m(F1), K2:m(K2), F2:m(F2), E1:m(E1), W1:m(W1), E2:m(E2), W2:m(W2)};
+}
+const ns = 'http://www.w3.org/2000/svg';
+const 図 = document.getElementById('fig');
+const 部品 = {};
+(function 作る(){
+  const g = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); 図.appendChild(e); return e };
+  g('line', {x1:20, y1:長.地面 + 1, x2:260, y2:長.地面 + 1, class:'ground'});
+  部品.呼吸 = g('circle', {cx:140, cy:120, r:60, class:'breath'});
+  for (const n of ['腕2', '脚2']) 部品[n] = g('polyline', {class:'limb far', 'stroke-width':9});
+  部品.胴 = g('line', {class:'limb', 'stroke-width':12});
+  部品.脚1 = g('polyline', {class:'limb', 'stroke-width':10});
+  部品.腕1 = g('polyline', {class:'limb', 'stroke-width':9});
+  部品.頭 = g('circle', {r:長.頭, class:'headc'});
+})();
+function 描く(q){
+  const b = 骨(q);
+  const pts = (...ps) => ps.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+  部品.胴.setAttribute('x1', b.H[0]); 部品.胴.setAttribute('y1', b.H[1]); 部品.胴.setAttribute('x2', b.S[0]); 部品.胴.setAttribute('y2', b.S[1]);
+  部品.脚1.setAttribute('points', pts(b.H, b.K1, b.F1)); 部品.脚2.setAttribute('points', pts(b.H, b.K2, b.F2));
+  部品.腕1.setAttribute('points', pts(b.S, b.E1, b.W1)); 部品.腕2.setAttribute('points', pts(b.S, b.E2, b.W2));
+  部品.頭.setAttribute('cx', b.C[0]); 部品.頭.setAttribute('cy', b.C[1]);
+}
+const ゆるく = x => x * x * (3 - 2 * x);
+function 姿勢(名, ms){
+  const a = 動き[名] || 動き.rest;
+  const f = (ms % a.周) / a.周;
+  const 鍵 = a.鍵;
+  let i = 0; while (i < 鍵.length - 2 && f > 鍵[i + 1][0]) i++;
+  const [f0, p0] = 鍵[i], [f1, p1] = 鍵[i + 1];
+  let u = f1 > f0 ? (f - f0) / (f1 - f0) : 0; u = Math.min(1, Math.max(0, u));
+  if (!a.線形) u = ゆるく(u);
+  const q = {}; for (const k in p0) q[k] = p0[k] + (p1[k] - p0[k]) * u;
+  return q;
+}
+const 動かない = matchMedia('(prefers-reduced-motion: reduce)');
+
+/* ── 音と声 ── */
+let 音 = null;
+function ピッ(高 = 880, 長さ = .12){
+  try{
+    音 = 音 || new (window.AudioContext || window.webkitAudioContext)();
+    const o = 音.createOscillator(), v = 音.createGain();
+    o.frequency.value = 高; v.gain.setValueAtTime(.0001, 音.currentTime);
+    v.gain.exponentialRampToValueAtTime(.25, 音.currentTime + .01);
+    v.gain.exponentialRampToValueAtTime(.0001, 音.currentTime + 長さ);
+    o.connect(v).connect(音.destination); o.start(); o.stop(音.currentTime + 長さ + .02);
+  }catch(e){}
+}
+function 話す(文){
+  if (!設定.声) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(文); u.lang = 'ja-JP'; u.rate = 1.05;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+let 起きて = null;
+async function 画面を消さない(){ try{ 起きて = await navigator.wakeLock.request('screen') }catch(e){} }
+
+/* ── 画面 ── */
+const 設定 = {段: 保存.get('段', 運動['いまの段'] || 1), 声: 保存.get('声', true), 音: 保存.get('音', true)};
+const 順 = [...運動['順番'], 運動['すきま']].filter(k => 運動['メニュー'].some(m => m['記号'] === k));
+const メ = k => 運動['メニュー'].find(m => m['記号'] === k);
+let 選 = 順[0];
+
+function 今日の表示(){
+  const d = new Date(); const w = '日月火水木金土'[d.getDay()];
+  document.getElementById('today').textContent = `${d.getMonth()+1}月${d.getDate()}日（${w}）`;
+}
+function 札(){
+  const box = document.getElementById('tabs'); box.innerHTML = '';
+  for (const k of 順){
+    const m = メ(k), 秒 = 合計秒(展開(m['流れ'], 設定.段));
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab'; b.setAttribute('aria-pressed', String(k === 選));
+    b.innerHTML = `<span class="k">${k}</span><span class="n"></span><span class="m num">${Math.round(秒/60)}分</span>`;
+    b.querySelector('.n').textContent = m['名前'];
+    b.addEventListener('click', () => { 選 = k; try{ history.replaceState(null, '', '#' + k.toLowerCase()) }catch(e){ location.hash = k.toLowerCase() } 描き直す() });
+    box.appendChild(b);
+  }
+}
+function 中身(){
+  const m = メ(選), 段々 = 展開(m['流れ'], 設定.段), 秒 = 合計秒(段々);
+  const d = document.getElementById('detail');
+  d.innerHTML = `<div><h2></h2><p class="lead"></p><div class="plan" id="plan"></div></div>
+    <aside class="side">
+      <div><p class="muted">全部で</p><p class="big num">${分秒(秒)}</p></div>
+      <button type="button" class="start" id="b-start">始める</button>
+      <label class="opt" for="o-dan">体幹の段階<select id="o-dan"></select></label>
+      <label class="opt" for="o-voice">声で案内する<input type="checkbox" id="o-voice"></label>
+      <label class="opt" for="o-beep">残り3秒で音を鳴らす<input type="checkbox" id="o-beep"></label>
+      <p class="note">あと1〜2回できるところで止めてかまいません。きつい日は「次へ」で飛ばせます。</p>
+    </aside>`;
+  d.querySelector('h2').textContent = `${選}　${m['名前']}`;
+  d.querySelector('.lead').textContent = m['ひとこと'] || '';
+  const plan = d.querySelector('#plan');
+  let 前 = null;
+  for (const s of 段々){
+    if (s.区切り && s.区切り !== 前 && !/体幹/.test(s.区切り + 前)){
+      const r = document.createElement('div'); r.className = 'row round'; r.textContent = s.区切り; plan.appendChild(r);
+    } else if (s.区切り && /体幹/.test(s.区切り) && !/体幹/.test(前 || '')){
+      const r = document.createElement('div'); r.className = 'row round'; r.textContent = '体幹'; plan.appendChild(r);
+    }
+    前 = s.区切り;
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = `<span></span><span class="t">${分秒(s.秒)}</span>`;
+    r.firstChild.textContent = s.名前 + (s.合図 && s.名前 !== '休み' ? `（${s.合図}）` : '');
+    if (s.名前 === '休み') r.style.color = 'var(--muted)';
+    plan.appendChild(r);
+  }
+  const sel = d.querySelector('#o-dan');
+  運動['体幹の段階'].forEach((s, i) => { const o = document.createElement('option'); o.value = i + 1; o.textContent = `${i+1}段：${s['名前']}`; sel.appendChild(o) });
+  sel.value = 設定.段;
+  sel.addEventListener('change', () => { 設定.段 = +sel.value; 保存.set('段', 設定.段); 描き直す() });
+  const v = d.querySelector('#o-voice'); v.checked = 設定.声; v.addEventListener('change', () => { 設定.声 = v.checked; 保存.set('声', v.checked) });
+  const bp = d.querySelector('#o-beep'); bp.checked = 設定.音; bp.addEventListener('change', () => { 設定.音 = bp.checked; 保存.set('音', bp.checked) });
+  d.querySelector('#b-start').addEventListener('click', 始める);
+}
+function 描き直す(){ 札(); 中身() }
+
+/* ── タイマー ── */
+const R = {段々:[], i:0, 残り:0, 走る:false, 前の時:0, 経過:0, 鳴らした:-1, 終わり:false};
+const $ = id => document.getElementById(id);
+function 段を見せる(){
+  const s = R.段々[R.i], 次 = R.段々[R.i + 1];
+  const 休み = s.名前 === '休み';
+  $('run').classList.toggle('is-rest', 休み);
+  $('r-phase').textContent = 休み ? '休み' : (s.区切り || '');
+  $('r-ex').textContent = 休み ? (次 ? `次は ${次.名前}` : '休み') : s.名前;
+  $('r-cue').textContent = s.合図 || '';
+  $('r-next').textContent = 次 ? `次：${次.名前}（${分秒(次.秒)}）` : '次：おわり';
+  $('r-pos').textContent = `${R.i + 1} / ${R.段々.length}`;
+  部品.呼吸.style.display = 休み ? '' : 'none';
+  話す(休み ? (次 ? `休み。次は${次.名前}` : '休み') : s.名前);
+}
+function 表示を更新(){
+  const s = R.段々[R.i];
+  $('r-count').textContent = Math.ceil(R.残り / 1000);
+  const 済 = R.段々.slice(0, R.i).reduce((a, x) => a + x.秒, 0) * 1000 + (s.秒 * 1000 - R.残り);
+  const 全 = 合計秒(R.段々) * 1000;
+  $('r-fill').style.width = (済 / 全 * 100).toFixed(2) + '%';
+  $('r-left').textContent = '残り ' + 分秒((全 - 済) / 1000);
+}
+function 進む(差){
+  R.i = Math.min(Math.max(0, R.i + 差), R.段々.length - 1);
+  R.残り = R.段々[R.i].秒 * 1000; R.鳴らした = -1;
+  段を見せる(); 表示を更新();
+}
+function 終わる(){
+  R.走る = false; R.終わり = true;
+  $('r-stage').hidden = true; $('r-done').hidden = false;
+  $('r-after').textContent = 運動['終わったら'] ? `このあと：${運動['終わったら']}` : '';
+  $('r-sum').textContent = `${選}　${メ(選)['名前']}　${分秒(合計秒(R.段々))}`;
+  $('b-pause').textContent = '閉じる';
+  ピッ(660, .2); setTimeout(() => ピッ(990, .3), 220);
+  話す('おつかれさまでした');
+}
+function 回る(now){
+  if (!$('run').hidden){
+    const 差 = R.前の時 ? now - R.前の時 : 0; R.前の時 = now;
+    R.経過 += 差;
+    if (R.走る && !R.終わり){
+      R.残り -= 差;
+      const 秒 = Math.ceil(R.残り / 1000);
+      if (設定.音 && 秒 <= 3 && 秒 >= 1 && 秒 !== R.鳴らした){ R.鳴らした = 秒; ピッ(880) }
+      if (R.残り <= 0){
+        if (R.i >= R.段々.length - 1) 終わる();
+        else { ピッ(1320, .18); 進む(1) }
+      }
+      if (!R.終わり) 表示を更新();
+    }
+    const s = R.段々[R.i];
+    // 休みのあいだは、次の種目の動きを見本として見せる
+    const 見本 = s && s.名前 === '休み' && R.段々[R.i + 1] ? R.段々[R.i + 1] : s;
+    if (見本) 描く(姿勢(見本.動き, 動かない.matches ? 0 : (R.走る ? R.経過 : 0)));
+    if (s && s.名前 === '休み'){
+      const r = 52 + 10 * Math.sin(R.経過 / 5000 * Math.PI * 2);
+      部品.呼吸.setAttribute('r', 動かない.matches ? 56 : r.toFixed(1));
+    }
+  }
+  requestAnimationFrame(回る);
+}
+function 始める(){
+  R.段々 = 展開(メ(選)['流れ'], 設定.段);
+  R.i = 0; R.残り = R.段々[0].秒 * 1000; R.走る = true; R.終わり = false; R.前の時 = 0; R.経過 = 0; R.鳴らした = -1;
+  $('home').hidden = true; $('run').hidden = false; $('r-stage').hidden = false; $('r-done').hidden = true;
+  $('b-pause').textContent = '一時停止';
+  ピッ(1320, .15); 画面を消さない();
+  段を見せる(); 表示を更新();
+}
+function やめる(){
+  R.走る = false; $('run').hidden = true; $('home').hidden = false;
+  try{ speechSynthesis.cancel() }catch(e){}
+  try{ 起きて && 起きて.release() }catch(e){}
+}
+$('b-pause').addEventListener('click', () => {
+  if (R.終わり){ やめる(); return }
+  R.走る = !R.走る; $('b-pause').textContent = R.走る ? '一時停止' : '再開';
+  if (R.走る) ピッ(1100, .1);
+});
+$('b-next').addEventListener('click', () => { if (!R.終わり){ if (R.i >= R.段々.length - 1) 終わる(); else 進む(1) } });
+$('b-prev').addEventListener('click', () => { if (!R.終わり) 進む(-1) });
+$('b-stop').addEventListener('click', やめる);
+document.addEventListener('keydown', e => {
+  if ($('run').hidden) return;
+  if (e.key === ' '){ e.preventDefault(); $('b-pause').click() }
+  else if (e.key === 'ArrowRight') $('b-next').click();
+  else if (e.key === 'ArrowLeft') $('b-prev').click();
+  else if (e.key === 'Escape') やめる();
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('run').hidden && R.走る) 画面を消さない() });
+
+function ハッシュから(){
+  const k = (location.hash || '').replace('#', '').toUpperCase();
+  if (順.includes(k)) 選 = k;
+}
+ハッシュから();
+window.addEventListener('hashchange', () => { ハッシュから(); 描き直す() });
+今日の表示(); 描き直す();
+/* 開いた直後も見本が動いて見えるよう、メニューの画面では動かさず、走っているときだけ動かす */
+描く(姿勢('rest', 0));
+requestAnimationFrame(回る);
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js?v=2ddd6370', {scope: './'}).catch(() => {});
+}
+</script>
+</body>
+</html>
