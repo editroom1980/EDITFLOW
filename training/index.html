@@ -1018,7 +1018,7 @@ function 食事の状況(){
     <div class="meals">${rows}</div>
     ${作り置きの行(d)}
     ${夕.r && !夕.rec ? `<p class="hint"><span>夕食の目安 <b>${Math.max(0, Math.round(枠))}</b> kcal</span><span>${夕.r['主食込み'] ? '主食込みの献立' : セブンか(夕.r) ? `おにぎり <b>${g / 100}</b> 個` : g ? `ご飯 <b>${g}</b> g` : 'ご飯なし'}${!夕.r['主食込み'] && g < (セブンか(夕.r) ? おにぎり数(型.主食) * 100 : 型.主食) ? '・残りに合わせて減らした' : ''}</span></p>` : ''}
-    ${届いた ? `<button type="button" class="linkbtn" id="b-judged" style="align-self:flex-start">判定が届いています ─ ${esc((届いた.結果 || {}).title || '')}</button>` : ''}
+    ${届いた ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="linkbtn" id="b-judged">判定が届いています ─ ${esc((届いた.結果 || {}).title || '')}</button><button type="button" class="more" id="b-judged-x">消す</button></div>` : ''}
     <button type="button" class="go food" id="b-log">${外印}外で食べたものを記録</button>`;
   const ctx = $('ctx');
   ctx.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => {
@@ -1036,6 +1036,7 @@ function 食事の状況(){
   ctx.querySelectorAll('[data-out]').forEach(b => b.addEventListener('click', () => 記録シート(b.dataset.out, d)));
   $('b-log').addEventListener('click', () => 記録シート(今の区分(), d));
   const bj = $('b-judged'); if (bj) bj.addEventListener('click', () => { const w = 保存.get('判定結果', null); if (w){ 記録シート(w.区分, w.日); 判定の表示(w.結果, w) } });
+  const bx = $('b-judged-x'); if (bx) bx.addEventListener('click', () => { 保存.set('判定結果', null); 知らせ('判定を消した'); 食事の状況() });
 }
 
 /* ── 外で食べたものの記録：文か写真を Mac の判定役（Claude）に送り、料理ごとの量と栄養を受け取る ──
@@ -1133,19 +1134,19 @@ async function 判定を待つ(){
 }
 function 記録シート(区分 = 今の区分(), d = 今日()){
   記録の区分 = 区分;
-  const rec = (食べた()[d] || {})[区分], 待ち = 保存.get('判定待ち', null);
+  const 待ち = 保存.get('判定待ち', null);
   const p = $('panel');
   p.innerHTML = `
     <span class="grab" aria-hidden="true"></span>
     <div class="hd"><div><p class="label">${d === 今日() ? '本日' : esc(日の名(d))}・外で食べたもの</p><h2 id="sh-title">食事を記録</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
     <div class="seg four" role="group" aria-label="どの食事か" id="rc-k">${区分の順.map(k => `<button type="button" data-k="${k}" aria-pressed="${k === 区分}">${区分名[k]}</button>`).join('')}</div>
-    ${rec && !rec.id ? `<div class="tip" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>記録済み：${esc(rec.名前)}・${rec.kcal} kcal${rec.p != null ? '・P ' + rec.p + ' g' : ''}</span><button type="button" class="linkbtn" id="rc-del">記録を消す</button></div>` : ''}
+    <div id="rc-rec"></div>
     <section class="fl"><p class="label"><span>食べたもの</span><span>写真だけでも可</span></p>
       <textarea class="text" id="rc-text" rows="3" placeholder="例：吉野家で牛丼の並とみそ汁。ご飯は半分残した"></textarea></section>
     <div class="shot"><label class="go ghost" for="rc-file" style="flex:1 1 auto;font-size:16px;letter-spacing:.06em;padding:13px 16px">${外印}写真を撮る・選ぶ</label><input class="vh" type="file" id="rc-file" accept="image/*"><img id="rc-img" alt="選んだ写真" hidden></div>
     ${鍵G() ? '' : 鍵の欄()}
     <button type="button" class="go food" id="rc-go">AI で判定</button>
-    <div id="rc-out" aria-live="polite">${待ち ? '<div class="wait"><i></i><span id="rc-wait">Mac で判定中…</span></div>' : ''}</div>
+    <div id="rc-out" aria-live="polite">${待ち ? '<div class="wait"><i></i><span id="rc-wait">Mac で判定中…</span><button type="button" class="linkbtn" id="rc-stop">やめる</button></div>' : ''}</div>
     <details class="more-f"><summary>数値で記録する</summary><div class="addrow" style="margin-top:12px">
       <input class="text" id="rc-kc" type="number" inputmode="numeric" min="0" placeholder="kcal" style="flex:1 1 90px">
       <input class="text" id="rc-p" type="number" inputmode="numeric" min="0" placeholder="たんぱく質 g" style="flex:1 1 110px">
@@ -1153,10 +1154,17 @@ function 記録シート(区分 = 今の区分(), d = 今日()){
   $('sheet').hidden = false; document.body.style.overflow = 'hidden';
   $('sh-x').addEventListener('click', シートを閉じる);
   let 画 = null;
+  const 記録の札 = () => {
+    const rec = (食べた()[d] || {})[記録の区分], el = $('rc-rec');
+    el.innerHTML = rec ? `<div class="tip" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>${区分名[記録の区分]}は記録済み：${esc(rec.名前 || '')}・${rec.kcal} kcal${rec.p != null ? '・P ' + rec.p + ' g' : ''}</span><button type="button" class="linkbtn" id="rc-del">記録を消す</button></div>` : '';
+    const del = $('rc-del');
+    if (del) del.addEventListener('click', () => { const k = 記録の区分; 食べたを記す(d, k, null); 記録の札(); 知らせ(`${区分名[k]}の記録を消した`); 全体() });
+  };
+  記録の札();
   p.querySelectorAll('#rc-k button').forEach(b => b.addEventListener('click', () => {
-    記録の区分 = b.dataset.k; p.querySelectorAll('#rc-k button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    記録の区分 = b.dataset.k; p.querySelectorAll('#rc-k button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); 記録の札();
   }));
-  const del = $('rc-del'); if (del) del.addEventListener('click', () => { 食べたを記す(d, 区分, null); シートを閉じる(); 知らせ(`${区分名[区分]}の記録を消した`); 全体() });
+  const stop = $('rc-stop'); if (stop) stop.addEventListener('click', () => { 保存.set('判定待ち', null); clearTimeout(判定の時計); $('rc-out').innerHTML = ''; 知らせ('Mac の判定をやめた'); 食事の状況() });
   $('rc-file').addEventListener('change', async e => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     try{ 画 = await 画を縮める(f); const im = $('rc-img'); im.src = 画; im.hidden = false }catch(err){ 知らせ(err.message) }
@@ -1222,8 +1230,10 @@ function 判定の表示(s, w, 誤り){
       ${s.出典 && s.出典.length ? `<div class="src"><span>検索した出典</span>${s.出典.map(x => `<a href="${esc(x.uri)}" target="_blank" rel="noopener">${esc(x.title || x.uri)}</a>`).join('')}</div>` : s.検索 === false ? '<p class="muted" style="font-size:12px">検索なしの見積もり（無料の鍵では Google 検索が使えない）</p>' : ''}
       <div class="fl"><p class="label"><span>食べた量</span><span>確かさ ${esc(s.confidence || '─')}</span></p>
       <div class="seg four" role="group" aria-label="食べた量" id="rc-amt">${[[.5, '半分'], [.75, '3/4'], [1, '全部'], [1.25, '多め']].map(([x, t]) => `<button type="button" data-x="${x}" aria-pressed="${x === 倍}">${t}</button>`).join('')}</div></div>
-      <button type="button" class="go food" id="rc-ok">この内容で記録</button></section>`;
+      <button type="button" class="go food" id="rc-ok">この内容で記録</button>
+      <button type="button" class="more" id="rc-discard">この判定を消す</button></section>`;
     o.querySelectorAll('#rc-amt button').forEach(b => b.addEventListener('click', () => { 倍 = +b.dataset.x; 描く() }));
+    $('rc-discard').addEventListener('click', () => { 保存.set('判定結果', null); o.innerHTML = ''; 知らせ('判定を消した'); 食事の状況() });
     $('rc-ok').addEventListener('click', () => 記録を終える(w.日, 記録の区分, {名前: s.title || '外食', kcal: v('kcal'), p: v('p'), f: v('f'), c: v('c'), 外: true, ひとこと: s.note || '', 元: '判定'}));
   };
   描く();
@@ -1822,7 +1832,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=8530f319', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=a247bafb', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
