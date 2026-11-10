@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FIT&amp;EAT">
@@ -47,6 +47,11 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{min-height:100%}
+/* 拡大とずれを止める（2026-11-10 依頼者「表示を拡大したりズレたりしないように」）
+   ダブルタップの拡大を止め、横のはみ出しと端の跳ね返りを止める。入力欄は16px以上（iPhone は小さい入力欄に触れると自動で拡大する） */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{overflow-x:hidden;overscroll-behavior:none}
+input,select,textarea{font-size:16px!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 button:focus-visible,select:focus-visible,summary:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--go);outline-offset:2px}
@@ -506,6 +511,8 @@ const 保存 = {
   set(k, v){ try{ localStorage.setItem('nagara:' + k, JSON.stringify(v)) }catch(e){} }
 };
 const $ = id => document.getElementById(id);
+/* 2本指で広げる拡大（iPhone の gesture）を止める。ダブルタップの拡大は CSS の touch-action で止める（ボタンの連打は効くまま） */
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 /* 献立の名前：語の途中で折り返さないよう、区切り（＋・の・と・括弧）の後ろだけで折る */
 const 名 = s => esc(s).replace(/([＋・のと）])/g, '$1<wbr>').replace(/（/g, '<wbr>（').replace(/([ぁ-ん一-龯])(?=[ァ-ヴ])/g, '$1<wbr>');
@@ -1415,7 +1422,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=b32b13d9', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=1138068e', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
