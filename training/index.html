@@ -7,7 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FIT&amp;EAT">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#4A0C16">
+<meta name="theme-color" content="#1C090D" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FBF3F2" media="(prefers-color-scheme: light)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -46,7 +47,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   --hero1:#FFE6E0; --hero2:#FFD3CB; color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{min-height:100%}
+html,body{height:100%;overflow:hidden}
+/* iPhone の画面上のぼやけ対策（全アプリ共通の決まり）：上の安全域を地の色で塗り、画面の箱を固定して中だけ動かす */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30;pointer-events:none}
+.scr{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;bottom:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:var(--bg)}
 /* 拡大とずれを止める（2026-11-10 依頼者「表示を拡大したりズレたりしないように」）
    ダブルタップの拡大を止め、横のはみ出しと端の跳ね返りを止める。入力欄は16px以上（iPhone は小さい入力欄に触れると自動で拡大する） */
 html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -179,11 +183,11 @@ details.fold[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)
 .mrow .n{font-weight:700;display:block}
 .mrow .s{font-size:12px;color:var(--muted)}
 .mrow .t{font-family:var(--f-num);font-size:18px;color:var(--muted)}
-.plan{display:flex;flex-direction:column;padding:4px 18px 14px}
-.plan .ph{font-size:11px;font-weight:700;color:var(--muted);padding:12px 0 2px;letter-spacing:.14em}
-.plan .it{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
-.plan .it .c{color:var(--muted);font-size:12px;display:block}
-.plan .it .t{font-family:var(--f-num);color:var(--muted);white-space:nowrap}
+.mplan{display:flex;flex-direction:column;padding:4px 18px 14px}
+.mplan .ph{font-size:11px;font-weight:700;color:var(--muted);padding:12px 0 2px;letter-spacing:.14em}
+.mplan .it{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.mplan .it .c{color:var(--muted);font-size:12px;display:block}
+.mplan .it .t{font-family:var(--f-num);color:var(--muted);white-space:nowrap}
 .settings{display:flex;flex-direction:column;gap:12px;padding:0 18px 16px}
 .settings label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
 
@@ -460,6 +464,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 }
 </style>
 
+<main class="scr" id="scr">
 <!-- ── トレーニング ── -->
 <div class="wrap" id="v-train" data-view="train">
   <header class="vhead"><div><p class="brand"><img class="mark" src="data:image/png;base64,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" alt="" width="28" height="28">FIT&amp;EAT</p><h1>トレーニング</h1></div><p class="d" id="today1"></p></header>
@@ -532,6 +537,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
     </div>
   </div>
 </div>
+</main>
 
 <nav class="tabs" aria-label="画面">
   <div class="in">
@@ -776,11 +782,11 @@ function メニュー一覧(){
     const m = メ(k), 段々 = 展開(m['流れ'], 設定.段, 設定.短く);
     const b = document.createElement('button'); b.type = 'button'; b.className = 'mrow'; b.setAttribute('aria-current', String(k === 選));
     b.innerHTML = `<span class="k">${esc(k)}</span><span><span class="n">${esc(m['名前'])}</span><span class="s">${esc(m['ひとこと'] || '')}</span></span><span class="t">${Math.round(合計秒(段々)/60)}分</span>`;
-    b.addEventListener('click', () => { 選 = k; 描き直す(); window.scrollTo({top:0, behavior:'smooth'}) });
+    b.addEventListener('click', () => { 選 = k; 描き直す(); $('scr').scrollTo({top:0, behavior:'smooth'}) });
     list.appendChild(b);
   }
   box.appendChild(list);
-  const plan = document.createElement('div'); plan.className = 'plan';
+  const plan = document.createElement('div'); plan.className = 'mplan';
   let 前 = null;
   for (const s of 展開(メ(選)['流れ'], 設定.段, 設定.短く)){
     const ph = 区切り名(/体幹/.test(s.区切り || '') ? '体幹' : s.区切り);
@@ -811,7 +817,7 @@ const セブンか = r => r && r['調達'] === 'セブン';
 const おにぎり数 = g => Math.max(1, Math.round(g / 100));
 /* 献立＝EDIT FLOW が決めた献立（予定.json の 献立）に、この端末で選んだ上書きを重ねたもの。
    上書きは EDIT FLOW へ送り、反映されたら消す。上書きの '' は「おまかせに戻す」 */
-let 食予E = {}, 選ぶ日 = null;   // 食予E＝予定.json の 食の予定 {日: {朝・昼・夕: 「実家で夕食」などの文字 か 'なし'}}。選ぶ日＝候補から選ぶ日（今日以外のとき）
+let 食予E = {}, 食の文字E = {}, 選ぶ日 = null;   // 食予E＝予定.json の 食の予定 {日: {朝・昼・夕: 「実家で夕食」などの文字 か 'なし'}}。選ぶ日＝候補から選ぶ日（今日以外のとき）
 let 献立E = {}, 買い物E = null, 栄養E = {}, 在庫E = {}, 使い切れないE = [], 期限切れE = [], 食材E = {};
 const 上書き = () => 保存.get('献立', {});
 /* 食事の決まり：この端末で決めた分（'' はふつうどおり）を、EDIT FLOW の分に重ねる。EDIT FLOW に反映されたら消す */
@@ -884,23 +890,30 @@ function 送りに積む(ops){
   保存.set('送る', q);
   clearTimeout(送る時計); 送る時計 = setTimeout(送る, 1500);
 }
+let 送信中 = false;
 async function 送る(){
+  if (送信中) return;
   const q = 保存.get('送る', []), t = 連携.鍵();
   if (!q.length){ 連携の表示(); return }
   if (!t){ 送り状態 = '未接続'; 連携の表示(); return }
   const n = new Date(), 名 = `${日付(n).replace(/-/g, '')}-${String(n.getHours()).padStart(2,'0')}${String(n.getMinutes()).padStart(2,'0')}${String(n.getSeconds()).padStart(2,'0')}-nagara-${Math.random().toString(36).slice(2, 7)}.json`;
   const 字 = JSON.stringify({ファイル: '食事の予定.json', 操作: q, _: '宅トレから'}, null, 1);
   const b64 = btoa(Array.from(new TextEncoder().encode(字), c => String.fromCharCode(c)).join(''));
+  送信中 = true;
   try{
     const r = await fetch(`https://api.github.com/repos/${連携.repo}/contents/${encodeURIComponent('変更')}/${名}`, {
       method: 'PUT', headers: {Authorization: 'Bearer ' + t, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json'},
       body: JSON.stringify({message: '宅トレ：献立と好み', content: b64})});
     if (r.ok){
-      const 残 = 保存.get('送る', []).slice(q.length); 保存.set('送る', 残);
+      // 送っている間に積まれた操作は残す（同じ道の操作は積むときに置き換わるので、送った中身と同じものだけを消す）
+      const 送った = new Set(q.map(o => JSON.stringify(o)));
+      保存.set('送る', 保存.get('送る', []).filter(o => !送った.has(JSON.stringify(o))));
       保存.set('送った', Date.now()); 送り状態 = '';
     } else 送り状態 = r.status === 401 || r.status === 403 ? '鍵が無効' : r.status === 404 ? '置き場が見えない' : `送信失敗（${r.status}）`;
   }catch(e){ 送り状態 = 'オフライン' }
+  送信中 = false;
   連携の表示();
+  if (!送り状態 && 保存.get('送る', []).length){ clearTimeout(送る時計); 送る時計 = setTimeout(送る, 1500) }
 }
 function 連携の表示(){
   const el = $('link'); if (!el) return;
@@ -1037,6 +1050,8 @@ function 食の値(d, 区分){
     const s = 区分 === '夕' ? 主食の値(r, 主食g(r, d)) : e.主食 && !(上書き()[d] || {})[区分] ? {k: Math.round(e.主食 * 1.56), P: 主食P(e.主食)} : {k: 0, P: 0};
     return {kcal: r['kcal'] + s.k, P: r['たんぱく質'] + s.P, 名: r['名前'], 状態: '予定', r};
   }
+  const 文字 = (食の文字E[d] || {})[区分];   // EDIT FLOW が決めた、レシピでない食事（「外食または弁当（予定中）」など）
+  if (文字) return {kcal: 見込み[区分] || 500, P: {朝: 15, 昼: 25, 夕: 25}[区分] || 10, 名: 文字, 状態: '外の予定'};
   return {kcal: 0, P: 0, 名: null, 状態: 'なし'};
 }
 function 日のたんぱく質(d){ return 区分の順.reduce((a, k) => a + 食の値(d, k).P, 0) }
@@ -1139,7 +1154,7 @@ const G理由 = async r => { try{ const j = await r.clone().json(); return ((j.e
 const 鍵G = () => { try{ return localStorage.getItem('nagara:gemini') || '' }catch(e){ return '' } };
 const Gのモデル = 'gemini-3.5-flash-lite';
 function G指示(区分, 文, 写真あり){
-  return `あなたは日本の管理栄養士です。46歳の男性（158cm・64kg・体脂肪を落として筋肉を保つ減量中）が${区分名[区分]}に食べたものの栄養を見積もります。
+  return `あなたは日本の管理栄養士です。46歳の男性（158cm・${Math.round(体重)}kg・体脂肪を落として筋肉を保つ減量中）が${区分名[区分]}に食べたものの栄養を見積もります。
 ${写真あり ? '- 添えた写真を見る（皿・器・箸の大きさから量を見積もる）' : '- 写真はない'}
 - 文：${文 || '（なし）'}
 手順：1) 料理を1品ずつ挙げる（ご飯・汁・小鉢・ソース・ドレッシング・飲み物も） 2) 店名・チェーン名・メニュー名があれば Google 検索で公式の栄養成分表示を探し、その値を使う（無ければ似たメニューの公式値から） 3) 「半分残した」「大盛り」などは食べた量に直す 4) 揚げ油・炒め油・マヨネーズを見落とさない 5) 合計と誤差の幅
@@ -1164,7 +1179,8 @@ async function Gで判定(区分, 文, 画, 検索 = true){
   const 字 = ((c.content || {}).parts || []).map(x => x.text || '').join('');
   const 塊 = 字.match(/\{[\s\S]*\}/);
   if (!塊) throw new Error('答えを読めなかった');
-  const 結果 = JSON.parse(塊[0]);
+  let 結果;
+  try{ 結果 = JSON.parse(塊[0]) }catch(e){ throw new Error('答えを読めなかった') }
   結果.出典 = (((c.groundingMetadata || {}).groundingChunks) || []).map(x => x.web).filter(Boolean).slice(0, 3);
   結果.検索 = 検索;
   return 結果;
@@ -1249,7 +1265,7 @@ function 記録シート(区分 = 今の区分(), d = 今日()){
     try{
       const 結果 = await Gで判定(記録の区分, 文, 画);
       const 届 = {id: 'g' + Date.now(), 日: d, 区分: 記録の区分, 結果}; 保存.set('判定結果', 届); 判定の表示(結果, 届);
-    }catch(err){ $('rc-out').innerHTML = `<p class="tip">${esc(err.message)}。文を足してもう一度か、数値で記録</p>` }
+    }catch(err){ $('rc-out').innerHTML = `<p class="tip">${esc(err instanceof TypeError ? '通信できなかった（電波を確かめる）' : err.message)}。文を足してもう一度か、数値で記録</p>` }
     b.disabled = false;
   });
   $('rc-save').addEventListener('click', () => {
@@ -1337,10 +1353,12 @@ function 提案(){
   const box = $('picks');
   const n = 全部見る ? list.length : Math.min(3, list.length);
   const 条件 = [好み.調達 === 'セブン' ? 'セブン‐イレブン' : 時間の段[好み.忙しさ - 1][1] + '以内', ...好み.味, ...好み.傾向].join('・');
-  const 枠 = 区分 === '夕' ? Math.max(0, Math.round(夕食の枠(d))) : null;
-  box.innerHTML = `<div class="toolbar"><p class="label">提案 ─ ${d === 今日() ? '' : 日の名(d) + 'の'}${区分名[区分]}${枠 !== null ? `・目安 ${枠} kcal` : ''}</p><span class="pill t-food">${esc(条件)}・${list.length}件</span></div>${d === 今日() ? '' : '<button type="button" class="more" id="b-pick-today" style="align-self:flex-start">本日の提案に戻す</button>'}`;
+  const 枠 = 区分 === '夕' ? Math.max(0, Math.round(夕食の枠(d))) : null, 決 = 食の決まり(d, 区分);
+  box.innerHTML = `<div class="toolbar"><p class="label">提案 ─ ${d === 今日() ? '' : 日の名(d) + 'の'}${区分名[区分]}${枠 !== null ? `・目安 ${枠} kcal` : ''}</p><span class="pill t-food">${esc(条件)}・${list.length}件</span></div>${d === 今日() ? '' : '<button type="button" class="more" id="b-pick-today" style="align-self:flex-start">本日の提案に戻す</button>'}`
+    + (決 ? `<p class="tip">${d === 今日() ? '本日' : 日の名(d)}の${区分名[区分]}は「${esc(決 === 'なし' ? '食べない' : 決)}」に設定済み。下から選んで追加すると、献立に替わる</p>` : '')
+    + (list.length ? '' : '<p class="empty">該当なし。調理時間を延ばすか条件を解除</p>');
   const bt = $('b-pick-today'); if (bt) bt.addEventListener('click', () => { 選ぶ日 = null; 提案() });
-  if (!list.length){ box.innerHTML += '<p class="empty">該当なし。調理時間を延ばすか条件を解除</p>'; return }
+  if (!list.length) return;
   list.slice(0, n).forEach((r, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'pick';
     const g = 区分 === '夕' && !r['主食込み'] ? 主食g(r, d, 枠) : 0;
@@ -1631,7 +1649,7 @@ function 画面(v, 動かさない){
   今の画面 = v;
   ['train', 'food', 'shop'].forEach(x => $('v-' + x).hidden = x !== v);
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.v === v ? 'page' : 'false'));
-  if (!動かさない) window.scrollTo(0, 0);
+  if (!動かさない) $('scr').scrollTo(0, 0);
   if (v === 'food') 食事();
   if (v === 'shop') 買い物();
   try{ history.replaceState(null, '', v === 'train' ? '#' + 選.toLowerCase() : '#' + v) }catch(e){}
@@ -1942,7 +1960,8 @@ function ハッシュから(){
 async function 予定を読む(ハッシュ){
   try{
     const r = await fetch('予定.json?t=' + Date.now(), {cache:'no-store'});
-    if (r.ok){ const j = await r.json(); 予定 = j['日'] || {}; 外食の日 = j['外食'] || {}; 食予E = j['食の予定'] || {}; 献立E = j['献立'] || {}; 買い物E = j['買い物'] && j['買い物']['日'] ? j['買い物'] : null; 栄養E = j['栄養'] || {}; 在庫E = j['在庫'] || {}; 使い切れないE = j['使い切れない'] || []; 期限切れE = j['期限切れ'] || []; 食材E = j['食材'] || {}; 上書きを片付ける(); 食予を片付ける(); 直しを片付ける() }
+    if (r.ok){ const j = await r.json(); 予定 = j['日'] || {}; 外食の日 = j['外食'] || {}; 食予E = j['食の予定'] || {}; 食の文字E = j['食の文字'] || {}; 献立E = j['献立'] || {}; 買い物E = j['買い物'] && j['買い物']['日'] ? j['買い物'] : null; 栄養E = j['栄養'] || {}; 在庫E = j['在庫'] || {}; 使い切れないE = j['使い切れない'] || []; 期限切れE = j['期限切れ'] || []; 食材E = j['食材'] || {}; 上書きを片付ける(); 食予を片付ける(); 直しを片付ける();
+      if (買い物E){ const 前 = 保存.get('買い物の日', null); if (前 && 前 !== 買い物E['日']) 保存.set('買い物済', {}); 保存.set('買い物の日', 買い物E['日']) } }
   }catch(e){}
   const {x, y} = 今日の予定();
   if (!ハッシュ.k){ if (x) 選 = x['記号']; else if (y) 選 = y['記号'] }
@@ -1964,7 +1983,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=c570b1cc', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=bba847f9', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
