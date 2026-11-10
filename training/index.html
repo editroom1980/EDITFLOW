@@ -134,6 +134,8 @@ nav.tabs button[data-v="shop"][aria-current="page"] svg{stroke:var(--prep)}
 .day.fin .dot{background:var(--go);border-color:var(--go);color:var(--go-ink)}
 .day.today .w{color:var(--ink);font-weight:700}
 .day.today .dot{box-shadow:0 0 0 2px var(--bg),0 0 0 4px color-mix(in srgb,var(--ink) 45%,transparent)}
+button.day{appearance:none;background:none;border:0;padding:0;margin:0;font:inherit;font-size:11px;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
+button.day:active .dot{transform:scale(.92)}
 .weekmsg{grid-column:1/-1;font-size:14px;color:var(--muted)}
 .weekmsg b{color:var(--ink)}
 
@@ -398,6 +400,8 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .rpe button{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:8px 4px;cursor:pointer;font-size:12px;line-height:1.3}
 .rpe button b{display:block;font-family:var(--f-num);font-size:22px}
 .rpe button[aria-pressed="true"]{background:var(--go);color:var(--go-ink);border-color:var(--go)}
+.rpe .opts.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rpe .opts.two button{font-size:15px;padding:12px 4px}
 .after{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
 .linkbtn{appearance:none;border:1px solid color-mix(in srgb,var(--food) 50%,var(--line));background:none;border-radius:999px;padding:6px 14px;color:var(--food);font-weight:700;cursor:pointer;font-size:13px}
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:25}
@@ -624,6 +628,28 @@ const 種類 = s => s.名前 === '休み' ? 'rest' : (s.区切り === '準備' |
 
 /* ── トレーニングの記録 ── */
 const 記録 = () => 保存.get('記録', []);
+const 夜更け = 4;   // 0時〜この時刻までに始めた回は、前日の予定がまだなら前日の分にする
+function 運動の日(){
+  const n = new Date(), t = 日付(n);
+  if (n.getHours() >= 夜更け) return t;
+  const y = 日付(足す日(n, -1));
+  return 予定の日(y) && !日ごと()[y] ? y : t;
+}
+function 手で付ける(d){
+  // 週の丸を押したとき：済みなら外す、まだなら付ける（その日の予定のメニューで、全部やった扱い）
+  const 済 = 日ごと()[d], 名 = d === 今日() ? '今日' : 日の名(d);
+  if (済){
+    if (!confirm(`${名}の完了の印を外しますか？`)) return;
+    保存.set('記録', 記録().filter(e => e['日'] !== d));
+    知らせ(`${名}の完了を外した`);
+  } else {
+    const 記 = (予定の日(d) || {})['記号'] || 選, 秒 = 合計秒(展開(メ(記)['流れ'], 設定.段, false));
+    if (!confirm(`${名}を「${記} ${メ(記)['名前']}」完了にしますか？`)) return;
+    記録する({日: d, 時: '手入力', 記, 秒, 予定秒: 秒, 割合: 1, きつさ: null, 手: true});
+    知らせ(`${名}を完了にした`);
+  }
+  描き直す();
+}
 function 記録する(e){ const a = 記録(); a.push(e); 保存.set('記録', a.slice(-400)) }
 const やった = e => e['割合'] >= 0.6;
 function 日ごと(){
@@ -633,7 +659,7 @@ function 日ごと(){
 }
 function 週の数(始め, 日ご){ let n = 0; for (let i = 0; i < 7; i++) if (日ご[日付(足す日(始め, i))]) n++; return n }
 function 数字(){
-  const 日ご = 日ごと(), 今週 = 週の始め(new Date());
+  const 日ご = 日ごと(), 今週 = 週の始め(new Date(運動の日() + 'T12:00'));
   let 連続 = 0, w = 今週;
   if (週の数(w, 日ご) < 達成ライン) w = 足す日(w, -7);
   while (週の数(w, 日ご) >= 達成ライン){ 連続++; w = 足す日(w, -7) }
@@ -644,7 +670,7 @@ function 数字(){
 /* ── 予定 ── */
 function 予定の日(d){ const x = 予定[d]; return x && メ(x['記号']) ? x : null }
 function 今日の予定(){
-  const t = 今日(), x = 予定の日(t);
+  const t = 運動の日(), x = 予定の日(t);
   const 次 = Object.keys(予定).filter(d => d > t && 予定の日(d)).sort()[0];
   return {t, x, 次, y: 次 ? 予定[次] : null};
 }
@@ -657,6 +683,7 @@ function ヒーロー(){
   const 記 = 選, m = メ(記), 段々 = 展開(m['流れ'], 設定.段, 設定.短く), 秒 = 合計秒(段々);
   let pill;
   if (済) pill = '<span class="pill">完了</span>';
+  else if (x && t !== 今日()) pill = `<span class="pill t-go">前日の分 ${日の名(t)} ${x['記号']}</span>`;
   else if (x && x['記号'] === 記) pill = `<span class="pill t-go">本日 ${x['始']}</span>`;
   else if (x) pill = `<span class="pill">本日の予定 ${x['記号']}・${x['始']}</span>`;
   else if (y && y['記号'] === 記) pill = `<span class="pill">次回 ${日の名(次)} ${y['始']}</span>`;
@@ -678,12 +705,13 @@ function ヒーロー(){
   h.querySelector('#b-start').addEventListener('click', 始める);
 }
 function 今週(){
-  const s = 数字(), 始め = 週の始め(new Date()), t = 今日();
+  const s = 数字(), 始め = 週の始め(new Date(運動の日() + 'T12:00')), t = 今日();
   const 周 = 2 * Math.PI * 40, 割 = Math.min(1, s.今週 / 目標);
   let cells = '';
   for (let i = 0; i < 7; i++){
-    const d = 日付(足す日(始め, i)), 予 = 予定[d], 済 = s.日ご[d];
-    cells += `<div class="day ${予 ? 'plan' : ''} ${済 ? 'fin' : ''} ${d === t ? 'today' : ''}"><span class="w">${曜[(i + 1) % 7]}</span><span class="dot">${済 ? '✓' : (予 ? esc(予['記号']) : '')}</span><span class="num">${Number(d.slice(8))}</span></div>`;
+    const d = 日付(足す日(始め, i)), 予 = 予定[d], 済 = s.日ご[d], 押せる = d <= t;
+    const 中 = `<span class="w">${曜[(i + 1) % 7]}</span><span class="dot">${済 ? '✓' : (予 ? esc(予['記号']) : '')}</span><span class="num">${Number(d.slice(8))}</span>`, 組 = `day ${予 ? 'plan' : ''} ${済 ? 'fin' : ''} ${d === t ? 'today' : ''}`;
+    cells += 押せる ? `<button type="button" class="${組}" data-d="${d}" aria-pressed="${!!済}" aria-label="${日の名(d)}${済 ? '：完了（押すと外す）' : '：押すと完了にする'}">${中}</button>` : `<div class="${組}">${中}</div>`;
   }
   const 残り = Math.max(0, 達成ライン - s.今週);
   const msg = s.今週 >= 目標 ? '<b>週間目標を達成</b>' :
@@ -695,6 +723,7 @@ function 今週(){
       <div class="v">${s.今週}<small>/${目標}</small></div></div>
     <div class="days">${cells}</div>
     <p class="weekmsg">${msg}</p>`;
+  $('week').querySelectorAll('button.day').forEach(b => b.addEventListener('click', () => 手で付ける(b.dataset.d)));
   $('stats').innerHTML = `
     <div class="stat"><span class="label"><abbr title="週${達成ライン}回以上を達成した週の連続数">継続</abbr></span><b>${s.連続}<small>週</small></b></div>
     <div class="stat"><span class="label">セッション</span><b>${s.回}<small>回</small></b></div>
@@ -1696,7 +1725,7 @@ function 紙吹雪(){
 function 終わる(){
   R.走る = false; R.終わり = true;
   const 予定秒 = 合計秒(R.段々), 秒 = Math.round(R.実働 / 1000), 割合 = Math.min(1, 秒 / 予定秒);
-  const 記 = R.記, t = 今日(), 前の今週 = 数字().今週;
+  const 記 = R.記, t = R.日 || 今日(), 前の今週 = 数字().今週;
   let 記録した = null;
   if (割合 >= 0.6 || 秒 >= 300){
     const n = new Date();
@@ -1719,12 +1748,20 @@ function 終わる(){
     <h2>${見出し}</h2>
     <p class="cue">${一言}</p>
     <div class="sum"><div><b class="num">${分秒(秒)}</b><span>時間</span></div><div><b class="num">${kcal(記, 秒)}</b><span>消費 kcal（推定）</span></div><div><b class="num">${s.今週}/${目標}</b><span>今週</span></div></div>
+    ${記録した && (t !== 今日() || new Date().getHours() < 夜更け) ? `<div class="rpe" id="d-day"><p class="label">記録する日</p><div class="opts two">
+      ${[日付(足す日(new Date(), -1)), 今日()].map(d => `<button type="button" data-d="${d}" aria-pressed="${d === t}">${日の名(d)}</button>`).join('')}
+    </div></div>` : ''}
     ${記録した ? `<div class="rpe"><p class="label"><abbr title="主観的運動強度。次回の負荷調整に使用">RPE</abbr> ─ 今日の強度</p><div class="opts">
       ${[['1','楽'],['2','やや楽'],['3','適正'],['4','きつい'],['5','限界']].map(([n, t]) => `<button type="button" data-v="${n}" aria-pressed="false"><b>${n}</b>${t}</button>`).join('')}
     </div><p class="muted" id="d-rpe" style="font-size:13px;min-height:1.4em"></p></div>` : ''}
     ${運動['終わったら'] ? `<div class="after"><span>リカバリー：${esc(運動['終わったら'])}</span><button type="button" class="linkbtn" id="d-food">食事を見る</button></div>` : ''}`;
-  $('r-done').querySelectorAll('.rpe button').forEach(b => b.addEventListener('click', () => {
-    $('r-done').querySelectorAll('.rpe button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  $('r-done').querySelectorAll('#d-day button').forEach(b => b.addEventListener('click', () => {
+    $('r-done').querySelectorAll('#d-day button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    const a = 記録(); if (a.length){ a[a.length - 1]['日'] = b.dataset.d; 保存.set('記録', a) }
+    知らせ(`${日の名(b.dataset.d)}の分として記録`);
+  }));
+  $('r-done').querySelectorAll('.rpe:not(#d-day) button').forEach(b => b.addEventListener('click', () => {
+    $('r-done').querySelectorAll('.rpe:not(#d-day) button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     const v = +b.dataset.v, a = 記録();
     if (a.length){ a[a.length - 1]['きつさ'] = v; 保存.set('記録', a) }
     $('d-rpe').textContent = v <= 2 ? '2回続けば負荷アップを提案' : v >= 5 ? '次回は短縮を推奨' : '適正強度';
@@ -1758,7 +1795,7 @@ function 回る(now){
   requestAnimationFrame(回る);
 }
 function 始める(){
-  R.記 = 選;
+  R.記 = 選; R.日 = 運動の日();
   R.段々 = 展開(メ(選)['流れ'], 設定.段, 設定.短く);
   Object.assign(R, {i:0, 残り:R.段々[0].秒 * 1000, 走る:true, 終わり:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1});
   ['v-train', 'v-food', 'v-shop'].forEach(id => $(id).hidden = true);
@@ -1833,7 +1870,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=88d38507', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=339ffcec', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
