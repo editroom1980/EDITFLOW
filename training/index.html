@@ -325,7 +325,21 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .wp .n{font-weight:700;font-size:15px;overflow-wrap:anywhere;cursor:pointer}
 .wp .n.none{color:var(--muted);font-weight:400}
 .wp .n small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
-.wp .n small .z{text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+.wp .ls{display:flex;flex-direction:column;gap:0;min-width:0}
+.wp .sl{appearance:none;border:0;background:none;margin:0;padding:4px 0;text-align:left;font:inherit;font-size:14px;font-weight:700;line-height:1.35;color:var(--ink);display:grid;grid-template-columns:16px minmax(0,1fr);gap:6px;align-items:baseline;cursor:pointer;word-break:keep-all;overflow-wrap:anywhere;text-wrap:pretty;-webkit-tap-highlight-color:transparent}
+.wp .sl .k{font-size:11px;font-weight:700;color:var(--muted)}
+.wp .sl.none .t,.wp .sl.skip .t{color:var(--muted);font-weight:400}
+.wp .sl.out .t{color:var(--food)}
+.wp .sl .pill{font-size:10px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+.fs-now{display:flex;gap:12px;align-items:baseline;margin:0;padding:12px 14px;border-radius:14px;background:var(--raise)}
+.fs-now span{flex:none;font-size:12px;color:var(--muted)}
+.fs-now b{font-size:15px;overflow-wrap:anywhere}
+.fs-list{display:flex;flex-direction:column;gap:6px}
+.fs-row{appearance:none;width:100%;margin:0;text-align:left;font:inherit;font-size:15px;font-weight:700;color:var(--ink);background:var(--raise);border:1px solid transparent;border-radius:14px;padding:13px 14px;cursor:pointer}
+.fs-row[aria-pressed="true"]{border-color:var(--food);color:var(--food)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chip{appearance:none;margin:0;font:inherit;font-size:14px;font-weight:700;color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:color-mix(in srgb,var(--food) 18%,transparent);border-color:var(--food);color:var(--food)}
 .wp .ops{display:flex;gap:6px}
 .icon{appearance:none;border:1px solid var(--line);background:var(--raise);border-radius:12px;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .icon svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -495,7 +509,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
   <div class="grid">
     <div class="col">
       <section class="card" aria-label="7日間の献立">
-        <div class="toolbar"><p class="label">献立 ─ 7日間（夕食）</p><span class="pill t-prep" id="wp-count"></span></div>
+        <div class="toolbar"><p class="label">献立 ─ 7日間（押して設定）</p><span class="pill t-prep" id="wp-count"></span></div>
         <div class="weekplan" id="weekplan" style="margin-top:8px"></div>
         <div class="toolbar" style="margin-top:14px">
           <button type="button" class="go food" id="b-auto">未設定日を自動作成</button>
@@ -797,8 +811,35 @@ const セブンか = r => r && r['調達'] === 'セブン';
 const おにぎり数 = g => Math.max(1, Math.round(g / 100));
 /* 献立＝EDIT FLOW が決めた献立（予定.json の 献立）に、この端末で選んだ上書きを重ねたもの。
    上書きは EDIT FLOW へ送り、反映されたら消す。上書きの '' は「おまかせに戻す」 */
+let 食予E = {}, 選ぶ日 = null;   // 食予E＝予定.json の 食の予定 {日: {朝・昼・夕: 「実家で夕食」などの文字 か 'なし'}}。選ぶ日＝候補から選ぶ日（今日以外のとき）
 let 献立E = {}, 買い物E = null, 栄養E = {}, 在庫E = {}, 使い切れないE = [], 期限切れE = [], 食材E = {};
 const 上書き = () => 保存.get('献立', {});
+/* 食事の決まり：この端末で決めた分（'' はふつうどおり）を、EDIT FLOW の分に重ねる。EDIT FLOW に反映されたら消す */
+const 食予の直し = () => 保存.get('食の予定', {});
+function 食の決まり(d, 区分){
+  const u = (食予の直し()[d] || {})[区分];
+  if (u !== undefined) return u || null;
+  return (食予E[d] || {})[区分] || null;
+}
+const 外の予定 = (d, 区分) => { const t = 食の決まり(d, 区分); return t && t !== 'なし' ? t : null };
+function 食を決める(d, 区分, 文字){
+  // 文字：場所（「実家で夕食」「外食」など）／'なし'（食べない）／''（ふつうどおり＝献立を組む）
+  const u = 食予の直し(); u[d] = u[d] || {}; u[d][区分] = 文字; 保存.set('食の予定', u);
+  const z = 区分 === '夕' ? '夜' : 区分;
+  const ops = [{道: ['日', d, z], 値: 文字, 作る: true}];
+  if (!文字) ops.push({道: ['日', d, z + 'の時刻'], 値: null, 作る: true}, {道: ['日', d, z + 'の移動'], 値: 0, 作る: true});   // 毎週の決まり（実家の19時など）も、この日は外す
+  送りに積む(ops);
+  if (文字) 献立に入れる(d, 区分, null);
+}
+function 食予を片付ける(){
+  const u = 食予の直し(), t = 今日();
+  for (const d of Object.keys(u)){
+    if (d < t){ delete u[d]; continue }
+    for (const [z, v] of Object.entries(u[d])) if ((v || '') === ((食予E[d] || {})[z] || '')) delete u[d][z];
+    if (!Object.keys(u[d]).length) delete u[d];
+  }
+  保存.set('食の予定', u);
+}
 function 献立(){
   const out = {};
   for (const [d, v] of Object.entries(献立E)){ out[d] = {}; for (const [k, x] of Object.entries(v)) out[d][k] = x.id }
@@ -812,6 +853,7 @@ function 指定か(d, k){ const u = (上書き()[d] || {})[k]; if (u !== undefin
 function 献立に入れる(d, 区分, id){
   const k = 上書き(); k[d] = k[d] || {}; k[d][区分] = id || ''; 保存.set('献立', k);
   送りに積む([{道: ['献立', d, 区分], 値: id || null, 作る: true}]);
+  if (id && 食の決まり(d, 区分)) 食を決める(d, 区分, '');   // 外食・なし の枠に献立を入れたら、ふつうどおりに戻す
 }
 function 上書きを片付ける(){
   // EDIT FLOW に反映された上書きと、過ぎた日の上書きを消す
@@ -987,12 +1029,14 @@ const 主食の値 = (r, g) => !g ? {k: 0, P: 0} : セブンか(r) ? {k: g / 100
 function 食の値(d, 区分){
   const rec = (食べた()[d] || {})[区分];
   if (rec) return {kcal: rec.kcal || 0, P: rec.p || 0, 名: rec.名前 || '記録済み', 状態: rec.外 ? '外' : '済', rec, r: rec.id ? R食(rec.id) : null};
+  const 決 = 食の決まり(d, 区分);
+  if (決 === 'なし') return {kcal: 0, P: 0, 名: '食べない', 状態: '抜き'};
+  if (決) return {kcal: 見込み[区分] || 500, P: {朝: 15, 昼: 25, 夕: 25}[区分] || 10, 名: 決, 状態: '外の予定'};
   const id = (献立()[d] || {})[区分], r = id && R食(id), e = (献立E[d] || {})[区分] || {};
   if (r){
     const s = 区分 === '夕' ? 主食の値(r, 主食g(r, d)) : e.主食 && !(上書き()[d] || {})[区分] ? {k: Math.round(e.主食 * 1.56), P: 主食P(e.主食)} : {k: 0, P: 0};
     return {kcal: r['kcal'] + s.k, P: r['たんぱく質'] + s.P, 名: r['名前'], 状態: '予定', r};
   }
-  if (区分 === '夕' && 外食(d)) return {kcal: 見込み.夕, P: 25, 名: 外食(d), 状態: '外の予定'};
   return {kcal: 0, P: 0, 名: null, 状態: 'なし'};
 }
 function 日のたんぱく質(d){ return 区分の順.reduce((a, k) => a + 食の値(d, k).P, 0) }
@@ -1033,8 +1077,8 @@ function 食事の状況(){
   const 夕 = 値['夕'], 枠 = 夕食の枠(d), g = 夕.r && !夕.rec ? 主食g(夕.r, d, 枠) : null;
   const 届いた = 保存.get('判定結果', null);
   const rows = 区分の順.map(k => {
-    const v = 値[k], cls = v.状態 === '済' ? 'done' : v.状態 === '外' ? 'out' : v.状態 === 'なし' ? 'none' : '';
-    const sub = v.名 ? `<small><b>${Math.round(v.kcal)}</b> kcal・P <b>${Math.round(v.P)}</b> g${v.状態 === '外' ? '・外食' : v.状態 === '済' ? '・食べた' : v.状態 === '外の予定' ? '・見込み' : ''}</small>` : '<small>献立を選ぶ</small>';
+    const v = 値[k], cls = v.状態 === '済' ? 'done' : v.状態 === '外' ? 'out' : v.状態 === 'なし' || v.状態 === '抜き' ? 'none' : '';
+    const sub = v.状態 === '抜き' ? '<small>予定に入れない</small>' : v.名 ? `<small><b>${Math.round(v.kcal)}</b> kcal・P <b>${Math.round(v.P)}</b> g${v.状態 === '外' ? '・外食' : v.状態 === '済' ? '・食べた' : v.状態 === '外の予定' ? '・見込み' : ''}</small>` : '<small>献立を選ぶ</small>';
     return `<div class="ml ${cls}"><span class="label">${区分名[k]}</span>
       <button type="button" class="mn" data-k="${k}">${v.名 ? 名(v.名) : '未設定'}${sub}</button>
       <button type="button" class="icon" data-ok="${k}" aria-pressed="${v.状態 === '済'}" aria-label="${区分名[k]}を食べた" title="食べた"${v.r && v.状態 !== '外' ? '' : ' style="visibility:hidden" tabindex="-1" aria-hidden="true"'}>${済み印}</button>
@@ -1052,12 +1096,7 @@ function 食事の状況(){
     ${届いた ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="linkbtn" id="b-judged">判定が届いています ─ ${esc((届いた.結果 || {}).title || '')}</button><button type="button" class="more" id="b-judged-x">消す</button></div>` : ''}
     <button type="button" class="go food" id="b-log">${外印}外で食べたものを記録</button>`;
   const ctx = $('ctx');
-  ctx.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => {
-    const k = b.dataset.k, v = 値[k];
-    if (v.rec && !v.r) 記録シート(k, d);
-    else if (v.r) シート(v.r, k, d);
-    else { 好み.区分 = k; 保存.set('好み', 好み); 食事() }
-  }));
+  ctx.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => 枠シート(b.dataset.k, d)));
   ctx.querySelectorAll('[data-ok]').forEach(b => b.addEventListener('click', () => {
     const k = b.dataset.ok, v = 値[k];
     if (v.状態 === '済') 食べたを記す(d, k, null);
@@ -1292,13 +1331,15 @@ function 絞り込み(){
 }
 let 全部見る = false;
 function 提案(){
-  const d = 今日(), 区分 = 好み.区分, list = 候補(区分, d), 型 = 日の型(d);
+  if (選ぶ日 && 選ぶ日 < 今日()) 選ぶ日 = null;
+  const d = 選ぶ日 || 今日(), 区分 = 好み.区分, list = 候補(区分, d), 型 = 日の型(d);
   const 今の = (献立()[d] || {})[区分];
   const box = $('picks');
   const n = 全部見る ? list.length : Math.min(3, list.length);
   const 条件 = [好み.調達 === 'セブン' ? 'セブン‐イレブン' : 時間の段[好み.忙しさ - 1][1] + '以内', ...好み.味, ...好み.傾向].join('・');
   const 枠 = 区分 === '夕' ? Math.max(0, Math.round(夕食の枠(d))) : null;
-  box.innerHTML = `<div class="toolbar"><p class="label">提案 ─ ${区分名[区分]}${枠 !== null ? `・目安 ${枠} kcal` : ''}</p><span class="pill t-food">${esc(条件)}・${list.length}件</span></div>`;
+  box.innerHTML = `<div class="toolbar"><p class="label">提案 ─ ${d === 今日() ? '' : 日の名(d) + 'の'}${区分名[区分]}${枠 !== null ? `・目安 ${枠} kcal` : ''}</p><span class="pill t-food">${esc(条件)}・${list.length}件</span></div>${d === 今日() ? '' : '<button type="button" class="more" id="b-pick-today" style="align-self:flex-start">本日の提案に戻す</button>'}`;
+  const bt = $('b-pick-today'); if (bt) bt.addEventListener('click', () => { 選ぶ日 = null; 提案() });
   if (!list.length){ box.innerHTML += '<p class="empty">該当なし。調理時間を延ばすか条件を解除</p>'; return }
   list.slice(0, n).forEach((r, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'pick';
@@ -1361,7 +1402,7 @@ function シート(r, 区分, d){
   p.querySelectorAll('.howto li').forEach(li => li.addEventListener('click', () => li.classList.toggle('ok')));
   $('sh-x').addEventListener('click', シートを閉じる);
   $('sh-add').addEventListener('click', () => {
-    const dd = $('sh-day').value; 献立に入れる(dd, r['区分'], r.id);
+    const dd = $('sh-day').value; 献立に入れる(dd, r['区分'], r.id); 選ぶ日 = null;
     シートを閉じる(); 知らせ(`${dd === 今日() ? '本日' : 日の名(dd)}の${区分名[r['区分']]}に追加`); 全体();
   });
   const del = $('sh-del');
@@ -1369,6 +1410,47 @@ function シート(r, 区分, d){
     献立に入れる(d, 区分, null);
     シートを閉じる(); 知らせ(`${日名}の${区分名[区分]}から外した`); 全体();
   });
+  $('sh-x').focus();
+}
+/* ── 食事の設定（どの日のどの食事でも）：献立・おまかせ・外で食べる（場所は自由）・食べない ── */
+function 枠シート(区分, d){
+  const v = 食の値(d, 区分), 決 = 食の決まり(d, 区分), 日名 = d === 今日() ? '本日' : 日の名(d);
+  const E連携 = Object.keys(献立E).length > 0, id = (献立()[d] || {})[区分], r = id && R食(id);
+  const 自分で = 決 || (r && (!E連携 || 指定か(d, 区分)));
+  const いま = v.rec ? `${v.rec.外 ? '外で食べた' : '食べた'}：${v.名}` : 決 === 'なし' ? '食べない' : 決 ? `外で食べる：${決}` : r ? r['名前'] + (E連携 && !指定か(d, 区分) ? '（おまかせ）' : '') : '未設定';
+  const 例 = {朝: ['外食', 'コンビニ', '実家で朝食'], 昼: ['外食', 'コンビニ', '弁当', '実家で昼食'], 夕: ['実家で夕食', '外食', '会食', 'コンビニ']}[区分] || ['外食'];
+  const p = $('panel');
+  p.innerHTML = `
+    <span class="grab" aria-hidden="true"></span>
+    <div class="hd"><div><p class="label">${esc(日名)}</p><h2 id="sh-title">${区分名[区分]}の設定</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
+    <p class="fs-now"><span>いま</span><b>${名(いま)}</b></p>
+    <section><p class="label" style="margin-bottom:8px">献立</p><div class="fs-list">
+      ${r && !決 ? `<button type="button" class="fs-row" id="fs-see">作り方を見る</button>` : ''}
+      <button type="button" class="fs-row" id="fs-pick">候補から選ぶ</button>
+      ${自分で ? `<button type="button" class="fs-row" id="fs-auto">${E連携 ? 'おまかせに戻す（自動で決める）' : '献立を外す'}</button>` : ''}
+    </div></section>
+    <section><p class="label" style="margin-bottom:8px">外で食べる</p>
+      <div class="chips">${例.map(t => `<button type="button" class="chip" data-t="${esc(t)}" aria-pressed="${決 === t}">${esc(t)}</button>`).join('')}</div>
+      <div class="addrow"><input class="text" id="fs-place" type="text" enterkeyhint="done" placeholder="例：友人宅で夕食" aria-label="場所や店の名前" value="${決 && 決 !== 'なし' && !例.includes(決) ? esc(決) : ''}" style="flex:1 1 180px;width:auto;height:48px">
+        <button type="button" class="go food" id="fs-set" style="flex:0 0 auto;padding:12px 18px;font-size:15px">決める</button></div>
+    </section>
+    <section><div class="fs-list"><button type="button" class="fs-row" id="fs-skip" aria-pressed="${決 === 'なし'}">${決 === 'なし' ? '食べない（押すと、ふつうどおりに戻す）' : 'この食事は食べない'}</button></div></section>
+    ${v.rec ? '<div style="display:flex;justify-content:center"><button type="button" class="more" id="fs-rec">食べた記録を見る・消す</button></div>' : ''}`;
+  $('sheet').hidden = false; document.body.style.overflow = 'hidden';
+  const 済 = t => { シートを閉じる(); 知らせ(t); 全体() };
+  $('sh-x').addEventListener('click', シートを閉じる);
+  const see = $('fs-see'); if (see) see.addEventListener('click', () => シート(r, 区分, d));
+  $('fs-pick').addEventListener('click', () => {
+    選ぶ日 = d === 今日() ? null : d; 好み.区分 = 区分; 保存.set('好み', 好み);
+    シートを閉じる(); 画面('food'); $('picks').scrollIntoView({behavior: 'smooth', block: 'start'});
+  });
+  const au = $('fs-auto'); if (au) au.addEventListener('click', () => { if (決) 食を決める(d, 区分, ''); 献立に入れる(d, 区分, null); 済(`${日名}の${区分名[区分]}を${E連携 ? 'おまかせに戻した' : '外した'}`) });
+  p.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => { 食を決める(d, 区分, b.dataset.t); 済(`${日名}の${区分名[区分]}：${b.dataset.t}`) }));
+  const 決める = () => { const t = ($('fs-place').value || '').trim().slice(0, 30); if (!t){ 知らせ('場所や店の名前を入れてください'); return } 食を決める(d, 区分, t); 済(`${日名}の${区分名[区分]}：${t}`) };
+  $('fs-set').addEventListener('click', 決める);
+  $('fs-place').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); 決める() } });
+  $('fs-skip').addEventListener('click', () => { if (決 === 'なし'){ 食を決める(d, 区分, ''); 済(`${日名}の${区分名[区分]}をふつうどおりに戻した`) } else { 食を決める(d, 区分, 'なし'); 済(`${日名}の${区分名[区分]}は食べない`) } });
+  const rc = $('fs-rec'); if (rc) rc.addEventListener('click', () => 記録シート(区分, d));
   $('sh-x').focus();
 }
 function シートを閉じる(){ $('sheet').hidden = true; document.body.style.overflow = '' }
@@ -1431,7 +1513,8 @@ function 直しを片付ける(){
 const 売り場の順 = ['肉魚', '卵豆乳', '野菜', '冷凍', '乾物缶', 'コンビニ', '調味料'];
 const 売り場の名 = {肉魚: '肉・魚', 卵豆乳: '卵・豆腐・乳製品', 野菜: '野菜・果物', 冷凍: '冷凍食品', 乾物缶: '缶詰・乾物', コンビニ: 'コンビニ', 調味料: '常備調味料'};
 const 七日 = () => Array.from({length: 7}, (_, i) => 日付(足す日(new Date(), i)));
-const 外食 = d => (予定[d] && 予定[d]['夕食']) || (外食の日[d] || null);
+const 外食 = d => 外の予定(d, '夕');
+const 夕の決まり = d => 食の決まり(d, '夕');   // 外食・なし のどちらか（献立を入れない日）
 let 外食の日 = {};
 function 自動作成(全部){
   const k = 献立(), 使用 = new Set(), 主の数 = {};
@@ -1439,7 +1522,7 @@ function 自動作成(全部){
   for (const d of 七日()) if (!全部 && k[d] && k[d]['夕']) 数える(k[d]['夕']);
   let n = 0;
   for (const d of 七日()){
-    if (外食(d)){ if (全部) 献立に入れる(d, '夕', null); continue }
+    if (夕の決まり(d)){ if (全部) 献立に入れる(d, '夕', null); continue }
     if (!全部 && k[d] && k[d]['夕']) continue;
     const c = 候補('夕', d, 使用, 主の数)[0]; if (!c) continue;
     献立に入れる(d, '夕', c.id); 数える(c.id); n++;
@@ -1449,7 +1532,7 @@ function 自動作成(全部){
 }
 function 入れ替え(d){
   const k = 献立(), 今 = k[d] && k[d]['夕'];
-  if (外食(d)) return;
+  if (夕の決まり(d)) return;
   const 使用 = new Set(七日().map(x => (k[x] || {})['夕']).filter(Boolean));
   const 次 = 候補('夕', d, 使用).find(r => r.id !== 今);
   if (次){ 献立に入れる(d, '夕', 次.id); 全体() }
@@ -1461,20 +1544,20 @@ function 買い物(){
   連携の表示(); 家の食材();
   let 数 = 0;
   wp.innerHTML = 七日().map(d => {
-    const x = k[d] || {}, r = x['夕'] && R食(x['夕']), 型 = 日の型(d);
-    if (r) 数++;
-    const ほか = ['朝', '昼'].map(z => x[z] && R食(x[z]) ? `<span class="z" data-d="${d}" data-z="${z}">${esc(区分名[z].slice(0, 1))}：${名(R食(x[z])['名前'])}${E連携 && 指定か(d, z) ? '（指定）' : ''}</span>` : null).filter(Boolean).join('／');
-    const 外 = 外食(d);
-    if (外 && !r) return `<div class="wp"><div class="d">${Number(d.slice(5,7))}/${Number(d.slice(8))}<small>${d === 今日() ? '本日' : 曜[new Date(d + 'T00:00').getDay()] + '曜'}</small></div><div class="n none">${esc(外)}</div><div class="ops"></div></div>`;
+    const x = k[d] || {}, 決 = 夕の決まり(d), r = !決 && x['夕'] && R食(x['夕']), 型 = 日の型(d);
+    if (r || 決) 数++;
+    const 行 = 区分の順.map(z => {
+      const v = 食の値(d, z), cls = v.状態 === '抜き' ? 'skip' : v.状態 === '外の予定' || v.状態 === '外' ? 'out' : v.名 ? '' : 'none';
+      const 印 = E連携 && v.状態 === '予定' && 指定か(d, z) ? '<span class="pill t-food">指定</span>' : v.状態 === '済' ? '<span class="pill t-go">食べた</span>' : '';
+      return `<button type="button" class="sl ${cls}" data-d="${d}" data-z="${z}" aria-label="${日の名(d)}の${区分名[z]}を設定"><span class="k">${区分名[z].slice(0, 1)}</span><span class="t">${v.名 ? 名(v.名) : '未設定'}${印}</span></button>`;
+    }).join('');
     return `<div class="wp"><div class="d">${Number(d.slice(5,7))}/${Number(d.slice(8))}<small>${d === 今日() ? '本日' : 曜[new Date(d + 'T00:00').getDay()] + '曜'}${型.記 ? '・' + 型.記 : ''}</small></div>
-      <div class="n ${r ? '' : 'none'}" data-d="${d}">${r ? 名(r['名前']) : '未設定'}${r && E連携 ? ` <span class="pill ${指定か(d, '夕') ? 't-food' : ''}" style="font-size:10px;padding:1px 7px;vertical-align:2px">${指定か(d, '夕') ? '指定' : 'おまかせ'}</span>` : ''}${ほか ? `<small>${ほか}</small>` : ''}</div>
-      <div class="ops">${r ? `<button type="button" class="icon" data-swap="${d}" aria-label="入れ替え" title="入れ替え"><svg viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg></button>${E連携 ? (指定か(d, '夕') ? `<button type="button" class="icon" data-del="${d}" aria-label="おまかせに戻す" title="おまかせに戻す"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>` : '') : `<button type="button" class="icon" data-del="${d}" aria-label="削除" title="削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`}` : `<button type="button" class="icon" data-swap="${d}" aria-label="自動で設定" title="自動で設定"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`}</div></div>`;
+      <div class="ls">${行}</div>
+      <div class="ops">${r ? `<button type="button" class="icon" data-swap="${d}" aria-label="夕食を入れ替え" title="夕食を入れ替え"><svg viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg></button>` : 決 ? '' : `<button type="button" class="icon" data-swap="${d}" aria-label="夕食を自動で設定" title="夕食を自動で設定"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`}</div></div>`;
   }).join('');
   $('wp-count').textContent = `${数}/7`;
   wp.querySelectorAll('[data-swap]').forEach(b => b.addEventListener('click', () => 入れ替え(b.dataset.swap)));
-  wp.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => { 献立に入れる(b.dataset.del, '夕', null); 全体() }));
-  wp.querySelectorAll('.z[data-z]').forEach(z => z.addEventListener('click', e => { e.stopPropagation(); const id = (献立()[z.dataset.d] || {})[z.dataset.z]; if (id) シート(R食(id), z.dataset.z, z.dataset.d) }));
-  wp.querySelectorAll('.n[data-d]').forEach(n => n.addEventListener('click', () => { const r = (献立()[n.dataset.d] || {})['夕']; if (r) シート(R食(r), '夕', n.dataset.d) }));
+  wp.querySelectorAll('.sl').forEach(b => b.addEventListener('click', () => 枠シート(b.dataset.z, b.dataset.d)));
 
   // EDIT FLOW の買い物リスト（リマインダー「買い物」と同じ中身）
   if (E連携 && 買い物E && 買い物E['もの']){
@@ -1859,7 +1942,7 @@ function ハッシュから(){
 async function 予定を読む(ハッシュ){
   try{
     const r = await fetch('予定.json?t=' + Date.now(), {cache:'no-store'});
-    if (r.ok){ const j = await r.json(); 予定 = j['日'] || {}; 外食の日 = j['外食'] || {}; 献立E = j['献立'] || {}; 買い物E = j['買い物'] && j['買い物']['日'] ? j['買い物'] : null; 栄養E = j['栄養'] || {}; 在庫E = j['在庫'] || {}; 使い切れないE = j['使い切れない'] || []; 期限切れE = j['期限切れ'] || []; 食材E = j['食材'] || {}; 上書きを片付ける(); 直しを片付ける() }
+    if (r.ok){ const j = await r.json(); 予定 = j['日'] || {}; 外食の日 = j['外食'] || {}; 食予E = j['食の予定'] || {}; 献立E = j['献立'] || {}; 買い物E = j['買い物'] && j['買い物']['日'] ? j['買い物'] : null; 栄養E = j['栄養'] || {}; 在庫E = j['在庫'] || {}; 使い切れないE = j['使い切れない'] || []; 期限切れE = j['期限切れ'] || []; 食材E = j['食材'] || {}; 上書きを片付ける(); 食予を片付ける(); 直しを片付ける() }
   }catch(e){}
   const {x, y} = 今日の予定();
   if (!ハッシュ.k){ if (x) 選 = x['記号']; else if (y) 選 = y['記号'] }
@@ -1881,7 +1964,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=fa8ddf4c', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=c570b1cc', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
