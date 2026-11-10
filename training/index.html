@@ -1056,7 +1056,15 @@ function 画を縮める(file){
   });
 }
 let 判定の時計 = null, 記録の区分 = '昼';
-/* Gemini の鍵（AIza…）はこの端末の localStorage にだけ置き、Google の API のほかへは送らない */
+/* Gemini の鍵（新しい形は AQ.…、前の形は AIza…）はこの端末の localStorage にだけ置き、Google の API のほかへは送らない */
+const G先 = () => `https://generativelanguage.googleapis.com/v1beta/models/${Gのモデル}:generateContent`;
+async function G呼ぶ(鍵, body){
+  // ふつうは x-goog-api-key の欄で渡す。401・403 で断られたら、URL に付ける渡し方でもう一度（新しい形の鍵で断られる例があるため）
+  const r = await fetch(G先(), {method: 'POST', headers: {'Content-Type': 'application/json', 'x-goog-api-key': 鍵}, body: JSON.stringify(body)});
+  if (r.status !== 401 && r.status !== 403) return r;
+  return fetch(G先() + '?key=' + encodeURIComponent(鍵), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+}
+const G理由 = async r => { try{ const j = await r.clone().json(); return ((j.error || {}).status || '') + ' ' + ((j.error || {}).message || '') }catch(e){ return '' } };
 const 鍵G = () => { try{ return localStorage.getItem('nagara:gemini') || '' }catch(e){ return '' } };
 const Gのモデル = 'gemini-3.5-flash-lite';
 function G指示(区分, 文, 写真あり){
@@ -1073,13 +1081,13 @@ async function Gで判定(区分, 文, 画, 検索 = true){
   const parts = [{text: G指示(区分, 文, !!画)}];
   if (画) parts.push({inline_data: {mime_type: 'image/jpeg', data: 画.split(',')[1]}});
   const body = {contents: [{role: 'user', parts}], generationConfig: {temperature: 0.2}, ...(検索 ? {tools: [{google_search: {}}]} : {})};
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${Gのモデル}:generateContent`, {method: 'POST', headers: {'Content-Type': 'application/json', 'x-goog-api-key': 鍵}, body: JSON.stringify(body)});
+  const r = await G呼ぶ(鍵, body);
   const j = await r.json().catch(() => ({}));
   if (!r.ok){
     const m = ((j.error || {}).message || '') + '';
     // 無料の鍵では Google 検索が使えない。そのときは検索なしでもう一度
     if (検索 && (r.status === 400 || r.status === 403 || r.status === 429) && /search|ground|tool|free|tier|billing|quota/i.test(m)) return Gで判定(区分, 文, 画, false);
-    throw new Error(r.status === 400 && /API key/i.test(m) ? '鍵が無効' : r.status === 429 ? '回数の上限（少し待つ）' : `判定できなかった（${r.status}）`);
+    throw new Error((r.status === 400 || r.status === 401) && /API key not valid/i.test(m) ? '鍵が無効（コピーが途中で切れていないか確認）' : r.status === 429 ? '回数の上限（少し待つ）' : `判定できなかった（${r.status}：${m.slice(0, 120)}）`);
   }
   const c = (j.candidates || [])[0] || {};
   const 字 = ((c.content || {}).parts || []).map(x => x.text || '').join('');
@@ -1092,8 +1100,8 @@ async function Gで判定(区分, 文, 画, 検索 = true){
 }
 function 鍵の欄(){
   return `<section class="fl" id="g-set"><p class="label"><span>AI の判定（Google の Gemini）</span></p>
-    <p class="muted" style="font-size:13px">鍵（AIza…）を一度入れると、写真や店・メニューの名前から判定できます。鍵はこの iPhone の中だけに置きます。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--food)">鍵を作る</a></p>
-    <div class="addrow"><input class="text" id="g-key" type="password" autocomplete="off" placeholder="AIza…" style="flex:1 1 200px"><button type="button" class="go ghost" id="g-save" style="flex:0 0 auto;padding:12px 18px;font-size:15px;letter-spacing:.06em">保存</button></div></section>`;
+    <p class="muted" style="font-size:13px">鍵（AQ. か AIza で始まる文字）を一度入れると、写真や店・メニューの名前から判定できます。鍵はこの iPhone の中だけに置きます。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--food)">鍵を作る</a></p>
+    <div class="addrow"><input class="text" id="g-key" type="password" autocomplete="off" placeholder="AQ.… または AIza…" style="flex:1 1 200px"><button type="button" class="go ghost" id="g-save" style="flex:0 0 auto;padding:12px 18px;font-size:15px;letter-spacing:.06em">保存</button></div></section>`;
 }
 async function 判定を頼む(区分, d, 文, 画){
   const t = 連携.鍵(); if (!t) throw new Error('EDIT FLOW 連携が未接続（買い物タブで接続）');
@@ -1175,11 +1183,16 @@ function 記録シート(区分 = 今の区分(), d = 今日()){
   const gs = $('g-save');
   if (gs) gs.addEventListener('click', async () => {
     const v = ($('g-key').value || '').trim();
-    if (!/^AIza[0-9A-Za-z_\-]{30,}$/.test(v)){ 知らせ('鍵の形が違う（AIza で始まる）'); return }
+    if (!/^(AIza|AQ\.)\S{20,}$/.test(v)){ 知らせ('鍵の形が違う（AQ. か AIza で始まる）'); return }
     gs.disabled = true; gs.textContent = '確認中';
     try{
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${Gのモデル}:generateContent`, {method: 'POST', headers: {'Content-Type': 'application/json', 'x-goog-api-key': v}, body: JSON.stringify({contents: [{parts: [{text: 'OK とだけ返す'}]}]})});
-      if (!r.ok){ 知らせ(r.status === 400 ? '鍵が無効' : `確認できない（${r.status}）`); gs.disabled = false; gs.textContent = '保存'; return }
+      const r = await G呼ぶ(v, {contents: [{parts: [{text: 'OK とだけ返す'}]}]});
+      if (!r.ok){
+        const 理 = await G理由(r);
+        知らせ((r.status === 400 || r.status === 401) && /API key not valid/i.test(理) ? '鍵が無効' : `確認できない（${r.status}）`);
+        $('rc-out').innerHTML = `<p class="tip">鍵を確かめられなかった（${r.status}）。Google の答え：${esc(理.slice(0, 200)) || 'なし'}</p>`;
+        gs.disabled = false; gs.textContent = '保存'; return;
+      }
     }catch(e){ 知らせ('オフライン'); gs.disabled = false; gs.textContent = '保存'; return }
     try{ localStorage.setItem('nagara:gemini', v) }catch(e){}
     $('g-set').remove(); 知らせ('Gemini の鍵を保存');
@@ -1809,7 +1822,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=59a7c948', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=8530f319', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
