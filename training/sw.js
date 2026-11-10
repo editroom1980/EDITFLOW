@@ -1,5 +1,5 @@
-// ながら宅トレの service worker：画面を覚えておき、電波が無くても開けるようにする。新しい版は次に開いたときに入れ替わる
-const 版 = 'nagara-2c13bd81';
+// FIT&EAT の service worker：画面を覚えておき、電波が無くても開けるようにする。新しい版は次に開いたときに入れ替わる
+const 版 = 'nagara-b32b13d9';
 const 部品 = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(版).then(c => c.addAll(部品)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

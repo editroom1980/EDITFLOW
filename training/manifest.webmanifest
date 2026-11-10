@@ -1,13 +1,13 @@
 {
-  "name": "ながら宅トレ",
-  "short_name": "宅トレ",
+  "name": "FIT&EAT",
+  "short_name": "FIT&EAT",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0E1517",
-  "theme_color": "#0E1517",
+  "background_color": "#4A0C16",
+  "theme_color": "#4A0C16",
   "icons": [
     {
       "src": "icon-192.png",
