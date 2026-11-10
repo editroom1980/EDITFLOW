@@ -325,6 +325,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .wp .n{font-weight:700;font-size:15px;overflow-wrap:anywhere;cursor:pointer}
 .wp .n.none{color:var(--muted);font-weight:400}
 .wp .n small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.wp .n small .z{text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
 .wp .ops{display:flex;gap:6px}
 .icon{appearance:none;border:1px solid var(--line);background:var(--raise);border-radius:12px;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .icon svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -1341,6 +1342,9 @@ function シート(r, 区分, d){
   const 主P = 主食の値(r, g).P, 主K = 主食の値(r, g).k;
   const 無 = 足りない(r), 近い = d <= 日付(足す日(new Date(), 1));
   const 日々 = Array.from({length: 7}, (_, i) => 日付(足す日(new Date(), i)));
+  // 自分で追加した献立（指定）なら外せる。EDIT FLOW と連携していれば、外すとおまかせの献立に戻る
+  const E連携 = Object.keys(献立E).length > 0, 入っている = d && (献立()[d] || {})[区分] === r.id;
+  const 外せる = 入っている && (!E連携 || 指定か(d, 区分)), 日名 = d === 今日() ? '本日' : 日の名(d);
   const p = $('panel');
   p.innerHTML = `
     <span class="grab" aria-hidden="true"></span>
@@ -1351,13 +1355,19 @@ function シート(r, 区分, d){
     <section><p class="label" style="margin-bottom:8px">手順</p><ol class="howto">${r['作り方'].map(s => `<li>${esc(s)}</li>`).join('')}</ol></section>
     ${r['コツ'] ? `<p class="tip">${esc(r['コツ'])}</p>` : ''}${セブンか(r) ? '<p class="muted" style="font-size:12px">☆は目安の値。価格・栄養はパッケージ表示が正</p>' : ''}
     <div class="addrow"><select id="sh-day" aria-label="日付">${日々.map(x => `<option value="${x}" ${x === d ? 'selected' : ''}>${x === 今日() ? '本日' : 日の名(x)}</option>`).join('')}</select>
-      <button type="button" class="go food" id="sh-add">献立に追加</button></div>`;
+      <button type="button" class="go food" id="sh-add">献立に追加</button></div>
+    ${外せる ? `<div style="display:flex;justify-content:center"><button type="button" class="more" id="sh-del">${日名}の${区分名[区分]}から外す${E連携 ? '（おまかせに戻す）' : ''}</button></div>` : ''}`;
   $('sheet').hidden = false; document.body.style.overflow = 'hidden';
   p.querySelectorAll('.howto li').forEach(li => li.addEventListener('click', () => li.classList.toggle('ok')));
   $('sh-x').addEventListener('click', シートを閉じる);
   $('sh-add').addEventListener('click', () => {
     const dd = $('sh-day').value; 献立に入れる(dd, r['区分'], r.id);
     シートを閉じる(); 知らせ(`${dd === 今日() ? '本日' : 日の名(dd)}の${区分名[r['区分']]}に追加`); 全体();
+  });
+  const del = $('sh-del');
+  if (del) del.addEventListener('click', () => {
+    献立に入れる(d, 区分, null);
+    シートを閉じる(); 知らせ(`${日名}の${区分名[区分]}から外した`); 全体();
   });
   $('sh-x').focus();
 }
@@ -1453,16 +1463,17 @@ function 買い物(){
   wp.innerHTML = 七日().map(d => {
     const x = k[d] || {}, r = x['夕'] && R食(x['夕']), 型 = 日の型(d);
     if (r) 数++;
-    const ほか = ['朝', '昼'].map(z => x[z] && R食(x[z]) ? R食(x[z])['名前'] : null).filter(Boolean).join('／');
+    const ほか = ['朝', '昼'].map(z => x[z] && R食(x[z]) ? `<span class="z" data-d="${d}" data-z="${z}">${esc(区分名[z].slice(0, 1))}：${名(R食(x[z])['名前'])}${E連携 && 指定か(d, z) ? '（指定）' : ''}</span>` : null).filter(Boolean).join('／');
     const 外 = 外食(d);
     if (外 && !r) return `<div class="wp"><div class="d">${Number(d.slice(5,7))}/${Number(d.slice(8))}<small>${d === 今日() ? '本日' : 曜[new Date(d + 'T00:00').getDay()] + '曜'}</small></div><div class="n none">${esc(外)}</div><div class="ops"></div></div>`;
     return `<div class="wp"><div class="d">${Number(d.slice(5,7))}/${Number(d.slice(8))}<small>${d === 今日() ? '本日' : 曜[new Date(d + 'T00:00').getDay()] + '曜'}${型.記 ? '・' + 型.記 : ''}</small></div>
-      <div class="n ${r ? '' : 'none'}" data-d="${d}">${r ? 名(r['名前']) : '未設定'}${r && E連携 ? ` <span class="pill ${指定か(d, '夕') ? 't-food' : ''}" style="font-size:10px;padding:1px 7px;vertical-align:2px">${指定か(d, '夕') ? '指定' : 'おまかせ'}</span>` : ''}${ほか ? `<small>${esc(ほか)}</small>` : ''}</div>
+      <div class="n ${r ? '' : 'none'}" data-d="${d}">${r ? 名(r['名前']) : '未設定'}${r && E連携 ? ` <span class="pill ${指定か(d, '夕') ? 't-food' : ''}" style="font-size:10px;padding:1px 7px;vertical-align:2px">${指定か(d, '夕') ? '指定' : 'おまかせ'}</span>` : ''}${ほか ? `<small>${ほか}</small>` : ''}</div>
       <div class="ops">${r ? `<button type="button" class="icon" data-swap="${d}" aria-label="入れ替え" title="入れ替え"><svg viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></svg></button>${E連携 ? (指定か(d, '夕') ? `<button type="button" class="icon" data-del="${d}" aria-label="おまかせに戻す" title="おまかせに戻す"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>` : '') : `<button type="button" class="icon" data-del="${d}" aria-label="削除" title="削除"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`}` : `<button type="button" class="icon" data-swap="${d}" aria-label="自動で設定" title="自動で設定"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`}</div></div>`;
   }).join('');
   $('wp-count').textContent = `${数}/7`;
   wp.querySelectorAll('[data-swap]').forEach(b => b.addEventListener('click', () => 入れ替え(b.dataset.swap)));
   wp.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => { 献立に入れる(b.dataset.del, '夕', null); 全体() }));
+  wp.querySelectorAll('.z[data-z]').forEach(z => z.addEventListener('click', e => { e.stopPropagation(); const id = (献立()[z.dataset.d] || {})[z.dataset.z]; if (id) シート(R食(id), z.dataset.z, z.dataset.d) }));
   wp.querySelectorAll('.n[data-d]').forEach(n => n.addEventListener('click', () => { const r = (献立()[n.dataset.d] || {})['夕']; if (r) シート(R食(r), '夕', n.dataset.d) }));
 
   // EDIT FLOW の買い物リスト（リマインダー「買い物」と同じ中身）
@@ -1870,7 +1881,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=339ffcec', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=fa8ddf4c', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
