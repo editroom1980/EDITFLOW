@@ -493,6 +493,9 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 }
 .wp .n,.pick .n,.slot .n,.sheet h2,.hero .name,.mrow .n,.howto li{text-wrap:pretty}
 .wp .n,.pick .n,.slot .n,.sheet h2{word-break:keep-all;overflow-wrap:anywhere}
+/* 種目名・メニュー名も、改行は名() が入れる所（かっこの前など）だけ。「（」が行の端に残らないように（2026-11-11 依頼者「見苦しい」） */
+.nb{white-space:nowrap}
+.ex,.run .target,.run .next,.mrow .n,.hero .name,.ladder .nm,.ladder .nx,.mplan .it .nm2,.title .name{word-break:keep-all;overflow-wrap:anywhere;text-wrap:balance}
 @media (max-width:420px){
   .wp{grid-template-columns:46px minmax(0,1fr) auto;gap:8px}
   .wp .ops{gap:4px}
@@ -648,7 +651,9 @@ function 画面の色を当てる(t){
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 /* 献立の名前：語の途中で折り返さないよう、区切り（＋・の・と・括弧）の後ろだけで折る */
-const 名 = s => esc(s).replace(/([＋・のと）])/g, '$1<wbr>').replace(/（/g, '<wbr>（').replace(/([ぁ-ん一-龯])(?=[ァ-ヴ])/g, '$1<wbr>');
+/* 名前の改行：かっこの中は一続き（途中で切らない）。改行するなら、かっこの前で、かっこごと次の行へ（2026-11-11 依頼者「（が端っこに表示されている。見苦しい」） */
+const 名の中 = s => esc(s).replace(/([＋・のと])/g, '$1<wbr>').replace(/([ぁ-ん一-龯])(?=[ァ-ヴ])/g, '$1<wbr>');
+const 名 = s => String(s).split(/(（[^）]*）)/).map(x => x.startsWith('（') ? `<wbr><span class="nb">${esc(x)}</span><wbr>` : 名の中(x)).join('');
 const 設定 = {段: 保存.get('段', 運動['いまの段'] || 1), 声: 保存.get('声', true), 音: 保存.get('音', true), 励まし: 保存.get('励まし', true), 拍: 保存.get('拍', true), 短く: false};
 const 目標 = 運動['週の回数'] || 4;
 const 達成ライン = Math.max(1, 目標 - 1);
@@ -775,7 +780,7 @@ function ヒーロー(){
   h.innerHTML = `
     <svg class="deco" viewBox="0 0 100 100" aria-hidden="true"><circle class="t" cx="50" cy="50" r="40"/><circle class="a" cx="50" cy="50" r="40"/></svg>
     <div class="top">${pill}${x && x['軽い'] ? '<span class="pill t-prep"><abbr title="疲労を抜くため、ボリュームを落とす週。短縮を自動で適用">ディロード週</abbr></span>' : ''}</div>
-    <div class="title"><span class="k">${esc(記)}</span><span class="name">${esc(m['名前'])}</span></div>
+    <div class="title"><span class="k">${esc(記)}</span><span class="name">${名(m['名前'])}</span></div>
     <p class="sub">${esc(m['ひとこと'] || '')}</p>
     <div class="facts"><span><b>${Math.round(秒/60)}<small>分</small></b>時間</span><span><b>${種目数(段々)}</b>種目</span><span><b>${kcal(記, 秒)}<small>kcal</small></b>消費（推定）</span></div>
     <div class="actions">
@@ -817,7 +822,7 @@ function 体幹(){
   $('ladder').innerHTML = `
     <div class="row"><p class="label"><abbr title="デッドバグからドラゴンフラッグまでの6段階。3セット完遂で次のレベルへ">コア・プログレッション</abbr></p><span class="pill t-prep">Lv.${段}/${n}</span></div>
     <div class="steps">${bars}</div>
-    <div class="row"><div><p class="nm">${esc(段階[段 - 1]['名前'])}</p><p class="nx">${段 < n ? '次：' + esc(段階[段]['名前']) : 'ゴール'}</p></div>
+    <div class="row"><div><p class="nm">${名(段階[段 - 1]['名前'])}</p><p class="nx">${段 < n ? '次：' + 名(段階[段]['名前']) : 'ゴール'}</p></div>
       <div class="stepper"><button type="button" class="mini" id="b-down" ${段 <= 1 ? 'disabled' : ''} aria-label="レベルを下げる">−</button><button type="button" class="mini" id="b-up" ${段 >= n ? 'disabled' : ''} aria-label="レベルを上げる">＋</button></div></div>`;
   $('b-down').addEventListener('click', () => { 設定.段 = Math.max(1, 段 - 1); 保存.set('段', 設定.段); 描き直す() });
   $('b-up').addEventListener('click', () => { 設定.段 = Math.min(n, 段 + 1); 保存.set('段', 設定.段); 描き直す() });
@@ -854,7 +859,7 @@ function メニュー一覧(){
   for (const k of 順){
     const m = メ(k), 段々 = 展開(m['流れ'], 設定.段, 設定.短く);
     const b = document.createElement('button'); b.type = 'button'; b.className = 'mrow'; b.setAttribute('aria-current', String(k === 選));
-    b.innerHTML = `<span class="k">${esc(k)}</span><span><span class="n">${esc(m['名前'])}</span><span class="s">${esc(m['ひとこと'] || '')}</span></span><span class="t">${Math.round(合計秒(段々)/60)}分</span>`;
+    b.innerHTML = `<span class="k">${esc(k)}</span><span><span class="n">${名(m['名前'])}</span><span class="s">${esc(m['ひとこと'] || '')}</span></span><span class="t">${Math.round(合計秒(段々)/60)}分</span>`;
     b.addEventListener('click', () => { 選 = k; 描き直す(); $('scr').scrollTo({top:0, behavior:'smooth'}) });
     list.appendChild(b);
   }
@@ -867,7 +872,7 @@ function メニュー一覧(){
     if (s.名前 === '休み') continue;
     const r = document.createElement('div'); r.className = 'it tap'; r.tabIndex = 0; r.setAttribute('role', 'button');
     r.setAttribute('aria-label', `${s.名前}の動きの見本を見る`);
-    r.innerHTML = `<span>${esc(s.名前)}<span class="c">${esc(s.合図 || '')}</span></span><span class="see">${再生}見本</span><span class="t">${分秒(s.秒)}</span>`;
+    r.innerHTML = `<span class="nm2">${名(s.名前)}<span class="c">${esc(s.合図 || '')}</span></span><span class="see">${再生}見本</span><span class="t">${分秒(s.秒)}</span>`;
     r.addEventListener('click', () => 見本シート(s));
     r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); 見本シート(s) } });
     plan.appendChild(r);
@@ -1560,7 +1565,7 @@ function 見本シート(s){
   const p = $('panel');
   p.innerHTML = `
     <span class="grab" aria-hidden="true"></span>
-    <div class="hd"><div><p class="label">フォームの見本</p><h2 id="sh-title">${esc(s.名前)}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
+    <div class="hd"><div><p class="label">フォームの見本</p><h2 id="sh-title">${名(s.名前)}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
     <div class="figbox mini"><svg id="fig2" viewBox="0 0 280 240" role="img" aria-label="${esc(s.名前)}の動き"></svg><div class="beat" id="sh-beat"></div></div>
     <p class="tempo">1回：${esc(テンポの字(s.動き))}</p>
     ${s.合図 ? `<p>${esc(s.合図)}</p>` : ''}
@@ -1981,12 +1986,12 @@ function 段を見せる(){
   帯を合わせる();
   $('r-phase').textContent = 休み ? '休憩' : 回復 ? '休憩（その場で足踏み）' : 区切り名(s.区切り).replace(/ \d+\/\d+$/, '').replace(/^ラウンド.*/, 'ワーク');
   // 休みの間は、大きな字を「レスト」にし、次の種目は小さく出す（次の種目の名前を大きく出すと、本番と見分けにくい）
-  $('r-ex').textContent = 休み || 回復 ? 'レスト' : s.名前;
+  $('r-ex').innerHTML = 休み || 回復 ? 'レスト' : 名(s.名前);
   const 回 = (s.合図 || '').match(/(左右各?|各)?\d+〜?\d*回/);
-  $('r-target').textContent = 休み ? (次 ? `次：${次.名前}` : '') : 回復 ? '足踏みしながら呼吸を整える' : 回 ? `目標 ${回[0]}` : '';
+  $('r-target').innerHTML = 休み ? (次 ? `次：${名(次.名前)}` : '') : 回復 ? '足踏みしながら呼吸を整える' : 回 ? `目標 ${esc(回[0])}` : '';
   $('r-cue').textContent = s.合図 || '';
   $('r-cheer').textContent = '';
-  $('r-next').textContent = 次 ? `次 → ${次.名前 === '休み' || 回復か(次) ? 'レスト' : 次.名前}　${分秒(次.秒)}` : '次 → フィニッシュ';
+  $('r-next').innerHTML = 次 ? `次 → ${次.名前 === '休み' || 回復か(次) ? 'レスト' : 名(次.名前)}<wbr>　${分秒(次.秒)}` : '次 → フィニッシュ';
   $('r-pos').textContent = `${R.i + 1} / ${R.段々.length}`;
   $('r-round').textContent = 何種目目();
   $('b-plus').hidden = !休み;
@@ -2149,7 +2154,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '7（11/11 16:25）', 版の記号 = '648f5c89';
+const 版の名 = '8（11/11 16:28）', 版の記号 = 'cc378a4f';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2226,7 +2231,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=648f5c89', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=cc378a4f', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
