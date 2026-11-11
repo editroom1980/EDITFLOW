@@ -1440,9 +1440,14 @@ function 提案(){
     + (決 ? `<p class="tip">${d === 今日() ? '本日' : 日の名(d)}の${区分名[区分]}は「${esc(決 === 'なし' ? '食べない' : 決)}」に設定済み。下から選んで追加すると、献立に替わる</p>` : '')
     + (list.length ? '' : '<p class="empty">該当なし。調理時間を延ばすか条件を解除</p>');
   const bt = $('b-pick-today'); if (bt) bt.addEventListener('click', () => { 選ぶ日 = null; 提案() });
-  if (!list.length) return;
-  // 朝と間食は、スムージーをいつも先頭に出す（2026-11-11 依頼者「いつものスムージーも追加して選べるように」）
-  const 定番 = 区分 === '朝' || 区分 === '間食' ? list.filter(r => r['名前'].includes('スムージー')) : [];
+  if (!list.length && !レシピ.some(r => r['名前'].includes('スムージー'))) return;
+  // スムージーは、朝・昼・夕のどれでも、調理時間などの絞り込みに関係なく先頭に出す
+  // （2026-11-11 依頼者「朝食でも昼食でも夕食でも選べるように。昼にスムージーを摂取したのに選べなかった」）
+  // 自動で献立を埋めるとき（候補()）には足さない。自分で選ぶときだけ
+  const 除外語 = 好み.除外.split(/[、,\s]+/).filter(Boolean);
+  const 定番 = [...list.filter(r => r['名前'].includes('スムージー')),
+    ...レシピ.filter(r => r['名前'].includes('スムージー') && !list.includes(r) && !除外語.some(w => r['名前'].includes(w) || r['材料'].some(m => m[0].includes(w))))]
+    .sort((a, b) => (a['季節'] && (a['季節'] === '夏') !== 夏() ? 1 : 0) - (b['季節'] && (b['季節'] === '夏') !== 夏() ? 1 : 0));
   const 残り = list.filter(r => !定番.includes(r));
   const 表示 = [...定番, ...(全部見る ? 残り : 残り.slice(0, n))];
   表示.forEach((r, j) => {
@@ -1494,7 +1499,7 @@ function シート(r, 区分, d){
   const p = $('panel');
   p.innerHTML = `
     <span class="grab" aria-hidden="true"></span>
-    <div class="hd"><div><p class="label">${区分名[r['区分']]}・${esc(r['味'])}・${esc(r['傾向'])}</p><h2 id="sh-title">${名(r['名前'])}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
+    <div class="hd"><div><p class="label">${区分名[区分] || 区分名[r['区分']]}・${esc(r['味'])}・${esc(r['傾向'])}</p><h2 id="sh-title">${名(r['名前'])}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
     <div class="tiles"><div><b class="p">${r['たんぱく質'] + 主P}g</b><span>たんぱく質${主食行 ? '（主食込み）' : ''}</span></div><div><b>${r['kcal'] + 主K}</b><span>kcal</span></div>${セブンか(r) ? `<div><b>${r['価格'] ? '約' + r['価格'] + '円' : '─'}</b><span>価格（目安）</span></div>` : `<div><b>${r['分']}分</b><span>調理時間</span></div>`}<div><span class="effort" aria-label="手間 ${r['忙しさ']}/5">${[1,2,3,4,5].map(i => `<i class="${i <= r['忙しさ'] ? 'on' : ''}"></i>`).join('')}</span><span>手間 ${r['忙しさ']}/5</span></div></div>
     <section><p class="label">${セブンか(r) ? '買う物（セブン‐イレブン）' : '材料（1人分）'}</p><div class="ing">${主食行}${r['材料'].map(m => `<div><span>${esc(m[0])}${!セブンか(r) && Object.keys(在庫E).length && !['調味料', 'コンビニ'].includes(m[3]) && 家の量(m[0]) !== false && !無.includes(m) ? '<small class="have">家にある</small>' : ''}</span><span>${量(m[1], m[2]) || (m[3] === '調味料' ? '適量' : '')}</span></div>`).join('')}</div></section>
     ${近い && 無.length ? `<p class="tip">家に無い材料：${esc(無.map(m => m[0]).join('・'))}。買い足すか、「家の材料で作れる」献立に替える</p>` : ''}
@@ -1507,8 +1512,10 @@ function シート(r, 区分, d){
   p.querySelectorAll('.howto li').forEach(li => li.addEventListener('click', () => li.classList.toggle('ok')));
   $('sh-x').addEventListener('click', シートを閉じる);
   $('sh-add').addEventListener('click', () => {
-    const dd = $('sh-day').value; 献立に入れる(dd, r['区分'], r.id); 選ぶ日 = null;
-    シートを閉じる(); 知らせ(`${dd === 今日() ? '本日' : 日の名(dd)}の${区分名[r['区分']]}に追加`); 全体();
+    // 入れるのは、いま選んでいる食事（昼の候補から朝のスムージーを選んだら、昼に入れる。2026-11-11）
+    const 先 = 区分名[区分] ? 区分 : r['区分'];
+    const dd = $('sh-day').value; 献立に入れる(dd, 先, r.id); 選ぶ日 = null;
+    シートを閉じる(); 知らせ(`${dd === 今日() ? '本日' : 日の名(dd)}の${区分名[先]}に追加`); 全体();
   });
   const del = $('sh-del');
   if (del) del.addEventListener('click', () => {
@@ -2154,7 +2161,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '8（11/11 16:28）', 版の記号 = 'cc378a4f';
+const 版の名 = '9（11/11 16:51）', 版の記号 = 'dccf5b48';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2231,7 +2238,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=cc378a4f', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=dccf5b48', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
