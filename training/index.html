@@ -403,6 +403,24 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .limb{stroke:var(--ink);stroke-linecap:round;stroke-linejoin:round;fill:none}
 .limb.far{stroke:var(--far);opacity:.32}
 .headc{fill:var(--ink)}
+/* 拍の見本：動かす所は状態の色、終わりの姿勢は薄い線 */
+.limb.move{stroke:var(--state)}
+.limb.far.move{stroke:var(--state);opacity:.5}
+.ghost{fill:none;stroke:var(--state);stroke-linecap:round;stroke-linejoin:round;opacity:.3}
+.ghost.headg{stroke-width:3}
+.figbox .beat{position:absolute;left:0;right:0;top:2%;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.figbox .beat small{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--muted)}
+.figbox .beat b{font-size:clamp(20px,3.6vw,30px);font-weight:900;line-height:1.1;color:var(--state)}
+.figbox .beat .dots{display:flex;gap:7px}
+.figbox .beat .dots i{width:10px;height:10px;border-radius:50%;background:color-mix(in srgb,var(--state) 22%,transparent)}
+.figbox .beat .dots i.on{background:var(--state)}
+.figbox.mini{--state:var(--go);height:min(64vw,300px);min-height:240px;margin:6px 0 2px}
+.figbox.mini svg{max-height:none}
+.mplan .it.tap{cursor:pointer;align-items:center}
+.mplan .it .see{display:inline-flex;align-items:center;gap:4px;color:var(--go);font-size:12px;font-weight:700;margin-left:auto;white-space:nowrap}
+.mplan .it .see svg{width:12px;height:12px;fill:currentColor}
+.sheet .tempo{font-size:13px;color:var(--muted);margin:0}
+.sheet .hint{font-size:12px;color:var(--muted);margin:0}
 .breath{fill:none;stroke:var(--rest);stroke-width:3;opacity:.55}
 .run > .done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;overflow:auto;min-height:0}
 .check{width:84px;height:84px}
@@ -487,6 +505,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
         <div class="settings">
           <label for="o-voice">音声ガイド<input class="sw" type="checkbox" id="o-voice"></label>
           <label for="o-beep">カウントダウン音<input class="sw" type="checkbox" id="o-beep"></label>
+          <label for="o-tempo">拍の音（動きのテンポ）<input class="sw" type="checkbox" id="o-tempo"></label>
           <label for="o-cheer"><span><abbr title="ハーフ（折り返し）とラスト10秒で音声コール">中間コール</abbr></span><input class="sw" type="checkbox" id="o-cheer"></label>
         </div>
       </details>
@@ -553,7 +572,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 <div class="run" id="run" hidden>
   <div class="bar" id="r-bar"><div class="segs" id="r-segs" aria-hidden="true"></div><div class="meta"><span class="num" id="r-pos"></span><span id="r-round"></span><span class="num" id="r-left"></span></div></div>
   <div class="stage" id="r-stage">
-    <div class="figbox"><svg id="fig" viewBox="0 0 280 240" role="img" aria-label="フォームの見本"></svg></div>
+    <div class="figbox"><svg id="fig" viewBox="0 0 280 240" role="img" aria-label="フォームの見本"></svg><div class="beat" id="r-beat" aria-live="off"></div></div>
     <div class="info">
       <p class="phase" id="r-phase"></p>
       <p class="ex" id="r-ex"></p>
@@ -590,7 +609,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 /* 献立の名前：語の途中で折り返さないよう、区切り（＋・の・と・括弧）の後ろだけで折る */
 const 名 = s => esc(s).replace(/([＋・のと）])/g, '$1<wbr>').replace(/（/g, '<wbr>（').replace(/([ぁ-ん一-龯])(?=[ァ-ヴ])/g, '$1<wbr>');
-const 設定 = {段: 保存.get('段', 運動['いまの段'] || 1), 声: 保存.get('声', true), 音: 保存.get('音', true), 励まし: 保存.get('励まし', true), 短く: false};
+const 設定 = {段: 保存.get('段', 運動['いまの段'] || 1), 声: 保存.get('声', true), 音: 保存.get('音', true), 励まし: 保存.get('励まし', true), 拍: 保存.get('拍', true), 短く: false};
 const 目標 = 運動['週の回数'] || 4;
 const 達成ライン = Math.max(1, 目標 - 1);
 const 体重 = 運動['体重'] || 64;
@@ -792,8 +811,11 @@ function メニュー一覧(){
     const ph = 区切り名(/体幹/.test(s.区切り || '') ? '体幹' : s.区切り);
     if (ph && ph !== 前){ const p = document.createElement('p'); p.className = 'ph'; p.textContent = `${選}｜${ph}`; plan.appendChild(p); 前 = ph }
     if (s.名前 === '休み') continue;
-    const r = document.createElement('div'); r.className = 'it';
-    r.innerHTML = `<span>${esc(s.名前)}<span class="c">${esc(s.合図 || '')}</span></span><span class="t">${分秒(s.秒)}</span>`;
+    const r = document.createElement('div'); r.className = 'it tap'; r.tabIndex = 0; r.setAttribute('role', 'button');
+    r.setAttribute('aria-label', `${s.名前}の動きの見本を見る`);
+    r.innerHTML = `<span>${esc(s.名前)}<span class="c">${esc(s.合図 || '')}</span></span><span class="see">${再生}見本</span><span class="t">${分秒(s.秒)}</span>`;
+    r.addEventListener('click', () => 見本シート(s));
+    r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); 見本シート(s) } });
     plan.appendChild(r);
   }
   box.appendChild(plan);
@@ -1472,6 +1494,25 @@ function 枠シート(区分, d){
   $('sh-x').focus();
 }
 function シートを閉じる(){ $('sheet').hidden = true; document.body.style.overflow = '' }
+/* フォームの見本：拍に合わせて動く棒人間（音は出さない） */
+let 見本の時計 = 0;
+function 見本シート(s){
+  const p = $('panel');
+  p.innerHTML = `
+    <span class="grab" aria-hidden="true"></span>
+    <div class="hd"><div><p class="label">フォームの見本</p><h2 id="sh-title">${esc(s.名前)}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
+    <div class="figbox mini"><svg id="fig2" viewBox="0 0 280 240" role="img" aria-label="${esc(s.名前)}の動き"></svg><div class="beat" id="sh-beat"></div></div>
+    <p class="tempo">1回：${esc(テンポの字(s.動き))}</p>
+    ${s.合図 ? `<p>${esc(s.合図)}</p>` : ''}
+    <p class="hint">色の付いた手足が、その拍で動かす所。薄い線は、その拍の終わりの姿勢。</p>`;
+  $('sheet').hidden = false; document.body.style.overflow = 'hidden';
+  const 部 = 図を作る($('fig2')); 部.札 = $('sh-beat'); 部.呼吸.style.display = 'none';
+  const t0 = performance.now();
+  cancelAnimationFrame(見本の時計);
+  const 回す = now => { if ($('sheet').hidden || !$('fig2')) return; 拍を描く(s.動き, 動かない.matches ? 0 : now - t0, 部); 見本の時計 = requestAnimationFrame(回す) };
+  見本の時計 = requestAnimationFrame(回す);
+  $('sh-x').addEventListener('click', シートを閉じる); $('sh-x').focus();
+}
 $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) シートを閉じる() });
 let 知らせの時計 = null;
 function 知らせ(t){ const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(知らせの時計); 知らせの時計 = setTimeout(() => el.hidden = true, 2200) }
@@ -1699,8 +1740,8 @@ const テンポ = {
   march:    {秒:.5, 相:[['右', 1, 0, .5], ['左', 1, .5, 1]]},
   armcircle:{秒:.5, 相:[['回す', 4, 0, 1]]},
   hipcircle:{秒:.6, 相:[['回す', 4, 0, 1]]},
-  squat:    {秒:1, 相:[['下ろす', 2, 0, .7], ['止める', 1, .7, .7], ['上げる', 1, .7, .95]]},
-  squatfast:{秒:1, 相:[['下ろす', 2, 0, .62], ['速く立つ', 1, .62, 1]]},
+  squat:    {秒:1, 相:[['下ろす', 3, 0, .7], ['上げる', 1, .7, .95]]},   // 合図「3秒で下ろし、速く立つ」
+  squatfast:{秒:1, 相:[['下ろす', 3, 0, .62], ['速く立つ', 1, .62, 1]]},   // 合図「ゆっくり座って一気に立つ」
   pushup:   {秒:1, 相:[['下ろす', 2, 0, .5], ['押す', 1, .5, 1]]},
   plank:    {秒:1, 相:呼吸},
   bridge:   {秒:1, 相:[['上げる', 1, 0, .45], ['止める', 1, .45, .6], ['下ろす', 2, .6, 1]]},
@@ -1713,14 +1754,14 @@ const テンポ = {
   climber:  {秒:.5, 相:[['右', 1, 0, .5], ['左', 1, .5, 1]]},
   burpee:   {秒:1, 相:[['しゃがむ', 1, 0, .2], ['足を引く', 1, .2, .4], ['足を戻す', 1, .4, .6], ['立つ', 1, .6, .8]]},
   balance:  {秒:1, 相:呼吸},
-  deadbug:  {秒:1, 相:[['伸ばす', 2, 0, .25], ['戻す', 1, .25, .5], ['逆を伸ばす', 2, .5, .75], ['戻す', 1, .75, 1]]},
+  deadbug:  {秒:1, 相:[['伸ばす', 2, 0, .25], ['戻す', 2, .25, .5], ['逆を伸ばす', 2, .5, .75], ['戻す', 2, .75, 1]]},
   hollow:   {秒:1, 相:呼吸},
   legraise: {秒:1, 相:[['上げる', 1, 0, .3], ['下ろす', 3, .3, 1]]},
-  dragon:   {秒:1, 相:[['止める', 1, 0, .2], ['下ろす', 4, .2, .9], ['戻す', 1, .9, 1]]},
+  dragon:   {秒:1, 相:[['下ろす', 5, .2, .9], ['上げる', 1, .9, 1]]},   // 合図「5秒かけて下ろす」
   stretchq: {秒:1, 相:[['吸って', 3, 0, .5], ['吐いて', 3, .5, 1]]},
   stretchh: {秒:1, 相:[['吸って', 3, 0, .5], ['吐いて', 3, .5, 1]]},
   stretchc: {秒:1, 相:[['吸って', 3, 0, .5], ['吐いて', 3, .5, 1]]},
-  rest:     {秒:1, 相:[['吸って', 3, 0, .4], ['吐いて', 4, .4, 1]]}
+  rest:     {秒:1, 相:[['吸って', 4, 0, .4], ['吐いて', 6, .4, 1]]}   // 合図「4秒吸う・6秒吐く」
 };
 const 一回の拍 = 名 => (テンポ[名] || テンポ.rest).相.reduce((a, x) => a + x[1], 0);
 const テンポの字 = 名 => { const t = テンポ[名] || テンポ.rest; return t.相.map(x => `${x[0]}${x[1]}`).join('・') + `（1拍 ${t.秒}秒）` };
@@ -1769,6 +1810,7 @@ function 図を作る(svg){
 }
 const 図 = document.getElementById('fig');
 const 部品 = 図を作る(図);
+部品.札 = document.getElementById('r-beat');
 function 線を置く(部, b){
   const pts = (...ps) => ps.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
   部.胴.setAttribute('x1', b.H[0]); 部.胴.setAttribute('y1', b.H[1]); 部.胴.setAttribute('x2', b.S[0]); 部.胴.setAttribute('y2', b.S[1]);
@@ -1787,11 +1829,11 @@ function 描く(q, 部 = 部品, 先 = null, 元 = null){
   const 見せる = !!(先 && 元);
   for (const e of Object.values(部.薄)) e.style.display = 見せる ? '' : 'none';
   if (見せる) 線を置く(部.薄, 骨(先));
-  // 動かす所に色を付ける（その拍の始めと終わりで 8度以上変わる所）
-  const 脚 = 見せる && 差(元, 先, ['l1', 'k1', 'l2', 'k2']) >= 8, 腕 = 見せる && 差(元, 先, ['a1', 'f1', 'a2', 'f2']) >= 8, 体 = 見せる && 差(元, 先, ['t', 'hx']) >= 8;
+  // 動かす所に色を付ける（その拍の始めと終わりで、手足は8度・胴は15度以上変わる所。頭は付けない）
+  const 脚 = 見せる && 差(元, 先, ['l1', 'k1', 'l2', 'k2']) >= 8, 腕 = 見せる && 差(元, 先, ['a1', 'f1', 'a2', 'f2']) >= 8, 体 = 見せる && 差(元, 先, ['t']) >= 15;
   部.脚1.classList.toggle('move', 脚); 部.脚2.classList.toggle('move', 脚);
   部.腕1.classList.toggle('move', 腕); 部.腕2.classList.toggle('move', 腕);
-  部.胴.classList.toggle('move', 体); 部.頭.classList.toggle('move', 体);
+  部.胴.classList.toggle('move', 体);
 }
 /* 拍に合わせて描き、いまの言葉と何拍目かを出す */
 function 拍を描く(名, ms, 部, 添え){
@@ -1822,12 +1864,12 @@ const 動かない = matchMedia('(prefers-reduced-motion: reduce)');
 
 /* ── 音と声 ── */
 let 音 = null;
-function ピッ(高 = 880, 長さ = .12){
+function ピッ(高 = 880, 長さ = .12, 強さ = .25){
   try{
     音 = 音 || new (window.AudioContext || window.webkitAudioContext)();
     const o = 音.createOscillator(), v = 音.createGain();
     o.frequency.value = 高; v.gain.setValueAtTime(.0001, 音.currentTime);
-    v.gain.exponentialRampToValueAtTime(.25, 音.currentTime + .01);
+    v.gain.exponentialRampToValueAtTime(強さ, 音.currentTime + .01);
     v.gain.exponentialRampToValueAtTime(.0001, 音.currentTime + 長さ);
     o.connect(v).connect(音.destination); o.start(); o.stop(音.currentTime + 長さ + .02);
   }catch(e){}
@@ -1884,7 +1926,7 @@ function 表示を更新(){
 }
 function 進む(差){
   R.i = Math.min(Math.max(0, R.i + 差), R.段々.length - 1);
-  R.残り = R.段々[R.i].秒 * 1000; R.鳴らした = -1;
+  R.残り = R.段々[R.i].秒 * 1000; R.鳴らした = -1; R.前の拍 = -1;
   段を見せる(); 表示を更新();
 }
 function 一時停止(切り替え){
@@ -1975,14 +2017,22 @@ function 回る(now){
     }
     const s = R.段々[R.i];
     const 見本 = s && s.名前 === '休み' && R.段々[R.i + 1] ? R.段々[R.i + 1] : s;
-    if (見本 && !R.終わり) 描く(姿勢(見本.動き, 動かない.matches ? 0 : (R.走る ? R.経過 : 0)));
+    if (見本 && !R.終わり){
+      // 種目の始めから数えた時間で、拍の1拍目をそろえる。休みの間は次の種目を見本として動かす（音は出さない）
+      const 休み = s.名前 === '休み', ms = 休み ? R.経過 : Math.max(0, s.秒 * 1000 - R.残り);
+      const x = 拍を描く(見本.動き, 動かない.matches ? 0 : ms, 部品, 休み ? '次の種目の見本' : '');
+      if (!休み && R.走る && 設定.拍 && x.通し !== R.前の拍){
+        R.前の拍 = x.通し;
+        if (!(設定.音 && Math.ceil(R.残り / 1000) <= 3)) ピッ(x.頭 ? 1046 : 784, .05, x.頭 ? .16 : .09);
+      }
+    }
   }
   requestAnimationFrame(回る);
 }
 function 始める(){
   R.記 = 選; R.日 = 運動の日();
   R.段々 = 展開(メ(選)['流れ'], 設定.段, 設定.短く);
-  Object.assign(R, {i:0, 残り:R.段々[0].秒 * 1000, 走る:true, 終わり:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1});
+  Object.assign(R, {i:0, 残り:R.段々[0].秒 * 1000, 走る:true, 終わり:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1, 前の拍:-1});
   ['v-train', 'v-food', 'v-shop'].forEach(id => $(id).hidden = true);
   document.querySelector('nav.tabs').hidden = true;
   $('run').hidden = false; $('r-stage').hidden = false; $('r-done').hidden = true; $('r-bar').hidden = false;
@@ -2016,7 +2066,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── 設定 ── */
-[['o-voice', '声'], ['o-beep', '音'], ['o-cheer', '励まし']].forEach(([id, k]) => {
+[['o-voice', '声'], ['o-beep', '音'], ['o-tempo', '拍'], ['o-cheer', '励まし']].forEach(([id, k]) => {
   const el = $(id); el.checked = 設定[k];
   el.addEventListener('change', () => { 設定[k] = el.checked; 保存.set(k, el.checked) });
 });
@@ -2056,7 +2106,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=643369e2', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=e5e28f21', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
