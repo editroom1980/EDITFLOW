@@ -1750,29 +1750,59 @@ function 骨(q){
   return {H:m(H), S:m(S), C:m(C), K1:m(K1), F1:m(F1), K2:m(K2), F2:m(F2), E1:m(E1), W1:m(W1), E2:m(E2), W2:m(W2)};
 }
 const ns = 'http://www.w3.org/2000/svg';
-const 図 = document.getElementById('fig');
-const 部品 = {};
-(function 作る(){
-  const g = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); 図.appendChild(e); return e };
+/* 絵の部品（実行画面とフォームの見本のシートで使う） */
+function 図を作る(svg){
+  const 部 = {svg, 薄: {}};
+  const g = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); return e };
   g('line', {x1:20, y1:長.地面 + 1, x2:260, y2:長.地面 + 1, class:'ground'});
-  部品.呼吸 = g('circle', {cx:140, cy:120, r:60, class:'breath'});
-  部品.影 = g('ellipse', {cx:140, cy:長.地面 + 2, rx:46, ry:5, class:'shadow'});
-  for (const n of ['腕2', '脚2']) 部品[n] = g('polyline', {class:'limb far', 'stroke-width':13});
-  部品.胴 = g('line', {class:'limb', 'stroke-width':17});
-  部品.脚1 = g('polyline', {class:'limb', 'stroke-width':14});
-  部品.腕1 = g('polyline', {class:'limb', 'stroke-width':12});
-  部品.頭 = g('circle', {r:長.頭, class:'headc'});
-})();
-function 描く(q){
-  const b = 骨(q);
+  部.呼吸 = g('circle', {cx:140, cy:120, r:60, class:'breath'});
+  部.影 = g('ellipse', {cx:140, cy:長.地面 + 2, rx:46, ry:5, class:'shadow'});
+  // その拍の終わりの姿勢（薄い線）。動く向きを先に見せる
+  for (const n of ['脚2', '腕2', '胴', '脚1', '腕1']) 部.薄[n] = g(n === '胴' ? 'line' : 'polyline', {class:'ghost', 'stroke-width':6});
+  部.薄.頭 = g('circle', {r:長.頭 - 2, class:'ghost headg'});
+  for (const n of ['腕2', '脚2']) 部[n] = g('polyline', {class:'limb far', 'stroke-width':13});
+  部.胴 = g('line', {class:'limb', 'stroke-width':17});
+  部.脚1 = g('polyline', {class:'limb', 'stroke-width':14});
+  部.腕1 = g('polyline', {class:'limb', 'stroke-width':12});
+  部.頭 = g('circle', {r:長.頭, class:'headc'});
+  return 部;
+}
+const 図 = document.getElementById('fig');
+const 部品 = 図を作る(図);
+function 線を置く(部, b){
   const pts = (...ps) => ps.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
-  部品.胴.setAttribute('x1', b.H[0]); 部品.胴.setAttribute('y1', b.H[1]); 部品.胴.setAttribute('x2', b.S[0]); 部品.胴.setAttribute('y2', b.S[1]);
-  部品.脚1.setAttribute('points', pts(b.H, b.K1, b.F1)); 部品.脚2.setAttribute('points', pts(b.H, b.K2, b.F2));
-  部品.腕1.setAttribute('points', pts(b.S, b.E1, b.W1)); 部品.腕2.setAttribute('points', pts(b.S, b.E2, b.W2));
-  部品.頭.setAttribute('cx', b.C[0]); 部品.頭.setAttribute('cy', b.C[1]);
+  部.胴.setAttribute('x1', b.H[0]); 部.胴.setAttribute('y1', b.H[1]); 部.胴.setAttribute('x2', b.S[0]); 部.胴.setAttribute('y2', b.S[1]);
+  部.脚1.setAttribute('points', pts(b.H, b.K1, b.F1)); 部.脚2.setAttribute('points', pts(b.H, b.K2, b.F2));
+  部.腕1.setAttribute('points', pts(b.S, b.E1, b.W1)); 部.腕2.setAttribute('points', pts(b.S, b.E2, b.W2));
+  部.頭.setAttribute('cx', b.C[0]); 部.頭.setAttribute('cy', b.C[1]);
+}
+const 差 = (a, b, ks) => Math.max(...ks.map(k => Math.abs((a[k] || 0) - (b[k] || 0))));
+/* q＝いまの姿勢。先＝その拍の終わりの姿勢、元＝始めの姿勢（止める・キープのときは null） */
+function 描く(q, 部 = 部品, 先 = null, 元 = null){
+  const b = 骨(q);
+  線を置く(部, b);
   const xs = [b.H[0], b.F1[0], b.F2[0], b.W1[0], b.W2[0], b.C[0]];
   const l = Math.min(...xs), rr = Math.max(...xs);
-  部品.影.setAttribute('cx', ((l + rr) / 2).toFixed(1)); 部品.影.setAttribute('rx', Math.max(30, (rr - l) / 2 + 10).toFixed(1));
+  部.影.setAttribute('cx', ((l + rr) / 2).toFixed(1)); 部.影.setAttribute('rx', Math.max(30, (rr - l) / 2 + 10).toFixed(1));
+  const 見せる = !!(先 && 元);
+  for (const e of Object.values(部.薄)) e.style.display = 見せる ? '' : 'none';
+  if (見せる) 線を置く(部.薄, 骨(先));
+  // 動かす所に色を付ける（その拍の始めと終わりで 8度以上変わる所）
+  const 脚 = 見せる && 差(元, 先, ['l1', 'k1', 'l2', 'k2']) >= 8, 腕 = 見せる && 差(元, 先, ['a1', 'f1', 'a2', 'f2']) >= 8, 体 = 見せる && 差(元, 先, ['t', 'hx']) >= 8;
+  部.脚1.classList.toggle('move', 脚); 部.脚2.classList.toggle('move', 脚);
+  部.腕1.classList.toggle('move', 腕); 部.腕2.classList.toggle('move', 腕);
+  部.胴.classList.toggle('move', 体); 部.頭.classList.toggle('move', 体);
+}
+/* 拍に合わせて描き、いまの言葉と何拍目かを出す */
+function 拍を描く(名, ms, 部, 添え){
+  const x = 拍の位置(名, ms);
+  描く(姿勢F(名, x.f), 部, x.止め ? null : 姿勢F(名, x.f1), x.止め ? null : 姿勢F(名, x.f0));
+  const 鍵_ = `${名}|${x.言葉}|${x.拍目}|${x.数}|${添え || ''}`;
+  if (部.札 && 部.札鍵 !== 鍵_){
+    部.札鍵 = 鍵_;
+    部.札.innerHTML = `${添え ? `<small>${esc(添え)}</small>` : ''}<b>${esc(x.言葉)}</b><span class="dots" aria-hidden="true">${Array.from({length: x.数}, (_, i) => `<i class="${i < x.拍目 ? 'on' : ''}"></i>`).join('')}</span>`;
+  }
+  return x;
 }
 const ゆるく = x => x * x * (3 - 2 * x);
 function 姿勢(名, ms){ const a = 動き[名] || 動き.rest; return 姿勢F(名, (ms % a.周) / a.周) }
@@ -2026,7 +2056,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=38d5158c', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=643369e2', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
