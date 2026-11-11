@@ -390,8 +390,13 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .run{position:fixed;inset:0;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;gap:10px;z-index:20;--state:var(--go);
   padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-/* 場面ごとの色はやめ、どの場面も赤と白（2026-11-11 依頼者「黒い背景に赤と白」）。場面は「ウォームアップ」「レスト」の字で見せる */
-.run.is-rest,.run.is-prep{--state:var(--go)}
+/* 場面の色は赤と白だけ（2026-11-11 依頼者「黒い背景に赤と白」）。ワーク・ウォームアップは赤、休みは白（「レストと本番の違いがわかりにくい」） */
+.run.is-prep{--state:var(--go)}
+.run.is-rest{--state:var(--ink)}
+.run.is-rest .ctrl button.main{color:var(--bg)}
+.run.is-rest .figbox svg{opacity:.45}
+.run.is-rest .ex{font-size:clamp(34px,6vw,56px);letter-spacing:.12em}
+.run.is-rest .target{font-size:18px;font-weight:700;color:var(--ink)}
 .bar{display:flex;flex-direction:column;gap:6px;grid-row:1}
 .run .stage,.run > .done{grid-row:2}
 .ctrl{grid-row:3}
@@ -1962,10 +1967,11 @@ function 段を見せる(){
   $('run').classList.toggle('is-rest', 休み);
   $('run').classList.toggle('is-prep', 種類(s) === 'prep');
   帯を合わせる();
-  $('r-phase').textContent = 休み ? 'レスト' : 区切り名(s.区切り).replace(/ \d+\/\d+$/, '').replace(/^ラウンド.*/, 'ワーク');
-  $('r-ex').textContent = 休み ? (次 ? 次.名前 : 'レスト') : s.名前;
+  $('r-phase').textContent = 休み ? '休憩' : 区切り名(s.区切り).replace(/ \d+\/\d+$/, '').replace(/^ラウンド.*/, 'ワーク');
+  // 休みの間は、大きな字を「レスト」にし、次の種目は小さく出す（次の種目の名前を大きく出すと、本番と見分けにくい）
+  $('r-ex').textContent = 休み ? 'レスト' : s.名前;
   const 回 = (s.合図 || '').match(/(左右各?|各)?\d+〜?\d*回/);
-  $('r-target').textContent = 休み ? '次の種目' : 回 ? `目標 ${回[0]}` : '';
+  $('r-target').textContent = 休み ? (次 ? `次：${次.名前}` : '') : 回 ? `目標 ${回[0]}` : '';
   $('r-cue').textContent = s.合図 || '';
   $('r-cheer').textContent = '';
   $('r-next').textContent = 次 ? `次 → ${次.名前 === '休み' ? 'レスト' : 次.名前}　${分秒(次.秒)}` : '次 → フィニッシュ';
@@ -2131,7 +2137,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '2（11/11 15:28）', 版の記号 = '98bfe432';
+const 版の名 = '3（11/11 15:32）', 版の記号 = 'e3edd53e';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2208,7 +2214,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=98bfe432', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=e3edd53e', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
