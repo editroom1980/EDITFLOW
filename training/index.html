@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#1C090D" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#FBF3F2" media="(prefers-color-scheme: light)">
-<script>/* 設定の「画面の色」を、描く前に当てる（開いた瞬間に色が変わって見えないように） */try{var t=JSON.parse(localStorage.getItem('nagara:画面の色')||'"auto"');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);var c=t==='dark'?'#1C090D':'#FBF3F2';document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute('content',c)})}}catch(e){}</script>
+<script>/* 設定の「画面の色」を、描く前に当てる（開いた瞬間に色が変わって見えないように） */try{var t=JSON.parse(localStorage.getItem('nagara:画面の色')||'"auto"');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);var c=t==='dark'?'#1C090D':'#FBF3F2';document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute('content',c)});var sb=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(sb)sb.setAttribute('content',t==='dark'?'black':'default')}}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -390,8 +390,8 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .run{position:fixed;inset:0;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;gap:10px;z-index:20;--state:var(--go);
   padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.run.is-rest{--state:var(--rest)}
-.run.is-prep{--state:var(--prep)}
+/* 場面ごとの色はやめ、どの場面も赤と白（2026-11-11 依頼者「黒い背景に赤と白」）。場面は「ウォームアップ」「レスト」の字で見せる */
+.run.is-rest,.run.is-prep{--state:var(--go)}
 .bar{display:flex;flex-direction:column;gap:6px;grid-row:1}
 .run .stage,.run > .done{grid-row:2}
 .ctrl{grid-row:3}
@@ -1554,7 +1554,7 @@ function 見本シート(s){
   const 部 = 図を作る($('fig2')); 部.札 = $('sh-beat'); 部.呼吸.style.display = 'none';
   const t0 = performance.now();
   cancelAnimationFrame(見本の時計);
-  const 回す = now => { if ($('sheet').hidden || !$('fig2')) return; 拍を描く(s.動き, 動かない.matches ? 0 : now - t0, 部); 見本の時計 = requestAnimationFrame(回す) };
+  const 回す = now => { if ($('sheet').hidden || !$('fig2')) return; 拍を描く(s.動き, now - t0, 部); 見本の時計 = requestAnimationFrame(回す) };
   見本の時計 = requestAnimationFrame(回す);
   $('sh-x').addEventListener('click', シートを閉じる); $('sh-x').focus();
 }
@@ -2081,7 +2081,8 @@ function 回る(now){
     if (見本 && !R.終わり){
       // 種目の始めから数えた時間で、拍の1拍目をそろえる。休みの間は次の種目を見本として動かす（音は出さない）
       const 休み = s.名前 === '休み', ms = 休み ? R.経過 : Math.max(0, s.秒 * 1000 - R.残り);
-      const x = 拍を描く(見本.動き, 動かない.matches ? 0 : ms, 部品, 休み ? '次の種目の見本' : '');
+      // iPhone の「視差効果を減らす」が入っていても止めない（止めると最初の姿勢のまま動かず、見本の意味が無い）
+      const x = 拍を描く(見本.動き, ms, 部品, 休み ? '次の種目の見本' : '');
       if (!休み && R.走る && 設定.拍 && x.通し !== R.前の拍){
         R.前の拍 = x.通し;
         if (!(設定.音 && Math.ceil(R.残り / 1000) <= 3)) ピッ(x.頭 ? 1046 : 784, .05, x.頭 ? .16 : .09);
@@ -2130,7 +2131,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '1（11/11 15:23）', 版の記号 = '773cda83';
+const 版の名 = '2（11/11 15:28）', 版の記号 = '98bfe432';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2207,7 +2208,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=773cda83', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=98bfe432', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
