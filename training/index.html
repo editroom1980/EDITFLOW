@@ -408,6 +408,8 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .limb.far.move{stroke:var(--state);opacity:.5}
 .ghost{fill:none;stroke:var(--state);stroke-linecap:round;stroke-linejoin:round;opacity:.3}
 .ghost.headg{stroke-width:3}
+.path{fill:none;stroke:var(--state);stroke-width:3;stroke-dasharray:2 7;stroke-linecap:round;opacity:.8}
+.pathdot{fill:var(--state)}
 .figbox .beat{position:absolute;left:0;right:0;top:2%;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
 .figbox .beat small{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--muted)}
 .figbox .beat b{font-size:clamp(20px,3.6vw,30px);font-weight:900;line-height:1.1;color:var(--state)}
@@ -1708,7 +1710,8 @@ const しゃがむ = {hx:-24, t:40, l1:85, k1:-105, l2:85, k2:-105, a1:85, f1:0,
 const 動き = {
   march:   {周:1000, 鍵:[[0,P({l1:70,k1:-85,a1:-35,f1:45,a2:35,f2:45})],[.5,P({l2:70,k2:-85,a1:35,f1:45,a2:-35,f2:45})],[1,P({l1:70,k1:-85,a1:-35,f1:45,a2:35,f2:45})]]},
   armcircle:{周:2000, 線形:true, 鍵:[[0,P({a1:0,f1:0,a2:0,f2:0})],[.25,P({a1:90,f1:0,a2:90,f2:0})],[.5,P({a1:180,f1:0,a2:180,f2:0})],[.75,P({a1:270,f1:0,a2:270,f2:0})],[1,P({a1:360,f1:0,a2:360,f2:0})]]},
-  hipcircle:{周:2400, 鍵:[[0,P({t:8,hx:4,a1:-40,f1:100,a2:-40,f2:100})],[.5,P({t:-6,hx:-4,a1:-40,f1:100,a2:-40,f2:100})],[1,P({t:8,hx:4,a1:-40,f1:100,a2:-40,f2:100})]]},
+  // 腰回し：横から見ると腰が前後に動く。脚の角度で足を床に残し（体ごと滑らせない）、上体は腰と逆に傾ける。回る向きは 道筋 の輪で見せる
+  hipcircle:{周:2400, 鍵:[[0,P({hx:22,t:-14,l1:-13,l2:-19,a1:-40,f1:100,a2:-40,f2:100})],[.25,P({hx:0,t:2,l1:3,l2:-3,a1:-40,f1:100,a2:-40,f2:100})],[.5,P({hx:-22,t:16,l1:19,l2:13,a1:-40,f1:100,a2:-40,f2:100})],[.75,P({hx:0,t:2,l1:3,l2:-3,a1:-40,f1:100,a2:-40,f2:100})],[1,P({hx:22,t:-14,l1:-13,l2:-19,a1:-40,f1:100,a2:-40,f2:100})]]},
   squat:   {周:4000, 鍵:[[0,P({a1:80,f1:0,a2:80,f2:0})],[.7,P(しゃがむ)],[.95,P({a1:80,f1:0,a2:80,f2:0})],[1,P({a1:80,f1:0,a2:80,f2:0})]]},
   squatfast:{周:3600, 鍵:[[0,P({a1:20,a2:20})],[.62,P(しゃがむ)],[.74,P({a1:-20,a2:-20})],[1,P({a1:20,a2:20})]]},
   pushup:  {周:3000, 鍵:[[0,板(65,{a1:-2,f1:0,a2:2,f2:0})],[.5,板(74,{a1:-55,f1:85,a2:-50,f2:85})],[1,板(65,{a1:-2,f1:0,a2:2,f2:0})]]},
@@ -1718,7 +1721,7 @@ const 動き = {
   row:     {周:2600, 鍵:[[0,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:0,f1:0,a2:2,f2:0})],[.45,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:-70,f1:70,a2:-66,f2:68})],[.55,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:-70,f1:70,a2:-66,f2:68})],[1,P({hx:-6,t:60,l1:20,k1:-25,l2:15,k2:-25,a1:0,f1:0,a2:2,f2:0})]]},
   pike:    {周:3000, 鍵:[[0,P({hx:-10,t:140,l1:-40,k1:0,l2:-38,k2:0,a1:20,f1:0,a2:22,f2:0})],[.5,P({hx:-10,t:156,l1:-30,k1:0,l2:-28,k2:0,a1:-35,f1:80,a2:-33,f2:80})],[1,P({hx:-10,t:140,l1:-40,k1:0,l2:-38,k2:0,a1:20,f1:0,a2:22,f2:0})]]},
   rdl:     {周:4400, 鍵:[[0,P()],[.5,P({t:78,l1:8,k1:-10,l2:-80,k2:0,a1:0,f1:0,a2:0,f2:0})],[.6,P({t:78,l1:8,k1:-10,l2:-80,k2:0,a1:0,f1:0,a2:0,f2:0})],[1,P()]]},
-  superman:{周:3000, 鍵:[[0,板(90,{a1:90,f1:0,a2:90,f2:0})],[.45,P({hx:-6,t:80,l1:-100,k1:0,l2:-98,k2:0,a1:97,f1:0,a2:96,f2:0})],[.65,P({hx:-6,t:80,l1:-100,k1:0,l2:-98,k2:0,a1:97,f1:0,a2:96,f2:0})],[1,板(90,{a1:90,f1:0,a2:90,f2:0})]]},
+  superman:{周:3000, 鍵:[[0,板(90,{a1:90,f1:0,a2:90,f2:0})],[.45,P({hx:-6,t:72,l1:-110,k1:0,l2:-108,k2:0,a1:110,f1:0,a2:108,f2:0})],[.65,P({hx:-6,t:72,l1:-110,k1:0,l2:-108,k2:0,a1:110,f1:0,a2:108,f2:0})],[1,板(90,{a1:90,f1:0,a2:90,f2:0})]]},
   boxing:  {周:1000, 鍵:[[0,P({t:8,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:40,f2:110})],[.25,P({t:10,l1:15,k1:-15,l2:-15,k2:5,a1:88,f1:4,a2:40,f2:110})],[.5,P({t:8,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:40,f2:110})],[.75,P({t:10,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:88,f2:4})],[1,P({t:8,l1:15,k1:-15,l2:-15,k2:5,a1:30,f1:110,a2:40,f2:110})]]},
   climber: {周:1000, 鍵:[[0,板(65,{a1:-2,a2:2,l1:12,k1:-95})],[.5,板(65,{a1:-2,a2:2,l2:12,k2:-95})],[1,板(65,{a1:-2,a2:2,l1:12,k1:-95})]]},
   burpee:  {周:6000, 鍵:[[0,P()],[.2,P({hx:-10,t:62,l1:95,k1:-125,l2:95,k2:-125,a1:4,f1:0,a2:6,f2:0})],[.4,板(65,{a1:-2,a2:2})],[.6,P({hx:-10,t:62,l1:95,k1:-125,l2:95,k2:-125,a1:4,f1:0,a2:6,f2:0})],[.8,P()],[1,P()]]},
@@ -1763,6 +1766,8 @@ const テンポ = {
   stretchc: {秒:1, 相:[['吸って', 3, 0, .5], ['吐いて', 3, .5, 1]]},
   rest:     {秒:1, 相:[['吸って', 4, 0, .4], ['吐いて', 6, .4, 1]]}   // 合図「4秒吸う・6秒吐く」
 };
+/* 回る動きは、関節のまわりに回る向きの輪と、輪の上を回る点を出す（横から見ると回っているのが分かりにくいため） */
+const 道筋 = {hipcircle: {関節: 'H', rx: 38, ry: 10, dy: 0}};
 const 一回の拍 = 名 => (テンポ[名] || テンポ.rest).相.reduce((a, x) => a + x[1], 0);
 const テンポの字 = 名 => { const t = テンポ[名] || テンポ.rest; return t.相.map(x => `${x[0]}${x[1]}`).join('・') + `（1拍 ${t.秒}秒）` };
 /* ms（その種目を始めてからの時間）→ 絵の位置と、いまの言葉・何拍目か */
@@ -1772,7 +1777,9 @@ function 拍の位置(名, ms){
   let k = 拍 % 全, i = 0;
   while (k >= t.相[i][1]){ k -= t.相[i][1]; i++ }
   const [言葉, 数, f0, f1] = t.相[i];
-  return {f: f0 + (f1 - f0) * (k + 中) / 数, 言葉, 拍目: k + 1, 数, 通し: 拍, 頭: k === 0, f0, f1, 止め: f0 === f1};
+  // 終わりの姿勢と色は「その1拍の始めと終わり」で決める（一周して戻る動きでも出るように）
+  return {f: f0 + (f1 - f0) * (k + 中) / 数, 言葉, 拍目: k + 1, 数, 通し: 拍, 頭: k === 0, f0, f1, 止め: f0 === f1,
+          b0: f0 + (f1 - f0) * k / 数, b1: f0 + (f1 - f0) * (k + 1) / 数};
 }
 const rad = d => d * Math.PI / 180;
 const 足す = (p, len, ang) => [p[0] + len * Math.sin(rad(ang)), p[1] + len * Math.cos(rad(ang))];
@@ -1806,6 +1813,8 @@ function 図を作る(svg){
   部.脚1 = g('polyline', {class:'limb', 'stroke-width':14});
   部.腕1 = g('polyline', {class:'limb', 'stroke-width':12});
   部.頭 = g('circle', {r:長.頭, class:'headc'});
+  部.道 = g('ellipse', {class:'path'}); 部.道点 = g('circle', {r:6, class:'pathdot'});
+  部.道.style.display = 部.道点.style.display = 'none';
   return 部;
 }
 const 図 = document.getElementById('fig');
@@ -1838,7 +1847,16 @@ function 描く(q, 部 = 部品, 先 = null, 元 = null){
 /* 拍に合わせて描き、いまの言葉と何拍目かを出す */
 function 拍を描く(名, ms, 部, 添え){
   const x = 拍の位置(名, ms);
-  描く(姿勢F(名, x.f), 部, x.止め ? null : 姿勢F(名, x.f1), x.止め ? null : 姿勢F(名, x.f0));
+  描く(姿勢F(名, x.f), 部, x.止め ? null : 姿勢F(名, x.b1), x.止め ? null : 姿勢F(名, x.b0));
+  const d = 道筋[名];
+  部.道.style.display = 部.道点.style.display = d ? '' : 'none';
+  if (d){
+    // 輪の中心は、その関節の1周の平均の位置（動きごとに1回だけ求める）
+    if (!d.中心){ const ps = Array.from({length: 24}, (_, i) => 骨(姿勢F(名, i / 24))[d.関節]); d.中心 = [ps.reduce((a, p) => a + p[0], 0) / 24, ps.reduce((a, p) => a + p[1], 0) / 24 + d.dy] }
+    const 角 = 2 * Math.PI * x.f;
+    部.道.setAttribute('cx', d.中心[0]); 部.道.setAttribute('cy', d.中心[1]); 部.道.setAttribute('rx', d.rx); 部.道.setAttribute('ry', d.ry);
+    部.道点.setAttribute('cx', (d.中心[0] + d.rx * Math.cos(角)).toFixed(1)); 部.道点.setAttribute('cy', (d.中心[1] + d.ry * Math.sin(角)).toFixed(1));
+  }
   const 鍵_ = `${名}|${x.言葉}|${x.拍目}|${x.数}|${添え || ''}`;
   if (部.札 && 部.札鍵 !== 鍵_){
     部.札鍵 = 鍵_;
@@ -2106,7 +2124,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=e5e28f21', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=fed05a6c', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
