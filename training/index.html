@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#1C090D" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#FBF3F2" media="(prefers-color-scheme: light)">
+<script>/* 設定の「画面の色」を、描く前に当てる（開いた瞬間に色が変わって見えないように） */try{var t=JSON.parse(localStorage.getItem('nagara:画面の色')||'"auto"');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);var c=t==='dark'?'#1C090D':'#FBF3F2';document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute('content',c)})}}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -423,6 +424,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .mplan .it .see svg{width:12px;height:12px;fill:currentColor}
 .sheet .tempo{font-size:13px;color:var(--muted);margin:0}
 .sheet .hint{font-size:12px;color:var(--muted);margin:0}
+.settings .hint{font-size:12px;color:var(--muted);margin:2px 0 0;line-height:1.6}
 .breath{fill:none;stroke:var(--rest);stroke-width:3;opacity:.55}
 .run > .done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;overflow:auto;min-height:0}
 .check{width:84px;height:84px}
@@ -503,6 +505,12 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
         <div class="legend"><span>8週前</span><span>今週</span></div>
       </section>
       <details class="card fold" id="menus"><summary>メニュー一覧</summary><div id="menulist"></div></details>
+      <details class="card fold"><summary>画面の色</summary>
+        <div class="settings">
+          <div class="seg three" role="group" aria-label="画面の色" id="o-theme"><button type="button" data-t="auto">自動</button><button type="button" data-t="dark">暗い</button><button type="button" data-t="light">明るい</button></div>
+          <p class="hint" id="o-theme-hint"></p>
+        </div>
+      </details>
       <details class="card fold"><summary>音声とサウンド</summary>
         <div class="settings">
           <label for="o-voice">音声ガイド<input class="sw" type="checkbox" id="o-voice"></label>
@@ -606,6 +614,18 @@ const 保存 = {
   set(k, v){ try{ localStorage.setItem('nagara:' + k, JSON.stringify(v)) }catch(e){} }
 };
 const $ = id => document.getElementById(id);
+/* 画面の色（2026-11-11 依頼者「設定で変えられるようにしろ」）。auto＝iPhone の外観モードに合わせる。dark／light＝いつもその色 */
+const 地の色 = {dark: '#1C090D', light: '#FBF3F2'};
+function 画面の色を当てる(t){
+  const r = document.documentElement;
+  if (t === 'dark' || t === 'light') r.setAttribute('data-theme', t); else r.removeAttribute('data-theme');
+  // iPhone の画面上の帯（theme-color）も地の色にそろえる。自動のときは、外観モードごとの元の色に戻す
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+    const 元 = (m.getAttribute('media') || '').includes('light') ? 'light' : 'dark';
+    m.setAttribute('content', 地の色[t === 'dark' || t === 'light' ? t : 元]);
+  });
+}
+画面の色を当てる(保存.get('画面の色', 'auto'));
 /* 2本指で広げる拡大（iPhone の gesture）を止める。ダブルタップの拡大は CSS の touch-action で止める（ボタンの連打は効くまま） */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -2090,6 +2110,18 @@ document.addEventListener('keydown', e => {
 });
 document.querySelectorAll('input.sw').forEach(el => { const l = el.closest('label'); l.classList.add('switch'); l.style.justifyContent = 'space-between'; l.style.width = '100%'; l.style.fontSize = '14px'; l.style.color = 'var(--ink)' });
 
+/* ── 画面の色の設定 ── */
+function 画面の色の欄(){
+  const t = 保存.get('画面の色', 'auto');
+  document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+  $('o-theme-hint').textContent = (t === 'auto' ? 'iPhone の外観モード（ライト・ダーク）に合わせる。iPhone を「自動」にしていれば、日の入りで暗くなる' : t === 'dark' ? 'いつも暗い地（黒地に赤と白）' : 'いつも明るい地') + '。いちばん上の時計の帯は、アプリを開き直すと合う';
+}
+document.querySelectorAll('#o-theme button').forEach(b => b.addEventListener('click', () => {
+  保存.set('画面の色', b.dataset.t); 画面の色を当てる(b.dataset.t); 画面の色の欄();
+  知らせ('画面の色を変えた');
+}));
+画面の色の欄();
+
 /* ── 起動 ── */
 function ハッシュから(){
   const h = (location.hash || '').replace('#', '');
@@ -2124,7 +2156,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=fed05a6c', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=cc019cb3', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
