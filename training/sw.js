@@ -1,5 +1,5 @@
 // FIT&EAT の service worker：画面を覚えておき、電波が無くても開けるようにする。新しい版は次に開いたときに入れ替わる
-const 版 = 'nagara-f3cfd566';
+const 版 = 'nagara-fd25daa2';
 const 部品 = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(版).then(c => c.addAll(部品)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
