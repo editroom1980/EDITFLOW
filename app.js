@@ -409,6 +409,9 @@ function 計算を予約() {
   計算の予約 = setTimeout(() => 計算(false), 1500);
   帯を描く();
 }
+// 最後の反映は Mac の時刻（日本時間）で書く。toISOString は世界時なので、0〜9時の反映が前の日になり、
+// Mac 側が「今日はまだ反映していない」と見て、9時まで5分ごとに反映をやり直していた（2026-11-11）
+function 今の時刻の字() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 async function 計算(書き込む) {
   if (iPhone) return;   // iPhone では計算しない。直したことは Mac が取り込んで計算し、反映する（ボタンは押せなくしてある）
   if (ui.計算中) { ui.もう一度 = true; return; }
@@ -428,7 +431,7 @@ async function 計算(書き込む) {
     if (書き込む) {
       ui.要点.push(`カレンダー：入れる ${入}件・外す ${外}件`);
       ui.要点.push(...L.filter(l => l.startsWith('リマインダー：') || l.startsWith('買い物リスト：') || l.startsWith('カレンダーは変更なし')));
-      直す('EDITFLOW設定.json', [{ 道: ['最後の反映'], 値: new Date().toISOString().slice(0, 16) }], '', { undo: false, 計算: false });
+      直す('EDITFLOW設定.json', [{ 道: ['最後の反映'], 値: 今の時刻の字() }], '', { undo: false, 計算: false });
     }
     const p = P();
     if (p) ui.要点.push(`締切 ${p.締切.length}件のうち 間に合わない欄 ${(p.問題 || []).length}件`);
@@ -806,6 +809,12 @@ function 今日を描く() {
   if (古) h += `<div class="stale ${古.時間 >= 24 ? 'red' : 'orange'}"><b>計算が ${古.字} 前のまま</b>
     <span>${!Mac ? 'Mac の EDITFLOW が動いていないかもしれない。Mac で EDITFLOW を開く' : '下の予定や割り振りは古い。「再計算」を押す'}</span>
     ${!Mac ? '' : '<button class="btn btn-primary btn-small" data-act="calc">再計算</button>'}</div>`;
+  // カレンダーへの反映が長く通っていない（2026-11-09〜11 に2日止まって気づけなかった）
+  const 反 = 設定().最後の反映 ? (今() - new Date(設定().最後の反映)) / 3600000 : null;
+  if (Mac && 反 != null && 反 > 3) h += `<div class="stale ${反 >= 12 ? 'red' : 'orange'}"><b>カレンダーへの反映が ${Math.floor(反)}時間 通っていない</b>
+    <span>最後の反映 ${md(設定().最後の反映)} ${設定().最後の反映.slice(11, 16)}。カレンダーの予定が古いまま。「カレンダーとリマインダーへ反映」を押して、まだ出るなら知らせる</span></div>`;
+  if (p.固定を止めた > 0) h += `<div class="stale orange"><b>作業の固定を ${p.固定を止めた}件 止めた</b>
+    <span>カレンダーで動かされた作業が1回に多すぎたので、手で動かしたものではないと見なして固定にしなかった。作業の時刻を動かしたのなら、時間軸の札で直す</span></div>`;
   // iPhone へ送れていない（GitHub に push できない）
   if (Mac && S.同期 && /できない/.test(S.同期.状態 || '')) h += `<div class="stale red"><b>iPhone に送れていない</b>
     <span>${esc(S.同期.状態)}。この Mac の GitHub の認証が切れている。認証を入れ直すまで iPhone の画面は古いまま</span></div>`;
