@@ -411,6 +411,10 @@ function 計算を予約() {
 }
 // 最後の反映は Mac の時刻（日本時間）で書く。toISOString は世界時なので、0〜9時の反映が前の日になり、
 // Mac 側が「今日はまだ反映していない」と見て、9時まで5分ごとに反映をやり直していた（2026-11-11）
+function 最後の反映() {
+  const a = 設定().最後の反映 || '', b = (P() && P().反映した) || '';
+  return a > b ? a : b;
+}
 function 今の時刻の字() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 async function 計算(書き込む) {
   if (iPhone) return;   // iPhone では計算しない。直したことは Mac が取り込んで計算し、反映する（ボタンは押せなくしてある）
@@ -775,7 +779,7 @@ function 帯を描く() {
   else if (p.今日 !== 今日()) 次 = '<span class="next">次に：日付が変わった。「再計算」を押す</span>';
   else {
     const 問 = (p.問題 || []).filter(q => !認めたか(q)).length;
-    const 未反映 = !s.最後の反映 || p.作成 > s.最後の反映;
+    const 未反映 = !最後の反映() || p.作成 > 最後の反映();
     if (問) 次 = `<span class="next">次に：間に合わない締切が ${問}件。「今日」の上の欄で選ぶ</span>`;
     else if (未反映) 次 = '<span class="next">次に：カレンダーに入れるなら「カレンダーとリマインダーへ反映」</span>';
     else 次 = '<span class="next">反映済み。いま押すものはない</span>';
@@ -787,10 +791,10 @@ function 帯を描く() {
   }
   const 要 = ui.要点.length ? `<span>${esc(ui.要点.slice(-3).join('　／　'))}</span>` : '';
   const 同 = Mac && S.同期 ? `iPhone との同期：${esc(S.同期.状態)}　` : '';
-  const 反 = s.最後の反映 ? `最後に反映 ${md(s.最後の反映)} ${s.最後の反映.slice(11, 16)}` : '最後に反映：このアプリからはまだ';
+  const 反 = 最後の反映() ? `最後に反映 ${md(最後の反映())} ${最後の反映().slice(11, 16)}` : '最後に反映：まだ';
   const 計 = p ? `計算 ${md(p.作成)} ${p.作成.slice(11, 16)}` : '';
   $('#statusbar').innerHTML = `${次}${要}<span class="right">${同}${計}　${iPhone ? (S.最後に読んだ ? '読んだ ' + hm(S.最後に読んだ) : '') : 反}${戻す列.length ? `　⌘Z で戻せる ${戻す列.length}件` : ''}</span>`;
-  const 未反映 = p && (!s.最後の反映 || p.作成 > s.最後の反映);
+  const 未反映 = p && (!最後の反映() || p.作成 > 最後の反映());
   $('#reflectMark').textContent = 未反映 ? '● ' : '';
   $('#btnCalc').disabled = !!ui.計算中 || iPhone;
   $('#btnReflect').disabled = !!ui.計算中 || iPhone;
@@ -810,9 +814,9 @@ function 今日を描く() {
     <span>${!Mac ? 'Mac の EDITFLOW が動いていないかもしれない。Mac で EDITFLOW を開く' : '下の予定や割り振りは古い。「再計算」を押す'}</span>
     ${!Mac ? '' : '<button class="btn btn-primary btn-small" data-act="calc">再計算</button>'}</div>`;
   // カレンダーへの反映が長く通っていない（2026-11-09〜11 に2日止まって気づけなかった）
-  const 反 = 設定().最後の反映 ? (今() - new Date(設定().最後の反映)) / 3600000 : null;
+  const 反 = 最後の反映() ? (今() - new Date(最後の反映())) / 3600000 : null;
   if (Mac && 反 != null && 反 > 3) h += `<div class="stale ${反 >= 12 ? 'red' : 'orange'}"><b>カレンダーへの反映が ${Math.floor(反)}時間 通っていない</b>
-    <span>最後の反映 ${md(設定().最後の反映)} ${設定().最後の反映.slice(11, 16)}。カレンダーの予定が古いまま。「カレンダーとリマインダーへ反映」を押して、まだ出るなら知らせる</span></div>`;
+    <span>最後の反映 ${md(最後の反映())} ${最後の反映().slice(11, 16)}。カレンダーの予定が古いまま。「カレンダーとリマインダーへ反映」を押して、まだ出るなら知らせる</span></div>`;
   if (p.固定を止めた > 0) h += `<div class="stale orange"><b>作業の固定を ${p.固定を止めた}件 止めた</b>
     <span>カレンダーで動かされた作業が1回に多すぎたので、手で動かしたものではないと見なして固定にしなかった。作業の時刻を動かしたのなら、時間軸の札で直す</span></div>`;
   // iPhone へ送れていない（GitHub に push できない）
@@ -2362,14 +2366,14 @@ EF.ボタンで試す = async () => {
     日を開く(d);
     const el = document.querySelector(`.tl-item[data-d="${d}"][data-s="${x.始}"]`); if (!el) throw new Error('作業の札が無い');
     const r = el.getBoundingClientRect(), 一 = Number(el.closest('.tl-body').dataset.hour);
+    const 空きの前 = (設定().作業しない時間 || []).length;
     const 押 = (type, y) => document.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.left + 20, clientY: y, button: 0 }));
     el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: r.left + 20, clientY: r.top + 5, button: 0 }));
     押('pointermove', r.top + 5 + 一);
     押('pointerup', r.top + 5 + 一); await 待つ(); await 読む();
     const u = 作業の単位(x.ラベル), 新始 = 時分(new Date(x.s.getTime() + 3600000));
     報(u && (u.元.固定 || []).some(f => f.日付 === d && f.始 === 新始), `作業の札を1時間下へ動かす → 固定 ${JSON.stringify((u && u.元.固定 || []).slice(-1))}`);
-    const 空 = (設定().作業しない時間 || []).filter(z => z.日付 === d);
-    報(!空.some(z => z.始 === 時分(x.s)), '動かしたときは、元の時間を空きにしない');
+    報((設定().作業しない時間 || []).length === 空きの前, `動かしたときは、元の時間を空きにしない（空き ${空きの前}→${(設定().作業しない時間 || []).length}件）`);
   });
   await 試す('時間外の許可と取り消し', async () => {
     const q = (P().問題 || []).find(q => q.足りない <= 0 && (q.時間外 > 0 || q.深夜 > 0));
