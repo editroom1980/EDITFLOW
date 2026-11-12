@@ -1069,7 +1069,7 @@ const ジャンル = ['和', '洋', '中', '韓', 'エスニック'];
 const テイスト = ['さっぱり', 'あっさり', 'こってり', '甘辛', 'ピリ辛'];
 function 日の型(d){
   const x = 予定の日(d), k = x ? x['記号'] : null;
-  if (k === 'A' || k === 'B') return {名: 'トレーニング日', 記: k, 主食: 180, cls: 'go', 一言: '主食多め・たんぱく質35g以上'};
+  if (k === 'A' || k === 'B' || k === 'D') return {名: 'トレーニング日', 記: k, 主食: 180, cls: 'go', 一言: '主食多め・たんぱく質35g以上'};
   if (k) return {名: 'コンディショニング日', 記: k, 主食: 150, cls: 'prep', 一言: '主食標準'};
   return {名: '休養日', 記: null, 主食: 100, cls: '', 一言: '主食控えめ'};
 }
@@ -1167,8 +1167,22 @@ const 主食の値 = (r, g) => !g ? {k: 0, P: 0} : セブンか(r) ? {k: g / 100
 /* 組み合わせ（2026-11-13 依頼者「主菜を中心に、ご飯あり、副菜あり、汁物あり、とチェック形式で選択できるように」）。
    日付と食事ごとに {主: 主菜のid, ご飯: true/false, 副菜: id か '', 汁物: id か ''}。アプリに保存し、Mac にも送る（食事の予定.json の 組み） */
 const 組める = (区分, r) => (区分 === '昼' || 区分 === '夕') && r && !セブンか(r) && !['副菜', '汁物'].includes(r['区分']);
-function 組みの初め(r){ return {主: r.id, ご飯: !r['主食込み'], 副菜: ['一品で満足', '軽い夜'].includes(r['分類']) ? '' : (r['おすすめ副菜'] || ''), 汁物: ''} }
-function 組み(d, 区分, r){ if (!組める(区分, r)) return null; const a = (保存.get('組み', {})[d] || {})[区分]; return a && a.主 === r.id ? a : 組みの初め(r) }
+/* ご飯は1パック150g か、なし（依頼者は150gずつ小分けしている。2026-11-13「100gだと余った分は捨てるのか」） */
+const ご飯1パック = 150;
+/* はじめの組み合わせ。夕食は、主菜＋おすすめ副菜＋ご飯150g が夕食の枠に収まらなければ、副菜を軽いもの（しらすおろし）に替え、
+   それでも収まらなければ、運動の日はご飯を残し（少し超えるのを許す）、運動の無い日はご飯なしにする（2026-11-13） */
+const 軽い副菜 = 'h09';
+function 組みの初め(r, d, 区分){
+  const 組 = {主: r.id, ご飯: !r['主食込み'], 副菜: ['一品で満足', '軽い夜'].includes(r['分類']) ? '' : (r['おすすめ副菜'] || ''), 汁物: ''};
+  if (区分 !== '夕' || r['主食込み'] || !d) return 組;
+  const 枠 = 夕食の枠(d), 飯 = 主食の値(r, ご飯1パック).k, 副 = id => id ? ((R食(id) || {})['kcal'] || 0) : 0;
+  if (r['kcal'] + 副(組.副菜) + 飯 <= 枠) return 組;
+  if (組.副菜) 組.副菜 = 軽い副菜;
+  if (r['kcal'] + 副(組.副菜) + 飯 <= 枠) return 組;
+  組.ご飯 = !!日の型(d).記;
+  return 組;
+}
+function 組み(d, 区分, r){ if (!組める(区分, r)) return null; const a = (保存.get('組み', {})[d] || {})[区分]; return a && a.主 === r.id ? a : 組みの初め(r, d, 区分) }
 function 組みを保存(d, 区分, 組){ const a = 保存.get('組み', {}); a[d] = a[d] || {}; a[d][区分] = 組; 保存.set('組み', a); 送りに積む([{道: ['組み', d, 区分], 値: 組, 作る: true}]) }
 function 組みの足し(組){ let k = 0, P = 0; const 名々 = []; for (const t of ['副菜', '汁物']){ const x = 組 && 組[t] && R食(組[t]); if (x){ k += x['kcal']; P += x['たんぱく質']; 名々.push(x['名前']) } } return {k, P, 名々} }
 /* その日の1食の値。記録があれば記録、無ければ献立 */
@@ -1181,8 +1195,8 @@ function 食の値(d, 区分){
   const id = (献立()[d] || {})[区分], r = id && R食(id), e = (献立E[d] || {})[区分] || {};
   if (r){
     const 組 = 組み(d, 区分, r), 足 = 組みの足し(組), 本 = {...r, kcal: r['kcal'] + 足.k};
-    const s = 区分 === '夕' ? (組 && !組.ご飯 ? {k: 0, P: 0} : 主食の値(r, 主食g(本, d)))
-      : 区分 === '昼' && 組 && !r['主食込み'] ? (組.ご飯 ? 主食の値(r, 日の型(d).主食) : {k: 0, P: 0})
+    const s = 区分 === '夕' ? (組 ? (組.ご飯 && !r['主食込み'] ? 主食の値(r, ご飯1パック) : {k: 0, P: 0}) : 主食の値(r, 主食g(本, d)))
+      : 区分 === '昼' && 組 && !r['主食込み'] ? (組.ご飯 ? 主食の値(r, ご飯1パック) : {k: 0, P: 0})
       : e.主食 && !(上書き()[d] || {})[区分] ? {k: Math.round(e.主食 * 1.56), P: 主食P(e.主食)} : {k: 0, P: 0};
     return {kcal: r['kcal'] + 足.k + s.k, P: r['たんぱく質'] + 足.P + s.P, 名: [r['名前'], ...足.名々].join('＋'), 状態: '予定', r, 組};
   }
@@ -1226,7 +1240,7 @@ function 食事の状況(){
   const 済 = 区分の順.filter(k => 値[k].rec).reduce((a, k) => a + 値[k].kcal, 0);
   const P = 区分の順.reduce((a, k) => a + 値[k].P, 0), 幅 = Math.max(目.kcal, 全), 差 = 目.kcal - 全;
   const 夕 = 値['夕'], 枠 = 夕食の枠(d), 夕組 = 夕.r && !夕.rec ? 組み(d, '夕', 夕.r) : null;
-  const g = 夕.r && !夕.rec ? (夕組 && !夕組.ご飯 ? 0 : 主食g({...夕.r, kcal: 夕.r['kcal'] + 組みの足し(夕組).k}, d, 枠)) : null;
+  const g = 夕.r && !夕.rec ? (夕組 ? (夕組.ご飯 && !夕.r['主食込み'] ? ご飯1パック : 0) : 主食g(夕.r, d, 枠)) : null;
   const 届いた = 保存.get('判定結果', null);
   const rows = 区分の順.map(k => {
     const v = 値[k], cls = v.状態 === '済' ? 'done' : v.状態 === '外' ? 'out' : v.状態 === 'なし' || v.状態 === '抜き' ? 'none' : '';
@@ -1525,7 +1539,7 @@ function 提案(){
   表示.forEach((r, j) => {
     const i = j - 定番.length, 定 = j < 定番.length;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'pick';
-    const g = 区分 === '夕' && !r['主食込み'] ? 主食g(r, d, 枠) : 0;
+    const g = 区分 === '夕' && !r['主食込み'] ? (セブンか(r) ? 主食g(r, d, 枠) : 組みの初め(r, d, '夕').ご飯 ? ご飯1パック : 0) : 0;
     const 主食 = 区分 === '夕' && !r['主食込み'] ? (セブンか(r) ? `<span>おにぎり <b>${g / 100}</b>個</span>` : g ? `<span>ご飯 <b>${g}</b>g</span>` : '<span>ご飯なし</span>') : '';
     const kc = r['kcal'] + 主食の値(r, g).k, 無 = 足りない(r), 家 = Object.keys(在庫E).length && !セブンか(r) && !無.length;
     const 値 = r['価格'] ? `<span>約<b>${r['価格']}</b>円</span>` : '';
@@ -1571,10 +1585,11 @@ function 組みの欄(r, 組){
 function シート(r, 区分, d, 下書き){
   const 型 = 日の型(d);
   const 入 = d && (献立()[d] || {})[区分] === r.id;
-  const 組 = 組める(区分, r) ? (下書き || (入 ? 組み(d, 区分, r) : 組みの初め(r))) : null, 足 = 組みの足し(組), 本 = {...r, kcal: r['kcal'] + 足.k};
+  const 組 = 組める(区分, r) ? (下書き || (入 ? 組み(d, 区分, r) : 組みの初め(r, d, 区分))) : null, 足 = 組みの足し(組), 本 = {...r, kcal: r['kcal'] + 足.k};
   const ご飯あり = !r['主食込み'] && (区分 === '夕' || (区分 === '昼' && 組)) && (!組 || 組.ご飯);
-  const g = !ご飯あり ? 0 : 区分 === '夕' ? 主食g(本, d) : 型.主食, 減 = 区分 === '夕' && g < (セブンか(r) ? おにぎり数(型.主食) * 100 : 型.主食);
-  const 主食行 = ご飯あり ? (セブンか(r) ? `<div class="base"><span>おにぎり（${型.名}${減 ? '・残りに合わせて' : ''}）</span><span>${g / 100}個</span></div>` : `<div class="base"><span>ご飯（${型.名}${減 ? '・残りに合わせて' : ''}）${g ? `<small class="rice">${白米の字(g)}${g >= 50 ? `<br>${炊き方の字}<br>${残りの字}` : ''}</small>` : ''}</span><span>${g ? g + 'g' : 'なし'}</span></div>`) : '';
+  const g = !ご飯あり ? 0 : セブンか(r) ? 主食g(本, d) : ご飯1パック, 減 = セブンか(r) && g < おにぎり数(型.主食) * 100;
+  const 夕の超え = 区分 === '夕' && 組 ? Math.round(r['kcal'] + 足.k + (g ? 主食の値(r, g).k : 0) - 夕食の枠(d)) : 0;
+  const 主食行 = ご飯あり ? (セブンか(r) ? `<div class="base"><span>おにぎり（${型.名}${減 ? '・残りに合わせて' : ''}）</span><span>${g / 100}個</span></div>` : `<div class="base"><span>ご飯（1パック）${g ? `<small class="rice">${白米の字(g)}${g >= 50 ? `<br>${炊き方の字}<br>${残りの字}` : ''}</small>` : ''}</span><span>${g ? g + 'g' : 'なし'}</span></div>`) : '';
   const 主P = 主食の値(r, g).P, 主K = 主食の値(r, g).k;
   const 無 = 足りない(r), 近い = d <= 日付(足す日(new Date(), 1));
   const 日々 = Array.from({length: 7}, (_, i) => 日付(足す日(new Date(), i)));
@@ -1587,6 +1602,7 @@ function シート(r, 区分, d, 下書き){
     <div class="hd"><div><p class="label">${区分名[区分] || 区分名[r['区分']]}・${esc(r['味'])}・${esc(r['傾向'])}</p><h2 id="sh-title">${名(r['名前'])}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
     <div class="tiles"><div><b class="p">${r['たんぱく質'] + 足.P + 主P}g</b><span>たんぱく質${組 && (足.k || 主K) ? '（組み合わせの合計）' : 主食行 ? '（主食込み）' : ''}</span></div><div><b>${r['kcal'] + 足.k + 主K}</b><span>kcal${組 && (足.k || 主K) ? '（合計）' : ''}</span></div>${セブンか(r) ? `<div><b>${r['価格'] ? '約' + r['価格'] + '円' : '─'}</b><span>価格（目安）</span></div>` : `<div><b>${r['分']}分</b><span>調理時間</span></div>`}<div><span class="effort" aria-label="手間 ${r['忙しさ']}/5">${[1,2,3,4,5].map(i => `<i class="${i <= r['忙しさ'] ? 'on' : ''}"></i>`).join('')}</span><span>手間 ${r['忙しさ']}/5</span></div></div>
     ${組 ? 組みの欄(r, 組) : ''}
+    ${夕の超え > 10 ? `<p class="tip">夕食の目安より約${夕の超え}kcal多い。${日の型(d).記 ? '運動の日なので、ご飯は残してよい（回復のため）' : 'ご飯か副菜を外すと、目安に収まる'}</p>` : ''}
     <section><p class="label">${セブンか(r) ? '買う物（セブン‐イレブン）' : 組 ? (主食行 ? '主菜とご飯の材料（1人分）' : '主菜の材料（1人分）') : '材料（1人分）'}</p><div class="ing">${主食行}${r['材料'].map(m => `<div><span>${esc(m[0])}${!セブンか(r) && Object.keys(在庫E).length && !['調味料', 'コンビニ'].includes(m[3]) && 家の量(m[0]) !== false && !無.includes(m) ? '<small class="have">家にある</small>' : ''}</span><span>${量(m[1], m[2]) || (m[3] === '調味料' ? '適量' : '')}</span></div>`).join('')}</div></section>
     ${近い && 無.length ? `<p class="tip">家に無い材料：${esc(無.map(m => m[0]).join('・'))}。買い足すか、「家の材料で作れる」献立に替える</p>` : ''}
     <section><p class="label" style="margin-bottom:8px">手順</p><ol class="howto">${r['作り方'].map(s => `<li>${ご飯の字を足す(s)}</li>`).join('')}</ol></section>
@@ -2274,7 +2290,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '14（11/13 01:20）', 版の記号 = '61bd909b';
+const 版の名 = '15（11/13 01:36）', 版の記号 = '898344d8';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2351,7 +2367,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=61bd909b', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=898344d8', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
