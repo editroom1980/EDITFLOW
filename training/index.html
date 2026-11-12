@@ -340,7 +340,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .ing div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
 .ing div span:last-child{font-size:14px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .ing div.base span:first-child{color:var(--food);font-weight:700}
-.rice{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+.rice{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px;word-break:keep-all;overflow-wrap:anywhere}
 .howto{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:st}
 .howto li{text-wrap:pretty;counter-increment:st;display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:14px;background:var(--raise);cursor:pointer;font-size:15px}
 .howto li::before{content:counter(st);width:28px;height:28px;border-radius:50%;background:var(--food);color:var(--go-ink);font-family:var(--f-num);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center}
@@ -1108,9 +1108,12 @@ function 候補(区分, d, 使用済み = new Set(), 主の数 = {}){
 }
 function 主食P(g){ return Math.round(g * 0.025) }
 const 区分名 = {朝: '朝食', 昼: '昼食', 間食: '間食', 夕: '夕食'};
-/* 炊いたご飯の重さ → 洗って炊く白米の量。ご飯は白米の約2.2倍（日本食品標準成分表）。1合＝150g（2026-11-13 依頼者） */
-const 白米g = g => Math.max(5, Math.round(g / 2.2 / 5) * 5);
-const 白米の字 = g => `白米 約${白米g(g)}g・約${(白米g(g) / 150).toFixed(1)}合を洗って炊く`;
+/* ご飯：依頼者のいつもの炊き方（2026-11-13）。陶器の容器に白米180g・水220cc・氷2個、電子レンジ600Wで10分。
+   炊き上がりは白米の約2.2倍（日本食品標準成分表）で約400g。量ったら できる を直す */
+const 炊き = {白米: 180, 水: 220, 氷: 2, W: 600, 分: 10, できる: 400};
+const 炊き方の字 = `いつもの炊き方：白米${炊き.白米}g・水${炊き.水}cc・氷${炊き.氷}個を、<wbr>陶器の容器で<wbr>レンジ${炊き.W}W ${炊き.分}分`;
+const 食分 = g => (炊き.できる / g).toFixed(1).replace(/\.0$/, '');
+const 白米の字 = g => `炊いた約${炊き.できる}gから${g}g取り分ける。1回炊くと約${食分(g)}食分`;
 const ご飯の字を足す = t => esc(t).replace(/ご飯(\d+)g/g, (m, g) => `${m}（${白米の字(+g)}）`);
 const 区分の順 = ['朝', '昼', '夕'];   // 間食は入れない（2026-11-10 依頼者「朝食、昼食、夕食でいい」）
 const 見込み = {朝: 450, 昼: 750, 間食: 150, 夕: 800};
@@ -1483,7 +1486,7 @@ function 提案(){
     const i = j - 定番.length, 定 = j < 定番.length;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'pick';
     const g = 区分 === '夕' && !r['主食込み'] ? 主食g(r, d, 枠) : 0;
-    const 主食 = 区分 === '夕' && !r['主食込み'] ? (セブンか(r) ? `<span>おにぎり <b>${g / 100}</b>個</span>` : g ? `<span>ご飯 <b>${g}</b>g（白米 ${白米g(g)}g）</span>` : '<span>ご飯なし</span>') : '';
+    const 主食 = 区分 === '夕' && !r['主食込み'] ? (セブンか(r) ? `<span>おにぎり <b>${g / 100}</b>個</span>` : g ? `<span>ご飯 <b>${g}</b>g</span>` : '<span>ご飯なし</span>') : '';
     const kc = r['kcal'] + 主食の値(r, g).k, 無 = 足りない(r), 家 = Object.keys(在庫E).length && !セブンか(r) && !無.length;
     const 値 = r['価格'] ? `<span>約<b>${r['価格']}</b>円</span>` : '';
     b.innerHTML = `<span class="n">${名(r['名前'])}</span><span class="chev" aria-hidden="true"></span>
@@ -1518,7 +1521,7 @@ function 量(x, 単位){
 function シート(r, 区分, d){
   const 型 = 日の型(d);
   const g = 区分 === '夕' && !r['主食込み'] ? 主食g(r, d) : 0, 減 = g < (セブンか(r) ? おにぎり数(型.主食) * 100 : 型.主食);
-  const 主食行 = 区分 === '夕' && !r['主食込み'] ? (セブンか(r) ? `<div class="base"><span>おにぎり（${型.名}${減 ? '・残りに合わせて' : ''}）</span><span>${g / 100}個</span></div>` : `<div class="base"><span>ご飯（${型.名}${減 ? '・残りに合わせて' : ''}）${g ? `<small class="rice">${白米の字(g)}</small>` : ''}</span><span>${g ? g + 'g' : 'なし'}</span></div>`) : '';
+  const 主食行 = 区分 === '夕' && !r['主食込み'] ? (セブンか(r) ? `<div class="base"><span>おにぎり（${型.名}${減 ? '・残りに合わせて' : ''}）</span><span>${g / 100}個</span></div>` : `<div class="base"><span>ご飯（${型.名}${減 ? '・残りに合わせて' : ''}）${g ? `<small class="rice">${白米の字(g)}<br>${炊き方の字}</small>` : ''}</span><span>${g ? g + 'g' : 'なし'}</span></div>`) : '';
   const 主P = 主食の値(r, g).P, 主K = 主食の値(r, g).k;
   const 無 = 足りない(r), 近い = d <= 日付(足す日(new Date(), 1));
   const 日々 = Array.from({length: 7}, (_, i) => 日付(足す日(new Date(), i)));
@@ -2210,7 +2213,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '11（11/13 00:10）', 版の記号 = 'cb31f034';
+const 版の名 = '12（11/13 00:20）', 版の記号 = '8f5a65c7';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2287,7 +2290,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=cb31f034', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=8f5a65c7', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
