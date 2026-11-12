@@ -173,7 +173,7 @@ async function iPhoneに頼む(種, 中) {
 }
 EF.返事 = ({ id, 値 }) => { const f = 待ち[id]; delete 待ち[id]; if (f) f(値); };
 EF.知らせ = ({ 種, 値 }) => {
-  if (種 === '同期') { S.同期 = 値; if (ui.計算中 === 'iPhone') ui.計算中 = null; 帯を描く(); if (値.取り込んだ) 読み直す(false).then(() => 知らせを出す('iPhone で直したことを取り込んで、計算し直した')); return; }
+  if (種 === '同期') { const 前 = 送れない帯(); S.同期 = 値; if (ui.計算中 === 'iPhone') ui.計算中 = null; 帯を描く(); if (前 !== 送れない帯()) 描く(); if (値.取り込んだ) 読み直す(false).then(() => 知らせを出す('iPhone で直したことを取り込んで、計算し直した')); return; }
   if (種 === '計算中') { if (!ui.計算中) { ui.計算中 = 'iPhone'; ui.計算の始め = Date.now(); 帯を描く(); } return; }
   if (種 === '変わった') {
     // 自分の書き戻しは数えない。エンジン・ほかのチャット・人の手で変わったものだけ読み直す
@@ -769,6 +769,11 @@ function 左を描く() {
   return 品('today') + 品('projects') + 品('deadlines') + 品('calendar') + 品('shoot') + '<div class="nav-sep"></div>' + 品('plan') +
     `<div class="nav-sep"></div><div class="nav-foot">⌘1〜9 で画面<br>⌘K 命令窓　⌘N 新しい案件<br>スペース 次の工程を完了<br>↑↓ 案件を選ぶ　⌘Z 戻す${撮 ? `<br><br>撮影の予定 ${撮}件` : ''}</div>`;
 }
+// 送れない状態が5分続いているか（Mac だけ）
+function 送れない帯() {
+  const g = S.同期; if (!Mac || !g || !g.送れない始め || !/できない/.test(g.状態 || '')) return false;
+  return Date.now() - new Date(g.送れない始め).getTime() >= 5 * 60000;
+}
 function 帯を描く() {
   const p = P(), s = 設定();
   let 次 = '';
@@ -820,8 +825,9 @@ function 今日を描く() {
   if (p.固定を止めた > 0) h += `<div class="stale orange"><b>作業の固定を ${p.固定を止めた}件 止めた</b>
     <span>カレンダーで動かされた作業が1回に多すぎたので、手で動かしたものではないと見なして固定にしなかった。作業の時刻を動かしたのなら、時間軸の札で直す</span></div>`;
   // iPhone へ送れていない（GitHub に push できない）
-  if (Mac && S.同期 && /できない/.test(S.同期.状態 || '')) h += `<div class="stale red"><b>iPhone に送れていない</b>
-    <span>${esc(S.同期.状態)}。この Mac の GitHub の認証が切れている。認証を入れ直すまで iPhone の画面は古いまま</span></div>`;
+  // 一時の失敗は Mac が1分ごとに送り直すので、5分続いたときだけ出す。送れたら消える
+  if (送れない帯()) h += `<div class="stale red"><b>iPhone に送れていない（${hm(new Date(S.同期.送れない始め))} から）</b>
+    <span>${esc(S.同期.状態)}。Mac が1分ごとに送り直している。${/鍵/.test(S.同期.状態) ? 'GitHub の EDITFLOW-data の設定 › Deploy keys に鍵が残っているかを見る' : 'つながれば自動で消える'}</span></div>`;
   // 過ぎた締切（渡したかを聞く）
   const 過 = (p.過ぎた || []);
   if (過.length) {
