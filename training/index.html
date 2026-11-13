@@ -1635,7 +1635,7 @@ function シート(r, 区分, d, 下書き){
     <div class="hd"><div><p class="label">${区分名[区分] || 区分名[r['区分']]}・${esc(r['味'])}・${esc(r['傾向'])}</p><h2 id="sh-title">${名(r['名前'])}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
     <div class="tiles"><div><b class="p">${r['たんぱく質'] + 足.P + 主P}g</b><span>たんぱく質${組 && (足.k || 主K) ? '（組み合わせの合計）' : 主食行 ? '（主食込み）' : ''}</span></div><div><b>${r['kcal'] + 足.k + 主K}</b><span>kcal${組 && (足.k || 主K) ? '（合計）' : ''}</span></div>${セブンか(r) ? `<div><b>${r['価格'] ? '約' + r['価格'] + '円' : '─'}</b><span>価格（目安）</span></div>` : `<div><b>${r['分']}分</b><span>調理時間</span></div>`}<div><span class="effort" aria-label="手間 ${r['忙しさ']}/5">${[1,2,3,4,5].map(i => `<i class="${i <= r['忙しさ'] ? 'on' : ''}"></i>`).join('')}</span><span>手間 ${r['忙しさ']}/5</span></div></div>
     ${組 ? 組みの欄(r, 組) : ''}
-    ${夕の超え > 10 ? `<p class="tip">夕食の目安より約${夕の超え}kcal多い。${日の型(d).記 ? '運動の日なので、ご飯は残してよい（回復のため）' : 'ご飯か副菜を外すと、目安に収まる'}</p>` : ''}
+    ${夕の超え > 10 ? `<p class="tip">夕食の目安より約${夕の超え}kcal多い。${日の型(d).記 ? '運動の日なので、ご飯150gはそのまま食べてよい（運動のあとの回復のため）' : 'ご飯か副菜を外すと、目安に収まる'}</p>` : ''}
     <section><p class="label">${セブンか(r) ? '買う物（セブン‐イレブン）' : 組 ? (主食行 ? '主菜とご飯の材料（1人分）' : '主菜の材料（1人分）') : '材料（1人分）'}</p><div class="ing">${主食行}${r['材料'].map(m => `<div><span>${esc(m[0])}${!セブンか(r) && Object.keys(在庫E).length && !['調味料', 'コンビニ'].includes(m[3]) && 家の量(m[0]) !== false && !無.includes(m) ? '<small class="have">家にある</small>' : ''}</span><span>${量(m[1], m[2]) || (m[3] === '調味料' ? '適量' : '')}</span></div>`).join('')}</div></section>
     ${近い && 無.length ? `<p class="tip">家に無い材料：${esc(無.map(m => m[0]).join('・'))}。買い足すか、「家の材料で作れる」献立に替える</p>` : ''}
     <section><p class="label" style="margin-bottom:8px">手順</p><ol class="howto">${r['作り方'].map(s => `<li>${ご飯の字を足す(s)}</li>`).join('')}</ol></section>
@@ -2130,6 +2130,17 @@ function 話す(文){
 }
 let 起きて = null;
 async function 画面を消さない(){ try{ 起きて = await navigator.wakeLock.request('screen') }catch(e){} }
+/* シート（レシピ・作り置き・見本など）を開いている間も画面を消さない。閉じたら元に戻す（2026-11-13 依頼者「作り方やレシピを見ている間に、画面が暗くならないように」） */
+let シートの起きて = null;
+async function シートで消さない(){
+  const 出 = !$('sheet').hidden;
+  try{
+    if (出 && !シートの起きて && document.visibilityState === 'visible'){ シートの起きて = await navigator.wakeLock.request('screen'); シートの起きて.addEventListener('release', () => { シートの起きて = null }) }
+    else if (!出 && シートの起きて){ const w = シートの起きて; シートの起きて = null; await w.release() }
+  }catch(e){}
+}
+new MutationObserver(シートで消さない).observe($('sheet'), {attributes: true, attributeFilter: ['hidden']});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) シートで消さない() });
 
 /* ── タイマー ── */
 const R = {段々:[], i:0, 残り:0, 走る:false, 前の時:0, 経過:0, 実働:0, 鳴らした:-1, 半分:false, 十秒:false, 終わり:false, 記:null};
@@ -2323,7 +2334,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '17（11/13 02:43）', 版の記号 = 'cb4e0abb';
+const 版の名 = '18（11/13 20:39）', 版の記号 = '978c593d';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2400,7 +2411,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=cb4e0abb', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=978c593d', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
