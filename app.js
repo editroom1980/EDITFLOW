@@ -2327,7 +2327,8 @@ EF.ボタンで試す = async () => {
     const u = 作業の単位(x.ラベル); 報(u && (u.元.固定 || []).some(f => f.日付 === d), `作業を固定 → ${u && JSON.stringify(u.元.固定)}・札 ${x.題}・知らせ ${$("#toast").textContent}`);
   });
   await 試す('予定の場所', async () => {
-    const d = Object.keys(P().日).find(d => 今日の段取り(d).some(x => x.予定表 && x.場所));
+    // 今日は過ぎた時間を畳むので、夜に走らせると今日の札が無い。明日以降で選ぶ（2026-11-14）
+    const d = Object.keys(P().日).find(d => d > 今日() && 今日の段取り(d).some(x => x.予定表 && x.場所));
     if (!d) return 報(true, '予定の場所：場所の入った予定が3週間に無い');
     const x = 今日の段取り(d).find(x => x.予定表 && x.場所); 日を開く(d);
     await 押す(`[data-act="tlItem"][data-d="${d}"][data-s="${x.始}"]`, '予定の札');
