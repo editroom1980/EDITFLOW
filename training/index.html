@@ -446,6 +446,9 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .next{font-size:14px;color:var(--muted)}
 .cheer{min-height:1.5em;font-size:15px;font-weight:700;letter-spacing:.12em;color:var(--state)}
 .ctrl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+/* 運動中は字の選択・長押しの吹き出しを出さない。体やタオルが画面に触れて選択が始まると、ボタンを押しても選択を外すだけで効かなくなる（2026-11-14 依頼者「しばらくするとボタンが押せなくなる」） */
+.run{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.ctrl,.ctrl button,.ringbox{touch-action:none}
 .ctrl button{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;font-size:15px;padding:10px 20px;cursor:pointer;min-width:92px}
 .ctrl button.main{background:var(--state);color:var(--go-ink);border-color:var(--state);font-weight:900;min-width:130px}
 .ground{stroke:var(--line);stroke-width:3;stroke-linecap:round}
@@ -2316,13 +2319,24 @@ function 閉じる(){
   try{ 起きて && 起きて.release() }catch(e){}
   画面(今の画面, true); 描き直す();
 }
-$('b-pause').addEventListener('click', () => { if (R.終わり) 閉じる(); else 一時停止() });
-$('r-ringbox').addEventListener('click', () => 一時停止());
+/* 運動中のボタンは、指を離した瞬間に動かす。iPhone はクリックを取り消すことがある（指が少し動いた・字の選択が出ていた）ので、クリックだけに頼らない。クリックとの二重の反応はしない */
+function 押すと(el, fn){
+  let 済 = 0;
+  el.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse') return;
+    const b = el.getBoundingClientRect();
+    if (e.clientX < b.left - 12 || e.clientX > b.right + 12 || e.clientY < b.top - 12 || e.clientY > b.bottom + 12) return;
+    e.preventDefault(); 済 = Date.now(); fn();
+  });
+  el.addEventListener('click', () => { if (Date.now() - 済 < 700) return; fn() });
+}
+押すと($('b-pause'), () => { if (R.終わり) 閉じる(); else 一時停止() });
+押すと($('r-ringbox'), () => 一時停止());
 $('r-ringbox').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); 一時停止() } });
-$('b-next').addEventListener('click', () => { if (!R.終わり){ if (R.i >= R.段々.length - 1) 終わる(); else 進む(1) } });
-$('b-prev').addEventListener('click', () => { if (!R.終わり) 進む(-1) });
-$('b-plus').addEventListener('click', () => { const s = R.段々[R.i]; s.秒 += 15; R.残り += 15000; 帯を合わせる(); 表示を更新() });
-$('b-stop').addEventListener('click', () => { if (R.実働 / 1000 >= Math.min(300, 合計秒(R.段々) * 0.6)) 終わる(); else 閉じる() });
+押すと($('b-next'), () => { if (!R.終わり){ if (R.i >= R.段々.length - 1) 終わる(); else 進む(1) } });
+押すと($('b-prev'), () => { if (!R.終わり) 進む(-1) });
+押すと($('b-plus'), () => { const s = R.段々[R.i]; s.秒 += 15; R.残り += 15000; 帯を合わせる(); 表示を更新() });
+押すと($('b-stop'), () => { if (R.実働 / 1000 >= Math.min(300, 合計秒(R.段々) * 0.6)) 終わる(); else 閉じる() });
 document.addEventListener('keydown', e => {
   if (!$('sheet').hidden && e.key === 'Escape'){ シートを閉じる(); return }
   if ($('run').hidden) return;
@@ -2336,7 +2350,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '19（11/14 21:50）', 版の記号 = 'c2ba6fc0';
+const 版の名 = '20（11/14 22:46）', 版の記号 = 'ea9c0819';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2413,7 +2427,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=c2ba6fc0', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=ea9c0819', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
