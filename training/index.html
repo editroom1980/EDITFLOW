@@ -33,6 +33,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   --bg:#1C090D; --surface:#2A0F15; --raise:#37161D; --ink:#FFF3F0; --muted:#CDA29E; --line:#4B1E26;
   --go:#FF5A44; --go-ink:#FFFFFF; --rest:#FFC24B; --prep:#7FD3F5; --food:#FFB15C; --far:#FFF3F0; --heat0:#2E1117;
   --hero1:#7A1828; --hero2:#4A0C16;
+  --m1:#3AA0D0; --m2:#C08520; --m3:#A978DC; --m4:#F0503C;   /* 記録の食事：朝・昼・間食・夕（色覚の違いでも見分けられるか検算済み） */
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
   --f-num:"Barlow Condensed","Hiragino Sans",sans-serif;
   --nav-h:64px;
@@ -41,11 +42,11 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
   --bg:#FBF3F2; --surface:#FFFFFF; --raise:#F6E6E3; --ink:#2A0A10; --muted:#8A5F5C; --line:#EBD3D0;
   --go:#E23B2C; --go-ink:#FFFFFF; --rest:#B8740E; --prep:#1F78A8; --food:#B85A1B; --far:#2A0A10; --heat0:#F3E3E1;
-  --hero1:#FFE6E0; --hero2:#FFD3CB; color-scheme:light}}
+  --hero1:#FFE6E0; --hero2:#FFD3CB; --m1:#1F78A8; --m2:#B8740E; --m3:#8A4FC0; --m4:#E23B2C; color-scheme:light}}
 :root[data-theme="light"]{
   --bg:#FBF3F2; --surface:#FFFFFF; --raise:#F6E6E3; --ink:#2A0A10; --muted:#8A5F5C; --line:#EBD3D0;
   --go:#E23B2C; --go-ink:#FFFFFF; --rest:#B8740E; --prep:#1F78A8; --food:#B85A1B; --far:#2A0A10; --heat0:#F3E3E1;
-  --hero1:#FFE6E0; --hero2:#FFD3CB; color-scheme:light}
+  --hero1:#FFE6E0; --hero2:#FFD3CB; --m1:#1F78A8; --m2:#B8740E; --m3:#8A4FC0; --m4:#E23B2C; color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;overflow:hidden}
@@ -96,7 +97,7 @@ abbr[title]{text-decoration:underline dotted color-mix(in srgb,var(--muted) 60%,
 .col{display:flex;flex-direction:column;gap:14px;min-width:0}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);
   padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));display:flex;justify-content:center}
-nav.tabs .in{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:min(520px,100%)}
+nav.tabs .in{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;width:min(560px,100%)}
 nav.tabs button{appearance:none;border:0;background:none;border-radius:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);cursor:pointer;min-height:52px}
 nav.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav.tabs button[aria-current="page"]{color:var(--ink);background:var(--raise)}
@@ -501,6 +502,64 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .confetti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:fall 2.4s ease-in forwards}
 @keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.2}}
 
+
+/* ── 記録 ── */
+.lg-top{display:flex;flex-direction:column;gap:8px}
+.lgc{display:block;width:100%;height:auto;margin-top:10px;font-family:var(--f-num);overflow:visible}
+.lgc text{fill:var(--muted);font-size:10.5px}
+.lgc .ax{stroke:var(--line);stroke-width:1}
+.lgc .tg{stroke:var(--ink);stroke-width:2;stroke-dasharray:4 3;opacity:.8}
+.lgc .tgl{fill:var(--ink);font-size:10.5px;font-weight:700}
+.lgc .vl{fill:var(--ink);font-size:10.5px;font-weight:700}
+.lgc .hit{fill:transparent;cursor:pointer}
+.lgc .hit.on{fill:var(--ink);fill-opacity:.07}
+.lgc.cal .cell{cursor:pointer}
+.lgc.cal .cell rect{fill:var(--raise)}
+.lgc.cal .c-done rect{fill:var(--go)}
+.lgc.cal .c-miss rect{fill:none;stroke:var(--go);stroke-width:2;stroke-dasharray:4 3}
+.lgc.cal .c-plan rect{fill:none;stroke:var(--muted);stroke-width:1.5}
+.lgc.cal .c-fut rect{fill-opacity:.45}
+.lgc.cal .now rect{stroke:var(--ink);stroke-width:2}
+.lgc.cal .c-miss.now rect{stroke:var(--go)}
+.lgc.cal .n{font-size:10.5px}
+.lgc.cal .c-done .n{fill:var(--go-ink)}
+.lgc.cal .k{fill:var(--ink);font-size:16px;font-weight:700}
+.lgc.cal .c-done .k{fill:var(--go-ink)}
+.lgc.cal .c-miss .k{fill:var(--go)}
+.lg-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.5}
+.lg-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.lg-legend .k-done{background:var(--go)}
+.lg-legend .k-miss{border:2px dashed var(--go)}
+.lg-legend .k-plan{border:1.5px solid var(--muted)}
+.lg-legend .k-rest{background:var(--raise)}
+.lg-legend .k-thin{background:color-mix(in srgb,var(--m4) 40%,transparent);border:1.5px solid var(--m4)}
+.lg-legend .k-tg{height:0;width:14px;border-radius:0;border-top:2px dashed var(--ink);vertical-align:3px}
+.lg-tip{min-height:1.6em;font-size:13px;margin:8px 0 0;line-height:1.6;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.lg-tip b{font-family:var(--f-num);font-size:15px}
+.lg-tip .nw{white-space:nowrap}
+.lg-list{display:flex;flex-direction:column;margin-top:4px}
+.lg-row{appearance:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 0;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;width:100%}
+.lg-row:first-child{border-top:0}
+.lg-row .dt{font-family:var(--f-num);font-size:14px;color:var(--muted);min-width:62px}
+.lg-row .mid{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lg-row .nm{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-row .sub{font-size:12px;color:var(--muted)}
+.lg-row .v{font-family:var(--f-num);font-size:17px;font-weight:700;text-align:right;white-space:nowrap}
+.lg-row .v small{font-size:11px;color:var(--muted);font-weight:400}
+.lg-row .v.over{color:var(--go)}
+.lg-row .v.part{color:var(--muted)}
+.lg-row.miss .nm{color:var(--muted)}
+.lg-row.miss .v{color:var(--go)}
+.ing .lg-d{align-items:flex-start;gap:12px}
+.lg-d .lg-m{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lg-d .lg-m small{font-size:12px;color:var(--muted)}
+.lg-d .lg-v{display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap;font-family:var(--f-num);font-size:15px}
+.lg-d .lg-v small{font-size:12px;color:var(--muted)}
+.lg-re{border-color:color-mix(in srgb,var(--go) 45%,var(--line))}
+.lg-re ul{margin:8px 0 0;padding-left:1.2em}
+.lg-re li{font-size:13px;line-height:1.7}
+#v-log .tiles b small{font-size:12px;color:var(--muted);margin-left:1px}
+#v-log .card{min-width:0}
 /* 縦の画面・狭い画面（元の決まりより後ろ） */
 @media (max-width:760px),(orientation:portrait){
   .stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;gap:4px}
@@ -608,6 +667,25 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
     </div>
   </div>
 </div>
+<!-- ── 記録 ── -->
+<div class="wrap" id="v-log" data-view="log" hidden>
+  <header class="vhead"><div><p class="brand"><img class="mark" src="data:image/png;base64,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" alt="" width="28" height="28">FIT&amp;EAT</p><h1>記録</h1></div><div class="vr"><button type="button" class="gear" data-gear aria-label="設定" title="設定"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><p class="d" id="today4"></p></div></header>
+  <div class="grid">
+    <div class="col">
+      <div class="lg-top">
+        <div class="seg two" role="group" aria-label="記録の種類" id="lg-kind"><button type="button" data-k="run">運動</button><button type="button" data-k="food">食事</button></div>
+        <div class="seg three" role="group" aria-label="期間" id="lg-span"><button type="button" data-s="w">週</button><button type="button" data-s="m">月</button><button type="button" data-s="q">3か月</button></div>
+      </div>
+      <section class="card lg-re" id="lg-re" hidden></section>
+      <div class="tiles" id="lg-tiles"></div>
+      <section class="card" id="lg-c1"></section>
+    </div>
+    <div class="col">
+      <section class="card" id="lg-c2"></section>
+      <section class="card" id="lg-list"></section>
+    </div>
+  </div>
+</div>
 </main>
 
 <nav class="tabs" aria-label="画面">
@@ -615,6 +693,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
     <button type="button" data-v="train"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>トレーニング</button>
     <button type="button" data-v="food"><svg viewBox="0 0 24 24"><path d="M3 12h18a9 9 0 0 1-18 0Z"/><path d="M8 8c0-2 2-2 2-4M13 8c0-2 2-2 2-4"/></svg>食事</button>
     <button type="button" data-v="shop"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.8L20 8H6.2"/><circle cx="9" cy="20" r="1.2"/><circle cx="17" cy="20" r="1.2"/></svg>買い物</button>
+    <button type="button" data-v="log"><svg viewBox="0 0 24 24"><path d="M3 20h18M6 20v-6M11 20V8M16 20v-9M21 20V5" /></svg>記録</button>
   </div>
 </nav>
 
@@ -768,7 +847,7 @@ function 手で付ける(d){
   const 済 = 日ごと()[d], 名 = d === 今日() ? '今日' : 日の名(d);
   if (済){
     if (!confirm(`${名}の完了の印を外しますか？`)) return;
-    保存.set('記録', 記録().filter(e => e['日'] !== d));
+    保存.set('記録', 記録().filter(e => e['日'] !== d)); 運動の記録を送る([d]);
     知らせ(`${名}の完了を外した`);
   } else {
     const 記 = (予定の日(d) || {})['記号'] || 選, 秒 = 合計秒(展開(メ(記)['流れ'], 設定.段, false));
@@ -778,7 +857,7 @@ function 手で付ける(d){
   }
   描き直す();
 }
-function 記録する(e){ const a = 記録(); a.push(e); 保存.set('記録', a.slice(-400)) }
+function 記録する(e){ const a = 記録(); a.push(e); 保存.set('記録', a.slice(-1000)); 運動の記録を送る([e['日']]) }
 const やった = e => e['割合'] >= 0.6;
 function 日ごと(){
   const m = {};
@@ -1153,7 +1232,7 @@ const 食べた = () => 保存.get('食べた', {});
 function 食べたを記す(d, 区分, rec){
   const a = 食べた(); a[d] = a[d] || {};
   if (rec) a[d][区分] = rec; else delete a[d][区分];
-  const 古 = 日付(足す日(new Date(), -14));
+  const 古 = 日付(足す日(new Date(), -400));   // 記録のグラフに使うので400日残す（前は14日）
   for (const k of Object.keys(a)) if (k < 古 || !Object.keys(a[k]).length) delete a[k];
   保存.set('食べた', a);
   送りに積む([{道: ['食べた', d, 区分], 値: rec || null, 作る: true}]);
@@ -1264,9 +1343,15 @@ function 作り置きシート(r, n, d){
     <section><p class="label" style="margin-bottom:8px">手順（${n}食分をまとめて）</p><ol class="howto">${r['作り方'].map(st => `<li>${ご飯の字を足す(st)}</li>`).join('')}</ol></section>
     ${r['コツ'] ? `<p class="tip">${esc(r['コツ'])}</p>` : ''}
     <p class="tip">保存：1食分ずつ容器に分け、粗熱をとってから冷蔵。3日以内に食べ切る。それより先の分は冷凍して、食べる前の晩に冷蔵庫へ移す</p>
-    ${食べる日.length ? `<section><p class="label">食べる日</p><p>${esc(食べる日.join('・'))}</p></section>` : ''}`;
+    ${食べる日.length ? `<section><p class="label">食べる日</p><p>${esc(食べる日.join('・'))}</p></section>` : ''}
+    ${d <= 今日() ? `<section><button type="button" class="linkbtn" id="ck-skip">作れなかった（後ろの日へ回す）</button><p class="hint" style="margin-top:6px">押すと EDIT FLOW が、作る日と食べる日を次に空いている日へずらす</p></section>` : ''}`;
   $('sheet').hidden = false; document.body.style.overflow = 'hidden';
   p.querySelectorAll('.howto li').forEach(li => li.addEventListener('click', () => li.classList.toggle('ok')));
+  /* 作り置きを作れなかった日（2026-11-16 依頼者「変更があった場合に翌日以降でリスケジュール」） */
+  const sk = $('ck-skip'); if (sk) sk.addEventListener('click', () => {
+    送りに積む([{道: ['作れなかった', d, r.id], 値: true, 作る: true}]);
+    知らせ('作れなかったことを送った。Mac で作る日を組み直す'); シートを閉じる();
+  });
   $('sh-x').addEventListener('click', シートを閉じる); $('sh-x').focus();
 }
 const 今の区分 = () => { const h = new Date().getHours(); return h < 10 ? '朝' : h < 16 ? '昼' : '夕' };
@@ -1907,11 +1992,12 @@ $('o-pantry').addEventListener('change', e => { 保存.set('調味料も', e.tar
 let 今の画面 = 'train';
 function 画面(v, 動かさない){
   今の画面 = v;
-  ['train', 'food', 'shop'].forEach(x => $('v-' + x).hidden = x !== v);
+  ['train', 'food', 'shop', 'log'].forEach(x => $('v-' + x).hidden = x !== v);
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.v === v ? 'page' : 'false'));
   if (!動かさない) $('scr').scrollTo(0, 0);
   if (v === 'food') 食事();
   if (v === 'shop') 買い物();
+  if (v === 'log') 記録画面();
   try{ history.replaceState(null, '', v === 'train' ? '#' + 選.toLowerCase() : '#' + v) }catch(e){}
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => 画面(b.dataset.v)));
@@ -1927,8 +2013,8 @@ function 負荷の段階(){
     const c = 保存.get('段階の連続', {}); c[b.dataset.k] = 0; 保存.set('段階の連続', c); 描き直す();
   }));
 }
-function 全体(){ 描き直す(); if (今の画面 === 'food') 食事(); if (今の画面 === 'shop') 買い物() }
-function 今日の表示(){ const d = new Date(), t = `${d.getMonth()+1}月${d.getDate()}日（${曜[d.getDay()]}）`; ['today1', 'today2', 'today3'].forEach(id => $(id).textContent = t) }
+function 全体(){ 控えを残す(); 描き直す(); if (今の画面 === 'food') 食事(); if (今の画面 === 'shop') 買い物(); if (今の画面 === 'log') 記録画面() }
+function 今日の表示(){ const d = new Date(), t = `${d.getMonth()+1}月${d.getDate()}日（${曜[d.getDay()]}）`; ['today1', 'today2', 'today3', 'today4'].forEach(id => $(id).textContent = t) }
 
 const 長 = {胴:50, もも:40, すね:40, 上腕:28, 前腕:26, 頭:13, 地面:212};
 const 立 = {hx:0, t:0, a1:6, f1:12, a2:-6, f2:12, l1:3, k1:0, l2:-3, k2:0};
@@ -2252,14 +2338,14 @@ function 終わる(){
     ${運動['終わったら'] ? `<div class="after"><span>リカバリー：${esc(運動['終わったら'])}</span><button type="button" class="linkbtn" id="d-food">食事を見る</button></div>` : ''}`;
   $('r-done').querySelectorAll('#d-day button').forEach(b => b.addEventListener('click', () => {
     $('r-done').querySelectorAll('#d-day button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    const a = 記録(); if (a.length){ a[a.length - 1]['日'] = b.dataset.d; 保存.set('記録', a) }
+    const a = 記録(); if (a.length){ const 前 = a[a.length - 1]['日']; a[a.length - 1]['日'] = b.dataset.d; 保存.set('記録', a); 運動の記録を送る([前, b.dataset.d]) }
     知らせ(`${日の名(b.dataset.d)}の分として記録`);
   }));
   $('r-done').querySelectorAll('.rpe:not(#d-day) button').forEach(b => b.addEventListener('click', () => {
     $('r-done').querySelectorAll('.rpe:not(#d-day) button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     const v = +b.dataset.v, a = 記録();
     let 文 = '';
-    if (a.length){ a[a.length - 1]['きつさ'] = v; 文 = 段階を見直す(a[a.length - 1]); 保存.set('記録', a) }
+    if (a.length){ a[a.length - 1]['きつさ'] = v; 文 = 段階を見直す(a[a.length - 1]); 保存.set('記録', a); 運動の記録を送る([a[a.length - 1]['日']]) }
     $('d-rpe').textContent = 文 || (v >= 5 ? '次回は短縮も考える' : '');
   }));
   const df = $('d-food');
@@ -2350,7 +2436,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '20（11/14 22:46）', 版の記号 = 'ea9c0819';
+const 版の名 = '21（11/16 12:02）', 版の記号 = '5ddafc85';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2390,10 +2476,262 @@ async function 新しい版を見る(){
 /* 新しい版で開いたら知らせる */
 (() => { const 前 = 保存.get('見た版', null); if (前 && 前 !== 版の記号) setTimeout(() => 知らせ(`新しい版になった：版 ${版の名}`), 800); 保存.set('見た版', 版の記号) })();
 
+/* ════════ 記録（2026-11-16 依頼者「過去に食べた物の記録を見れるようにして、記録をグラフ化しろ」「運動に関しても…一目でわかるように」）════════
+   食事：1日1本の棒を朝・昼・間食・夕で積み上げ、目標カロリーの線を引く。濃い色＝記録した食事、薄い色＝記録の無い食事（献立の予定どおりと見なす）
+   レシピには脂質・炭水化物の値が無いので、P・F・C は日を押したときに、記録した食事の分だけ出す
+   運動：暦（済み・抜けた・予定・休み）と、週ごとの回数の棒（目標の線つき） */
+const 区分4 = ['朝', '昼', '間食', '夕'], 区分色 = {朝: 'var(--m1)', 昼: 'var(--m2)', 間食: 'var(--m3)', 夕: 'var(--m4)'};
+const きつさ名 = {1: '楽', 2: 'やや楽', 3: '適正', 4: 'きつい', 5: '限界'};
+let 組み直しE = [];
+const 記録の見方 = {種: 保存.get('記録の種', 'run'), 期: 保存.get('記録の期', 'w')};
+const 日の並び = n => { const a = []; for (let i = n - 1; i >= 0; i--) a.push(日付(足す日(new Date(), -i))); return a };
+const タイル = a => a.map(([v, n]) => `<div><b>${v}</b><span>${n}</span></div>`).join('');
+
+/* 毎日の献立の見込みと運動の予定を控えに残す（過ぎた日も、予定と実際を比べられるように）。400日分 */
+function 控えを残す(){
+  const t = 今日(), 古 = 日付(足す日(new Date(), -400)), 昨日 = 日付(足す日(new Date(), -1));
+  const 食控 = 保存.get('食の控え', {});
+  for (const d of [昨日, t]){
+    if (d !== t && 食控[d]) continue;   // 過ぎた日は、その日に残した控えを正とする
+    if (!献立E[d] && !献立()[d] && !食の文字E[d]) continue;
+    const 食 = {};
+    for (const k of 区分4){ const v = 食の値(d, k); if (!v.rec && v.kcal > 0) 食[k] = {k: Math.round(v.kcal), P: Math.round(v.P), 名: v.名} }
+    const 目 = 栄養の目標(d);
+    食控[d] = {目: {kcal: 目.kcal, P: 目.P}, 食};
+  }
+  for (const k of Object.keys(食控)) if (k < 古) delete 食控[k];
+  保存.set('食の控え', 食控);
+  const 運控 = 保存.get('運動の予定の控え', {});
+  for (const d of Object.keys(予定)) if (d <= t && 予定の日(d)) 運控[d] = 予定[d]['記号'];
+  for (const k of Object.keys(運控)) if (k < 古) delete 運控[k];
+  保存.set('運動の予定の控え', 運控);
+}
+/* その日の食事（記録が先。無ければ控えの献立）。目標は控え、無ければ今の式 */
+function 日の食(d){
+  const 控 = 保存.get('食の控え', {})[d], 記 = 食べた()[d] || {}, 食 = {};
+  for (const k of 区分4){
+    const r = 記[k];
+    if (r) 食[k] = {k: Math.round(r.kcal || 0), P: Math.round(r.p || 0), F: r.f, C: r.c, 名: r.名前 || '記録した食事', 済: true, 外: !!r.外};
+    else if (d === 今日()){ const v = 食の値(d, k); if (v.kcal > 0) 食[k] = {k: Math.round(v.kcal), P: Math.round(v.P), 名: v.名, 済: false} }
+    else if (控 && 控.食[k]) 食[k] = {...控.食[k], 済: false};
+  }
+  if (!Object.keys(食).length) return null;
+  const 目 = 控 ? 控.目 : (() => { const x = 栄養の目標(d); return {kcal: x.kcal, P: x.P} })();
+  const 並 = Object.values(食);
+  return {食, 目, 計: 並.reduce((a, x) => a + x.k, 0), P: 並.reduce((a, x) => a + x.P, 0), 記録数: 並.filter(x => x.済).length, 数: 並.length};
+}
+/* 運動の記録を Mac へ送る（その日のいちばんやれた回）。EDIT FLOW が、抜けた回を後ろの日に組み直すのに使う */
+function 運動の記録を送る(日々){
+  const a = 記録(), ops = [];
+  for (const d of new Set(日々)){
+    if (!d) continue;
+    const 良 = a.filter(e => e['日'] === d).sort((x, y) => (y['割合'] || 0) - (x['割合'] || 0))[0];
+    ops.push({道: ['運動の記録', d], 値: 良 ? {記号: 良['記'], 割合: 良['割合'], 秒: 良['秒'], 予定秒: 良['予定秒'], きつさ: 良['きつさ'] ?? null, 時: 良['時'], 手: !!良['手']} : null, 作る: true});
+  }
+  if (ops.length) 送りに積む(ops);
+}
+/* 14日以上あいたら、負荷の段階を1段下げて再開する（抜けた日が数日なら下げない） */
+function 休みのあとの段階(){
+  if (!運動['段階']) return;
+  const 済 = Object.keys(日ごと()).sort(), 最後 = 済[済.length - 1]; if (!最後) return;
+  const 空き = Math.round((new Date(今日() + 'T12:00') - new Date(最後 + 'T12:00')) / 864e5);
+  if (空き < 14 || 保存.get('休みで下げた', '') === 最後) return;
+  const 段 = {...保存.get('段階', {})}; let 下げた = false;
+  for (const k of Object.keys(運動['段階'])){ const lv = 段階の今(k); if (lv > 1){ 段[k] = lv - 1; 下げた = true } }
+  保存.set('休みで下げた', 最後);
+  if (下げた){ 保存.set('段階', 段); 保存.set('段階の連続', {}); setTimeout(() => 知らせ(`${空き}日あいたので、負荷の段階を1段下げた`), 1200) }
+}
+/* EDIT FLOW が組み直した予定（予定.json の 組み直し：[{日, 種, 文}]）。新しいものは一度だけ知らせる */
+function 組み直しを知らせる(){
+  const 見た = 保存.get('見た組み直し', []), 新 = 組み直しE.filter(x => x && x['文'] && !見た.includes(x['日'] + x['文']));
+  if (!新.length) return;
+  知らせ(`予定を組み直した：${新[0]['文']}${新.length > 1 ? `（ほか${新.length - 1}件は記録タブ）` : ''}`);
+  保存.set('見た組み直し', [...見た, ...新.map(x => x['日'] + x['文'])].slice(-100));
+}
+function 組み直しの欄(){
+  const 古 = 日付(足す日(new Date(), -3)), a = 組み直しE.filter(x => x && (x['日'] || '') >= 古), el = $('lg-re');
+  el.hidden = !a.length; if (!a.length) return;
+  el.innerHTML = `<p class="label">組み直した予定</p><ul>${a.map(x => `<li>${x['種'] ? `<b>${esc(x['種'])}</b>　` : ''}${esc(x['文'])}</li>`).join('')}</ul>`;
+}
+
+/* 縦の棒グラフ。項目：[{名, 段:[{v, 色, 薄}], 目, tip, d}]。opt：{最大, 目盛り, 線, 線の名, H} */
+function 縦棒(項目, opt){
+  const W = 340, H = opt.H || 170, L = 34, R = 4, T = 14, B = 20, pw = W - L - R, ph = H - T - B, n = 項目.length;
+  const y = v => T + ph - Math.min(v, opt.最大) / opt.最大 * ph, 幅 = pw / n, bw = Math.max(3, Math.min(30, 幅 - (n > 20 ? 2 : 8)));
+  const 刻 = n <= 8 ? 1 : n <= 13 ? 2 : 5;
+  let s = '';
+  for (const v of opt.目盛り) s += `<line class="ax" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${L - 5}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${v}</text>`;
+  if (opt.線) s += `<line class="tg" x1="${L}" x2="${W - R}" y1="${y(opt.線).toFixed(1)}" y2="${y(opt.線).toFixed(1)}"/><text class="tgl" x="${W - R}" y="${(y(opt.線) - 5).toFixed(1)}" text-anchor="end">${esc(opt.線の名 || '')}</text>`;
+  項目.forEach((it, i) => {
+    const cx = L + 幅 * i + 幅 / 2, x = cx - bw / 2;
+    let acc = 0, j = 0;
+    for (const g of it.段){
+      if (!(g.v > 0)) continue;
+      const top = y(acc + g.v), bot = y(acc) - (j ? 2 : 0), h = Math.max(.8, bot - top);
+      // 記録の無い食事は薄い塗り＋同じ色の縁（暗い地で色が濁って見分けにくいので、縁で色を残す）。縁は内側に収める
+      const 縁 = g.薄 && bw >= 6 && h >= 3 ? .75 : 0;
+      s += `<rect x="${(x + 縁).toFixed(1)}" y="${(top + 縁).toFixed(1)}" width="${(bw - 縁 * 2).toFixed(1)}" height="${Math.max(.8, h - 縁 * 2).toFixed(1)}" rx="${Math.min(3, bw / 3).toFixed(1)}" fill="${g.色}"${g.薄 ? ` fill-opacity=".4"${縁 ? ` stroke="${g.色}" stroke-width="1.5"` : ''}` : ''}/>`;
+      acc += g.v; j++;
+    }
+    if (it.目) s += `<line class="tg" x1="${(x - 3).toFixed(1)}" x2="${(x + bw + 3).toFixed(1)}" y1="${y(it.目).toFixed(1)}" y2="${y(it.目).toFixed(1)}"/>`;
+    if (opt.値 && acc > 0) s += `<text class="vl" x="${cx.toFixed(1)}" y="${(Math.min(y(acc), it.目 ? y(it.目) : 1e9) - 5).toFixed(1)}" text-anchor="middle">${opt.値(it)}</text>`;
+    if (i % 刻 === (n - 1) % 刻) s += `<text x="${cx.toFixed(1)}" y="${H - 5}" text-anchor="middle">${esc(it.名)}</text>`;
+    s += `<rect class="hit" data-i="${i}" x="${(L + 幅 * i).toFixed(1)}" y="${T}" width="${幅.toFixed(1)}" height="${ph + B}"/>`;
+  });
+  return `<svg class="lgc" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.名 || '')}">${s}</svg>`;
+}
+/* グラフを押したら下に値を出す（日なら「この日を見る」） */
+function 押すと値(box, 項目){
+  const tip = box.querySelector('.lg-tip'), svg = box.querySelector('svg');
+  box.querySelectorAll('.hit').forEach(h => h.addEventListener('click', () => {
+    svg.querySelectorAll('.hit').forEach(x => x.classList.toggle('on', x === h));
+    const it = 項目[+h.dataset.i];
+    tip.innerHTML = `${it.tip}${it.d ? ` <button type="button" class="linkbtn" data-d="${it.d}">この日を見る</button>` : ''}`;
+    const b = tip.querySelector('button'); if (b) b.addEventListener('click', () => 日のシート(b.dataset.d));
+  }));
+}
+const 目盛りを作る = (最大, 刻み) => { const a = []; for (let v = 0; v <= 最大 + 1e-9; v += 刻み) a.push(v); return a };
+
+function 記録画面(){
+  const 見 = 記録の見方;
+  $('lg-kind').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === 見.種)));
+  $('lg-span').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === 見.期)));
+  組み直しの欄();
+  if (見.種 === 'run') 運動の記録画面(); else 食事の記録画面();
+}
+$('lg-kind').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { 記録の見方.種 = b.dataset.k; 保存.set('記録の種', b.dataset.k); 記録画面() }));
+$('lg-span').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { 記録の見方.期 = b.dataset.s; 保存.set('記録の期', b.dataset.s); 記録画面() }));
+
+function 運動の記録画面(){
+  const 期 = 記録の見方.期, 週数 = {w: 2, m: 5, q: 13}[期];
+  const t = 今日(), 運日 = 運動の日(), 日ご = 日ごと(), 控 = 保存.get('運動の予定の控え', {}), 全 = 記録();
+  const 始 = 足す日(週の始め(new Date(t + 'T12:00')), -7 * (週数 - 1));
+  const 日々 = []; for (let i = 0; i < 週数 * 7; i++) 日々.push(日付(足す日(始, i)));
+  const 予の記 = d => 控[d] || (d >= 運日 && 予定の日(d) ? 予定[d]['記号'] : null);
+  const 状 = d => 日ご[d] ? 'done' : 予の記(d) && d < 運日 ? 'miss' : 予の記(d) ? 'plan' : d > t ? 'fut' : 'rest';
+  const 範 = 日々.filter(d => d <= t), 抜 = 範.filter(d => 状(d) === 'miss');
+  const 回 = 全.filter(e => やった(e) && 範.includes(e['日'])), 分 = Math.round(回.reduce((a, e) => a + e['秒'], 0) / 60);
+  $('lg-tiles').innerHTML = タイル([
+    [回.length + '<small>回</small>', '運動した回'],
+    [分 >= 60 ? (分 / 60).toFixed(1) + '<small>時間</small>' : 分 + '<small>分</small>', '合計時間'],
+    [(回.length / 週数).toFixed(1) + `<small>/${目標}</small>`, '週の平均'],
+    [抜.length + '<small>回</small>', '抜けた予定']]);
+  // 暦：月〜日の7列。済み＝赤（長くやった日ほど濃い）、抜けた＝赤の点線、予定＝細い枠、休み＝無地
+  const W = 340, 頭 = 16, gap = 4, cw = (W - gap * 6) / 7, ch = 週数 <= 2 ? 50 : 週数 <= 5 ? 44 : 22, H = 頭 + 週数 * (ch + gap) - gap;
+  let s = '';
+  '月火水木金土日'.split('').forEach((w, i) => s += `<text x="${(i * (cw + gap) + cw / 2).toFixed(1)}" y="11" text-anchor="middle">${w}</text>`);
+  日々.forEach((d, i) => {
+    const c = i % 7, r = Math.floor(i / 7), x = c * (cw + gap), y = 頭 + r * (ch + gap), st = 状(d);
+    const 記 = 日ご[d] ? [...new Set(日ご[d].記)].join('') : 予の記(d) || '';
+    const 濃 = st === 'done' ? Math.min(1, .55 + 日ご[d].分 / 60).toFixed(2) : '';
+    s += `<g class="cell c-${st}${d === t ? ' now' : ''}" data-d="${d}"><rect x="${(x + 1).toFixed(1)}" y="${(y + 1).toFixed(1)}" width="${(cw - 2).toFixed(1)}" height="${(ch - 2).toFixed(1)}" rx="6"${濃 ? ` fill-opacity="${濃}"` : ''}/>`;
+    if (ch >= 36) s += `<text class="n" x="${(x + 6).toFixed(1)}" y="${(y + 13).toFixed(1)}">${Number(d.slice(8))}</text>${記 ? `<text class="k" x="${(x + cw / 2).toFixed(1)}" y="${(y + ch / 2 + 9).toFixed(1)}" text-anchor="middle">${esc(記)}</text>` : ''}`;
+    s += '</g>';
+  });
+  $('lg-c1').innerHTML = `<p class="label">運動した日 ─ ${週数 === 2 ? '先週と今週' : 週数 + '週'}</p>
+    <svg class="lgc cal" viewBox="0 0 ${W} ${H}" role="img" aria-label="運動した日の暦">${s}</svg>
+    <div class="lg-legend"><span><i class="k-done"></i>やった</span><span><i class="k-miss"></i>抜けた予定</span><span><i class="k-plan"></i>これからの予定</span><span><i class="k-rest"></i>休み</span></div>
+    <p class="wnote">日を押すと、その日の運動と食事が出る。A〜D・S はメニューの記号</p>`;
+  $('lg-c1').querySelectorAll('g.cell').forEach(g => g.addEventListener('click', () => { if (g.dataset.d <= t) 日のシート(g.dataset.d) }));
+  // 週ごとの回数
+  const 本 = 期 === 'q' ? 13 : 8, 今週 = 週の始め(new Date(t + 'T12:00')), 項目 = [];
+  for (let i = 本 - 1; i >= 0; i--){
+    const w = 足す日(今週, -7 * i), n = 週の数(w, 日ご);
+    項目.push({名: `${w.getMonth() + 1}/${w.getDate()}`, 段: [{v: n, 色: 'var(--go)'}], tip: `<span class="nw">${日の名(日付(w))}からの週</span><span class="nw"><b>${n}</b> 回（目標 ${目標}回）</span>`});
+  }
+  const 最大 = Math.max(目標 + 1, ...項目.map(x => x.段[0].v));
+  $('lg-c2').innerHTML = `<p class="label">週ごとの回数 ─ ${本}週</p>${縦棒(項目, {最大, 目盛り: 目盛りを作る(最大, 最大 > 6 ? 2 : 1), 線: 目標, 線の名: `目標 ${目標}回`, H: 150, 名: '週ごとの運動の回数'})}<p class="lg-tip">棒を押すと回数が出る</p>`;
+  押すと値($('lg-c2'), 項目);
+  // 一覧（新しい順）
+  const 行 = [];
+  for (const d of [...範].reverse()){
+    const es = 全.filter(e => e['日'] === d);
+    for (const e of es) 行.push(`<button type="button" class="lg-row" data-d="${d}"><span class="dt">${日の名(d)}</span><span class="mid"><span class="nm">${esc(e['記'])}　${名((メ(e['記']) || {})['名前'] || '')}</span><span class="sub">${Math.round(e['秒'] / 60)}分・${Math.round((e['割合'] || 0) * 100)}%${e['きつさ'] ? '・きつさ「' + きつさ名[e['きつさ']] + '」' : ''}${e['手'] ? '・手で付けた' : ''}</span></span><span class="v${やった(e) ? '' : ' part'}">${やった(e) ? '済み' : '途中'}</span></button>`);
+    if (!es.some(やった) && 状(d) === 'miss') 行.push(`<button type="button" class="lg-row miss" data-d="${d}"><span class="dt">${日の名(d)}</span><span class="mid"><span class="nm">${esc(予の記(d))}　${名((メ(予の記(d)) || {})['名前'] || '')}</span><span class="sub">予定していたが、やらなかった</span></span><span class="v">抜け</span></button>`);
+  }
+  $('lg-list').innerHTML = `<p class="label">運動の記録</p>${行.length ? `<div class="lg-list">${行.join('')}</div>` : '<p class="muted" style="margin:10px 0 0;font-size:13px">この期間の記録はまだない</p>'}`;
+  $('lg-list').querySelectorAll('.lg-row').forEach(b => b.addEventListener('click', () => 日のシート(b.dataset.d)));
+}
+
+function 食事の記録画面(){
+  const 期 = 記録の見方.期, t = 今日(), 日数 = {w: 7, m: 30, q: 91}[期], 日々 = 日の並び(日数);
+  const 値 = Object.fromEntries(日々.map(d => [d, 日の食(d)]));
+  const 済 = 日々.filter(d => d < t && 値[d]);   // 今日は途中なので、平均に入れない
+  const 平均 = f => 済.length ? Math.round(済.reduce((a, d) => a + f(値[d]), 0) / 済.length) : null;
+  const 内 = 済.filter(d => 値[d].計 <= 値[d].目.kcal * 1.05).length, 記録数 = 日々.reduce((a, d) => a + (値[d] ? 値[d].記録数 : 0), 0);
+  $('lg-tiles').innerHTML = タイル([
+    [済.length ? `${平均(x => x.計)}<small>/${平均(x => x.目.kcal)}</small>` : '–', '1日の平均 kcal／目標'],
+    [済.length ? `${平均(x => x.P)}<small>/${平均(x => x.目.P)}g</small>` : '–', 'たんぱく質の平均'],
+    [済.length ? `${内}<small>/${済.length}日</small>` : '–', '目標内の日'],
+    [記録数 + '<small>食</small>', '記録した食事']]);
+  // 項目：週と月は1日1本。3か月は週ごとの1日平均
+  let 項目;
+  if (期 === 'q'){
+    項目 = [];
+    for (let g = 12; g >= 0; g--){
+      const 組 = 日々.slice(日数 - 7 * (g + 1), 日数 - 7 * g).filter(d => d < t && 値[d]);
+      const 始 = 日々[日数 - 7 * (g + 1)], n = 組.length || 1;
+      const 段 = 区分4.flatMap(k => {
+        const 記 = 組.reduce((a, d) => a + ((値[d].食[k] || {}).済 ? 値[d].食[k].k : 0), 0) / n;
+        const 予 = 組.reduce((a, d) => a + (値[d].食[k] && !値[d].食[k].済 ? 値[d].食[k].k : 0), 0) / n;
+        return [{v: 記, 色: 区分色[k]}, {v: 予, 色: 区分色[k], 薄: true}];
+      });
+      const 計 = Math.round(段.reduce((a, x) => a + x.v, 0)), 目 = 組.length ? Math.round(組.reduce((a, d) => a + 値[d].目.kcal, 0) / 組.length) : null;
+      const P = 組.length ? Math.round(組.reduce((a, d) => a + 値[d].P, 0) / 組.length) : 0, 目P = 組.length ? Math.round(組.reduce((a, d) => a + 値[d].目.P, 0) / 組.length) : null;
+      項目.push({名: `${Number(始.slice(5, 7))}/${Number(始.slice(8))}`, 段, 目, 計, P, 目P,
+        tip: 組.length ? `<span class="nw">${日の名(始)}からの週（${組.length}日分）</span><span class="nw">1日平均 <b>${計}</b> kcal（目標 ${目}）</span><span class="nw">たんぱく質 <b>${P}</b> g（目標 ${目P}）</span>` : `<span class="nw">${日の名(始)}からの週</span><span class="nw">記録なし</span>`});
+    }
+  } else {
+    項目 = 日々.map(d => {
+      const x = 値[d], 曜字 = 曜[new Date(d + 'T12:00').getDay()];
+      const 名_ = 期 === 'w' ? `${Number(d.slice(8))}${曜字}` : `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
+      if (!x) return {名: 名_, 段: [], 目: null, 計: 0, P: 0, tip: `<span class="nw">${日の名(d)}</span><span class="nw">記録なし</span>`};
+      return {名: 名_, d, 段: 区分4.filter(k => x.食[k]).map(k => ({v: x.食[k].k, 色: 区分色[k], 薄: !x.食[k].済})), 目: x.目.kcal, 計: x.計, P: x.P, 目P: x.目.P,
+        tip: `<span class="nw">${日の名(d)}${d === t ? '（途中）' : ''}</span><span class="nw"><b>${x.計}</b> kcal（目標 ${x.目.kcal}）</span><span class="nw">たんぱく質 <b>${x.P}</b> g（目標 ${x.目.P}）</span>`};
+    });
+  }
+  const 最大k = Math.ceil(Math.max(2000, ...項目.map(x => Math.max(x.計 || 0, x.目 || 0))) * 1.08 / 500) * 500;
+  const 凡例 = 区分4.map(k => `<span><i style="background:${区分色[k]}"></i>${k === '間食' ? '間食' : k + '食'}</span>`).join('') + '<span><i class="k-thin"></i>薄い色＝記録の無い食事（献立どおりと見なす）</span><span><i class="k-tg"></i>目標</span>';
+  $('lg-c1').innerHTML = `<p class="label">カロリー（kcal）${期 === 'q' ? ' ─ 週ごとの1日平均' : ''}</p>${縦棒(項目, {最大: 最大k, 目盛り: 目盛りを作る(最大k, 最大k > 3000 ? 1000 : 500), 値: 期 === 'w' ? it => it.計 : null, 名: '1日のカロリー', H: 190})}
+    <div class="lg-legend">${凡例}</div><p class="lg-tip">棒を押すと中身が出る</p>`;
+  押すと値($('lg-c1'), 項目);
+  const 項目P = 項目.map(x => ({...x, 段: x.計 ? [{v: x.P, 色: 'var(--go)'}] : [], 目: x.目P || null}));
+  const 最大P = Math.ceil(Math.max(120, ...項目P.map(x => Math.max(x.P || 0, x.目 || 0))) * 1.08 / 25) * 25;
+  $('lg-c2').innerHTML = `<p class="label">たんぱく質（g）${期 === 'q' ? ' ─ 週ごとの1日平均' : ''}</p>${縦棒(項目P, {最大: 最大P, 目盛り: 目盛りを作る(最大P, 50), 値: 期 === 'w' ? it => it.P : null, 名: '1日のたんぱく質', H: 150})}
+    <div class="lg-legend"><span><i class="k-tg"></i>目標（体重×${(運動['栄養'] || {})['たんぱく質_体重あたり'] || 1.9}g）。線に届けば達成</span></div><p class="lg-tip">棒を押すと中身が出る</p>`;
+  押すと値($('lg-c2'), 項目P);
+  // 一覧（新しい順・31日まで）
+  const 行 = 日々.filter(d => 値[d]).reverse().slice(0, 31).map(d => {
+    const x = 値[d], 主 = 区分4.filter(k => x.食[k]).map(k => `${k}：${String(x.食[k].名).split('＋')[0]}`).join('　'), 超 = x.計 > x.目.kcal * 1.05 && d < t;
+    return `<button type="button" class="lg-row" data-d="${d}"><span class="dt">${d === t ? '今日' : 日の名(d)}</span><span class="mid"><span class="nm">${esc(主)}</span><span class="sub">P ${x.P} g・記録 ${x.記録数}/${x.数}食${d === t ? '・途中' : ''}</span></span><span class="v${超 ? ' over' : ''}">${x.計}<small> kcal</small></span></button>`;
+  });
+  $('lg-list').innerHTML = `<p class="label">食事の記録</p>${行.length ? `<div class="lg-list">${行.join('')}</div>` : '<p class="muted" style="margin:10px 0 0;font-size:13px">この期間の記録はまだない</p>'}`;
+  $('lg-list').querySelectorAll('.lg-row').forEach(b => b.addEventListener('click', () => 日のシート(b.dataset.d)));
+}
+
+/* その日の中身（運動と食事） */
+function 日のシート(d){
+  const f = 日の食(d), es = 記録().filter(e => e['日'] === d), 予 = 保存.get('運動の予定の控え', {})[d] || (予定の日(d) || {})['記号'];
+  const 運 = es.length ? es.map(e => `<div><span>${esc(e['記'])}　${名((メ(e['記']) || {})['名前'] || '')}</span><span>${Math.round(e['秒'] / 60)}分・${Math.round((e['割合'] || 0) * 100)}%${e['きつさ'] ? '・' + きつさ名[e['きつさ']] : ''}</span></div>`).join('')
+    : `<div><span>${予 ? `予定 ${esc(予)}（${名((メ(予) || {})['名前'] || '')}）` : '休養日'}</span><span>${予 && d < 運動の日() ? '抜けた' : 予 ? '' : '予定なし'}</span></div>`;
+  const 食 = f ? 区分4.filter(k => f.食[k]).map(k => { const x = f.食[k], PFC = x.済 && x.F != null ? `<small>F ${Math.round(x.F)}・C ${Math.round(x.C || 0)}</small>` : '';
+    return `<div class="lg-d"><span class="lg-m"><span><b style="color:${区分色[k]}">${k === '間食' ? '間食' : k + '食'}</b>　${名(x.名)}</span><small>${x.外 ? '外で食べた' : x.済 ? '記録した' : '献立の予定（記録なし）'}</small></span><span class="lg-v">${x.k} kcal・P ${x.P}${PFC}</span></div>` }).join('')
+    + `<div class="lg-d"><span class="lg-m"><span><b>合計</b></span><small>目標 ${f.目.kcal} kcal・P ${f.目.P} g</small></span><span class="lg-v"><b>${f.計} kcal・P ${f.P}</b></span></div>` : '<div><span>記録なし</span><span></span></div>';
+  const p = $('panel');
+  p.innerHTML = `
+    <span class="grab" aria-hidden="true"></span>
+    <div class="hd"><div><p class="label">記録</p><h2 id="sh-title">${esc(日の名(d))}</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
+    <section><p class="label">運動</p><div class="ing">${運}</div></section>
+    <section><p class="label">食事（単位：kcal・g）</p><div class="ing">${食}</div></section>
+    <p class="tip">P・F・C の F（脂質）と C（炭水化物）は、写真や文で記録した食事だけに出る。献立の予定の食事は kcal とたんぱく質だけ</p>`;
+  $('sheet').hidden = false; document.body.style.overflow = 'hidden';
+  $('sh-x').addEventListener('click', シートを閉じる); $('sh-x').focus();
+}
+
 /* ── 起動 ── */
 function ハッシュから(){
   const h = (location.hash || '').replace('#', '');
-  if (h === 'food' || h === 'shop') return {v: h};
+  if (h === 'food' || h === 'shop' || h === 'log') return {v: h};
   const k = h.toUpperCase();
   if (順.includes(k)){ 選 = k; return {k} }
   return {};
@@ -2401,13 +2739,15 @@ function ハッシュから(){
 async function 予定を読む(ハッシュ){
   try{
     const r = await fetch('予定.json?t=' + Date.now(), {cache:'no-store'});
-    if (r.ok){ const j = await r.json(); 予定 = j['日'] || {}; 外食の日 = j['外食'] || {}; 食予E = j['食の予定'] || {}; 食の文字E = j['食の文字'] || {}; 献立E = j['献立'] || {}; 買い物E = j['買い物'] && j['買い物']['日'] ? j['買い物'] : null; 栄養E = j['栄養'] || {}; 在庫E = j['在庫'] || {}; 使い切れないE = j['使い切れない'] || []; 期限切れE = j['期限切れ'] || []; 食材E = j['食材'] || {}; 上書きを片付ける(); 食予を片付ける(); 直しを片付ける();
+    if (r.ok){ const j = await r.json(); 予定 = j['日'] || {}; 外食の日 = j['外食'] || {}; 食予E = j['食の予定'] || {}; 食の文字E = j['食の文字'] || {}; 献立E = j['献立'] || {}; 買い物E = j['買い物'] && j['買い物']['日'] ? j['買い物'] : null; 栄養E = j['栄養'] || {}; 在庫E = j['在庫'] || {}; 使い切れないE = j['使い切れない'] || []; 期限切れE = j['期限切れ'] || []; 食材E = j['食材'] || {}; 組み直しE = Array.isArray(j['組み直し']) ? j['組み直し'] : []; 上書きを片付ける(); 食予を片付ける(); 直しを片付ける();
       if (買い物E){ const 前 = 保存.get('買い物の日', null); if (前 && 前 !== 買い物E['日']) 保存.set('買い物済', {}); 保存.set('買い物の日', 買い物E['日']) } }
   }catch(e){}
   const {x, y} = 今日の予定();
   if (!ハッシュ.k){ if (x) 選 = x['記号']; else if (y) 選 = y['記号'] }
   設定.短く = !!(x && x['軽い']);
   if (連携.鍵()) 初回の送り();
+  if (連携.鍵() && !保存.get('運動の記録を送った', false)){ 運動の記録を送る(記録().map(e => e['日'])); 保存.set('運動の記録を送った', true) }
+  組み直しを知らせる();
   送る(); 判定を待つ();
   全体();
 }
@@ -2420,6 +2760,7 @@ document.addEventListener('visibilitychange', async () => {
   今日の表示(); 予定を読む({});
 });
 const 最初 = ハッシュから();
+休みのあとの段階();
 今日の表示(); 画面(最初.v || 'train'); 描き直す(); 予定を読む(最初);
 描く(姿勢('rest', 0));
 requestAnimationFrame(回る);
@@ -2427,7 +2768,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=ea9c0819', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=5ddafc85', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
