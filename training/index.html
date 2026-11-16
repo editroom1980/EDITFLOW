@@ -326,6 +326,14 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .sheet .panel{background:var(--surface);width:min(640px,100%);max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;
   padding:18px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
 @media (min-width:700px){.sheet{align-items:center}.sheet .panel{border-radius:24px;max-height:88vh}}
+/* シートの題と × は、スクロールしても上に残す。上には外の暗い所を必ず残す（押すと閉じる）。取っ手は下へ引くと閉じる
+   （2026-11-16 依頼者「操作不能になることがある」。長いシートを下まで読むと × が見えなくなり、閉じられなかった） */
+.sheet .panel{padding-top:0;max-height:calc(100% - env(safe-area-inset-top,0px) - 28px)}
+.sheet .grab{margin-top:10px;flex:none;touch-action:none;position:relative}
+.sheet .grab::before{content:"";position:absolute;inset:-14px -60px}
+.sheet .hd{position:sticky;top:0;z-index:3;background:var(--surface);margin:-6px 0 0;padding:6px 0 10px;touch-action:none;box-shadow:0 1px 0 var(--line)}
+.sheet .panel.dragging{transition:none}
+.sheet .panel.back{transition:transform .2s ease}
 .sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--line);align-self:center}
 .sheet .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .sheet h2{font-size:24px;font-weight:900}
@@ -402,7 +410,7 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 .si .n small{display:block;font-size:11px;color:var(--muted)}
 .empty{font-size:14px;color:var(--muted);text-align:center;padding:20px 8px}
 .toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--bg);font-size:14px;font-weight:700;border-radius:18px;padding:10px 18px;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100vw - 40px);width:max-content;text-align:center;line-height:1.5}
+.toast{pointer-events:none;position:fixed;left:50%;bottom:calc(var(--nav-h) + 20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--bg);font-size:14px;font-weight:700;border-radius:18px;padding:10px 18px;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100vw - 40px);width:max-content;text-align:center;line-height:1.5}
 
 /* ── 運動中 ── */
 .run{position:fixed;inset:0;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto;gap:10px;z-index:20;--state:var(--go);
@@ -505,6 +513,11 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 
 /* ── 記録 ── */
 .lg-top{display:flex;flex-direction:column;gap:8px}
+.tolog{appearance:none;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;color:var(--ink);font:inherit;cursor:pointer}
+.tolog span:first-child{display:flex;flex-direction:column;gap:3px}
+.tolog b{font-size:16px}
+.tolog small{font-size:12px;color:var(--muted)}
+.tolog .chev{width:10px;height:10px;border-right:2px solid var(--muted);border-top:2px solid var(--muted);transform:rotate(45deg);flex:none}
 .lgc{display:block;width:100%;height:auto;margin-top:10px;font-family:var(--f-num);overflow:visible}
 .lgc text{fill:var(--muted);font-size:10.5px}
 .lgc .ax{stroke:var(--line);stroke-width:1}
@@ -614,11 +627,8 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
     <div class="col">
       <section class="card ladder" id="ladder" aria-label="コア・プログレッション"></section>
       <section class="card ladder" id="levels" aria-label="負荷の段階"></section>
-      <section class="card" aria-label="週ごとのトレーニング回数">
-        <p class="label">週ごとのトレーニング回数 ─ 8週</p>
-        <svg class="wchart" id="heat" viewBox="0 0 310 142" role="img" aria-label="8週間の週ごとの回数"></svg>
-        <p class="wnote" id="wnote"></p>
-      </section>
+      <!-- 週ごとの回数は記録タブにまとめた（2026-11-16 依頼者「使う人目線で使いやすいわかりやすいアプリに」） -->
+      <button type="button" class="card tolog" id="to-log"><span><b>記録とグラフを見る</b><small>運動した日・週ごとの回数・食事のカロリー</small></span><span class="chev" aria-hidden="true"></span></button>
       <details class="card fold" id="menus"><summary>メニュー一覧</summary><div id="menulist"></div></details>
     </div>
   </div>
@@ -949,6 +959,7 @@ function 体幹(){
 }
 /* 週ごとのトレーニング回数（2026-11-11 依頼者「アクティビティの表示は意味がわからん」。日ごとの四角から、週ごとの棒に替えた） */
 function マス目(){
+  if (!$('heat')) return;
   const s = 数字(), 始め = 足す日(週の始め(new Date()), -49);
   const 週々 = Array.from({length: 8}, (_, w) => {
     const 頭 = 足す日(始め, w * 7); let 回 = 0, 分 = 0;
@@ -1797,7 +1808,7 @@ function 枠シート(区分, d){
   const rc = $('fs-rec'); if (rc) rc.addEventListener('click', () => 記録シート(区分, d));
   $('sh-x').focus();
 }
-function シートを閉じる(){ $('sheet').hidden = true; document.body.style.overflow = '' }
+function シートを閉じる(){ $('sheet').hidden = true; document.body.style.overflow = ''; $('panel').style.transform = ''; $('panel').scrollTop = 0; ずれを戻す() }
 /* フォームの見本：拍に合わせて動く棒人間（音は出さない） */
 let 見本の時計 = 0;
 function 見本シート(s){
@@ -1818,8 +1829,46 @@ function 見本シート(s){
   $('sh-x').addEventListener('click', シートを閉じる); $('sh-x').focus();
 }
 $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) シートを閉じる() });
+/* 取っ手か題の帯を下へ引くと閉じる（90px 以上、または速く引いたとき） */
+(() => {
+  let y0 = null, t0 = 0, dy = 0;
+  const p = () => $('panel');
+  $('panel').addEventListener('touchstart', e => {
+    if (!e.target.closest('.grab, .hd') || e.target.closest('button')) return;
+    y0 = e.touches[0].clientY; t0 = Date.now(); dy = 0; p().classList.add('dragging'); p().classList.remove('back');
+  }, {passive: true});
+  $('panel').addEventListener('touchmove', e => {
+    if (y0 === null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0); p().style.transform = `translateY(${dy}px)`;
+  }, {passive: true});
+  const 離す = () => {
+    if (y0 === null) return;
+    const 速い = dy > 40 && dy / Math.max(1, Date.now() - t0) > .6;
+    y0 = null; p().classList.remove('dragging'); p().classList.add('back');
+    if (dy > 90 || 速い){ シートを閉じる() }
+    p().style.transform = '';
+  };
+  $('panel').addEventListener('touchend', 離す); $('panel').addEventListener('touchcancel', 離す);
+})();
+/* iPhone のホーム画面のアプリは、キーボードを閉じたあとも画面がずれたまま残り、押す位置がずれてボタンが反応しなくなることがある。
+   文字の欄から離れたとき・画面に戻ったとき・見える範囲が元に戻ったときに、ずれを戻す */
+function ずれを戻す(){ if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){ window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0 } }
+document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('input, textarea, select')) setTimeout(ずれを戻す, 60) });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(ずれを戻す, 60) });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(ずれを戻す, 120));
+window.addEventListener('scroll', () => { if (!document.activeElement || !document.activeElement.matches('input, textarea, select')) ずれを戻す() }, {passive: true});
+/* 誤りが出たら画面に出す（実機で起きたときに原因が分かるように）。同じ誤りは1回だけ */
+const 出した誤り = new Set();
+function 不具合を出す(e){
+  const m = String((e && (e.message || e.reason && e.reason.message || e.reason)) || e).slice(0, 80);
+  console.error(e);
+  if (出した誤り.has(m)) return; 出した誤り.add(m);
+  try{ 知らせ('不具合：' + m + '（画面を撮って送ってください）') }catch(_){}
+}
+window.addEventListener('error', e => 不具合を出す(e.error || e.message));
+window.addEventListener('unhandledrejection', e => 不具合を出す(e.reason));
 let 知らせの時計 = null;
-function 知らせ(t){ const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(知らせの時計); 知らせの時計 = setTimeout(() => el.hidden = true, 2200) }
+function 知らせ(t){ const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(知らせの時計); 知らせの時計 = setTimeout(() => el.hidden = true, Math.max(2200, String(t).length * 110)) }
 
 /* ════════ 家にある食材 ════════ */
 const 在庫の直し = () => 保存.get('在庫の直し', {});   // 送ったが Mac でまだ反映されていない直し {材料: 量}
@@ -2353,6 +2402,7 @@ function 終わる(){
   if (記録した){ ピッ(660, .2); setTimeout(() => ピッ(990, .3), 220); 紙吹雪(); 話す(見出し) }
 }
 function 回る(now){
+  try{
   if (!$('run').hidden){
     const 差 = R.前の時 ? Math.min(250, now - R.前の時) : 0; R.前の時 = now;
     R.経過 += 差;
@@ -2383,6 +2433,7 @@ function 回る(now){
       }
     }
   }
+  }catch(e){ 不具合を出す(e) }   // 誤りが出ても時計は止めない
   requestAnimationFrame(回る);
 }
 function 始める(){
@@ -2436,7 +2487,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '21（11/16 12:02）', 版の記号 = '5ddafc85';
+const 版の名 = '22（11/16 15:39）', 版の記号 = '318a6c89';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2599,6 +2650,7 @@ function 記録画面(){
   組み直しの欄();
   if (見.種 === 'run') 運動の記録画面(); else 食事の記録画面();
 }
+$('to-log').addEventListener('click', () => { 記録の見方.種 = 'run'; 画面('log') });
 $('lg-kind').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { 記録の見方.種 = b.dataset.k; 保存.set('記録の種', b.dataset.k); 記録画面() }));
 $('lg-span').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { 記録の見方.期 = b.dataset.s; 保存.set('記録の期', b.dataset.s); 記録画面() }));
 
@@ -2768,7 +2820,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=5ddafc85', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=318a6c89', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
