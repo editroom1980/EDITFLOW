@@ -513,6 +513,29 @@ input.text{font:inherit;color:var(--ink);background:var(--bg);border:1px solid v
 
 /* ── 記録 ── */
 .lg-top{display:flex;flex-direction:column;gap:8px}
+.extras{display:flex;flex-direction:column;gap:6px;margin-top:-6px}   /* 外の箱のすき間12px − 6px ＝ 朝・昼・夕の行の間と同じ6px */
+/* 朝・昼・夕の行（.ml）と同じ並び：44px の名札・8px のすき間・左12px */
+.extras .ex1{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 8px 8px 12px;border-radius:14px;background:var(--raise);border:1px solid transparent}
+.extras .ex1 .label{letter-spacing:.1em}
+.extras .ex1 .n small b{font-family:var(--f-num);font-weight:600;font-size:13px;color:var(--ink)}
+.extras .ex1 .n{font-size:14px;font-weight:700;display:flex;flex-direction:column;gap:2px;min-width:0;word-break:keep-all}
+.extras .ex1 .n small{font-size:12px;font-weight:400;color:var(--muted)}
+.extras .ex1 .n .q{font-style:normal;font-weight:400;color:var(--muted);margin-left:6px;white-space:nowrap}
+.extras .linkbtn{align-self:flex-start}
+.seg.five{grid-template-columns:repeat(5,minmax(0,1fr))}
+.seg.five button{font-size:13px;font-weight:700;padding:9px 2px;line-height:1.3;word-break:keep-all}
+.adlist{display:flex;flex-direction:column;margin-top:4px}
+.adi{appearance:none;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 2px;text-align:left;cursor:pointer}
+.adi:first-child{border-top:0}
+.adi .n{font-size:15px;font-weight:700;word-break:keep-all}
+.adi .v{font-size:12px;color:var(--muted);white-space:nowrap}
+.adi .v b{font-family:var(--f-num);font-size:15px;color:var(--ink)}
+.adfree{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.adfree #ad-n{grid-column:1/-1}
+.adfree input{font:inherit;font-size:16px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+.after.shake{flex-wrap:wrap;gap:10px;justify-content:center}
+.after.shake .go{flex:0 1 auto;font-size:15px;letter-spacing:.04em;padding:12px 18px;flex-direction:column;gap:2px}
+.after.shake .go small{font-size:12px;font-weight:400;letter-spacing:0}
 .made .madebar{display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap}
 .made .stepper{display:flex;align-items:center;gap:8px}
 .made .stepper b{font-family:var(--f-num);font-size:24px;min-width:1.2em;text-align:center}
@@ -1332,10 +1355,31 @@ function 食べたを記す(d, 区分, rec){
   保存.set('食べた', a);
   送りに積む([{道: ['食べた', d, 区分], 値: rec || null, 作る: true}]);
 }
+/* 追加した食べ物（間食・夜食・トレ後のスムージー・食事に足した物）。1日に何件でも。{日: [{t: 時間帯, id, 名前, kcal, p, f, c, 量, 時}]}
+   （2026-11-18 依頼者「深夜のトレーニング後にトレ後のプロテインスムージーを追加できるように…食事に追加（追加する時間帯を選択できるように）して、正確にカロリーを計算できるように」）
+   1日の合計・夕食の目安・たんぱく質・記録のグラフに入れる。0〜4時に足した分は前の日の分（運動と同じ決まり） */
+const 時間帯 = [['朝', '朝食のとき'], ['昼', '昼食のとき'], ['間食', '間食'], ['夕', '夕食のとき'], ['夜', '夜食（トレ後・深夜）']];
+const 時間帯名 = Object.fromEntries(時間帯);
+const 食の日 = () => { const n = new Date(); return n.getHours() < 夜更け ? 日付(足す日(n, -1)) : 日付(n) };
+const 今の時間帯 = () => { const h = new Date().getHours(); return h < 夜更け || h >= 21 ? '夜' : h < 10 ? '朝' : h < 14 ? '昼' : h < 17 ? '間食' : '夕' };
+const 追加 = d => (保存.get('追加', {})[d] || []);
+function 追加を記す(d, list){
+  const a = 保存.get('追加', {});
+  if (list.length) a[d] = list; else delete a[d];
+  const 古 = 日付(足す日(new Date(), -400)); for (const k of Object.keys(a)) if (k < 古) delete a[k];
+  保存.set('追加', a);
+  送りに積む([{道: ['追加の食事', d], 値: list.length ? list : null, 作る: true}]);
+}
+function 追加する(d, x){
+  const n = new Date();
+  追加を記す(d, [...追加(d), {...x, 時: `${n.getHours()}:${String(n.getMinutes()).padStart(2, '0')}`}]);
+}
+const 追加の計 = (d, 帯) => 追加(d).filter(x => !帯 || 帯.includes(x.t)).reduce((a, x) => ({kcal: a.kcal + (x.kcal || 0), P: a.P + (x.p || 0)}), {kcal: 0, P: 0});
+const 帯の区分 = t => t === '夜' ? '間食' : t;   // グラフの色分け：夜食は間食の色
 /* 夕食の枠＝目標 −（朝・昼）。前に記録した間食があればそれも引く */
 function 夕食の枠(d){
   // 朝・昼が未設定なら見込みで数える（決めていない食事を0として、夕食を多く見積もらないように）
-  return 栄養の目標(d).kcal - ['朝', '昼', '間食'].reduce((a, k) => { const v = 食の値(d, k); return a + (k === '間食' ? (v.rec ? v.kcal : 0) : v.状態 === 'なし' ? 見込み[k] : v.kcal) }, 0);
+  return 栄養の目標(d).kcal - 追加の計(d, ['朝', '昼', '間食', '夕']).kcal - ['朝', '昼', '間食'].reduce((a, k) => { const v = 食の値(d, k); return a + (k === '間食' ? (v.rec ? v.kcal : 0) : v.状態 === 'なし' ? 見込み[k] : v.kcal) }, 0);
 }
 /* 夕食の主食（g。セブンはおにぎりの個数×100）。枠に合わせて減らし、日の型の量より増やさない */
 function 主食g(r, d, 枠){
@@ -1396,7 +1440,7 @@ function 食の値(d, 区分){
   if (文字) return {kcal: 見込み[区分] || 500, P: {朝: 15, 昼: 25, 夕: 25}[区分] || 10, 名: 文字, 状態: '外の予定'};
   return {kcal: 0, P: 0, 名: null, 状態: 'なし'};
 }
-function 日のたんぱく質(d){ return 区分の順.reduce((a, k) => a + 食の値(d, k).P, 0) }
+function 日のたんぱく質(d){ return 区分の順.reduce((a, k) => a + 食の値(d, k).P, 0) + 追加の計(d).P }
 /* 家にある材料（予定.json の 在庫。名前のかっこを外して照らす）。true＝量は分からないがある、[量, 単位]、false＝無い */
 const 素名 = n => n.replace(/（.*?）/g, '').trim();
 function 家の量(名_){
@@ -1473,9 +1517,10 @@ const 今の区分 = () => { const h = new Date().getHours(); return h < 10 ? '�
 function 食事の状況(){
   const d = 今日(), 型 = 日の型(d), 目 = 栄養の目標(d);
   const 値 = Object.fromEntries(区分の順.map(k => [k, 食の値(d, k)]));
-  const 全 = 区分の順.reduce((a, k) => a + 値[k].kcal, 0);
-  const 済 = 区分の順.filter(k => 値[k].rec).reduce((a, k) => a + 値[k].kcal, 0);
-  const P = 区分の順.reduce((a, k) => a + 値[k].P, 0), 幅 = Math.max(目.kcal, 全), 差 = 目.kcal - 全;
+  const 足 = 追加の計(d), 足々 = 追加(d);
+  const 全 = 区分の順.reduce((a, k) => a + 値[k].kcal, 0) + 足.kcal;
+  const 済 = 区分の順.filter(k => 値[k].rec).reduce((a, k) => a + 値[k].kcal, 0) + 足.kcal;
+  const P = 区分の順.reduce((a, k) => a + 値[k].P, 0) + 足.P, 幅 = Math.max(目.kcal, 全), 差 = 目.kcal - 全;
   const 夕 = 値['夕'], 枠 = 夕食の枠(d), 夕組 = 夕.r && !夕.rec ? 組み(d, '夕', 夕.r) : null;
   const g = 夕.r && !夕.rec ? (夕組 ? (夕組.ご飯 && !夕.r['主食込み'] ? ご飯1パック : 0) : 主食g(夕.r, d, 枠)) : null;
   const 届いた = 保存.get('判定結果', null);
@@ -1494,6 +1539,9 @@ function 食事の状況(){
     <div class="meter"><div class="nums"><span><abbr title="体重×1.9g。減量中に筋肉を落とさない量">たんぱく質</abbr>　<b>${Math.round(P)}</b> / ${目.P} g</span><span>${P >= 目.P ? '目標達成' : '残り ' + Math.round(目.P - P) + ' g'}</span></div>
       <div class="bar"><i style="width:${Math.min(100, P / 目.P * 100).toFixed(1)}%"></i></div></div>
     <div class="meals">${rows}</div>
+    <div class="extras">${足々.map((x, i) => `<div class="ex1"><span class="label">${esc({朝: '朝食', 昼: '昼食', 間食: '間食', 夕: '夕食', 夜: '夜食'}[x.t] || x.t)}</span><span class="n"><span>${名(x.名前)}${x.量 && x.量 !== 1 ? `<i class="q">×${x.量}</i>` : ''}</span><small><b>${x.kcal}</b> kcal・P <b>${x.p}</b> g${x.時 ? '・' + esc(x.時) : ''}</small></span><button type="button" class="icon" data-del="${i}" aria-label="${esc(x.名前)}を消す" title="消す"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join('')}
+      ${食の日() !== d && 追加(食の日()).length ? `<p class="hint" style="margin:0">0〜4時に追加した分は ${esc(日の名(食の日()))} の分に入っている（記録タブで見られる）</p>` : ''}
+      <button type="button" class="linkbtn" id="b-extra">＋ 間食・夜食を追加</button></div>
     ${作り置きの行(d)}
     ${夕.r && !夕.rec ? `<p class="hint"><span>夕食の目安 <b>${Math.max(0, Math.round(枠))}</b> kcal</span><span>${夕.r['主食込み'] ? '主食込みの献立' : セブンか(夕.r) ? `おにぎり <b>${g / 100}</b> 個` : g ? `ご飯 <b>${g}</b> g（${白米の字(g)}）` : 'ご飯なし'}${!夕.r['主食込み'] && g < (セブンか(夕.r) ? おにぎり数(型.主食) * 100 : 型.主食) ? '・残りに合わせて減らした' : !夕.r['主食込み'] && g > (セブンか(夕.r) ? おにぎり数(型.主食) * 100 : 型.主食) ? '・残りに合わせて増やした' : ''}</span></p>` : ''}
     ${届いた ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="linkbtn" id="b-judged">判定が届いています ─ ${esc((届いた.結果 || {}).title || '')}</button><button type="button" class="more" id="b-judged-x">消す</button></div>` : ''}
@@ -1509,8 +1557,51 @@ function 食事の状況(){
   }));
   ctx.querySelectorAll('[data-out]').forEach(b => b.addEventListener('click', () => 記録シート(b.dataset.out, d)));
   $('b-log').addEventListener('click', () => 記録シート(今の区分(), d));
+  $('b-extra').addEventListener('click', () => 追加シート(食の日()));
+  ctx.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const L = 追加(d), x = L[+b.dataset.del]; if (!x || !confirm(`${x.名前}（${x.kcal} kcal）を消しますか？`)) return;
+    追加を記す(d, L.filter((_, i) => i !== +b.dataset.del)); 知らせ(`${x.名前}を消した`); 食事();
+  }));
   const bj = $('b-judged'); if (bj) bj.addEventListener('click', () => { const w = 保存.get('判定結果', null); if (w){ 記録シート(w.区分, w.日); 判定の表示(w.結果, w) } });
   const bx = $('b-judged-x'); if (bx) bx.addEventListener('click', () => { 保存.set('判定結果', null); 知らせ('判定を消した'); 食事の状況() });
+}
+
+/* 間食・夜食を追加するシート：時間帯と量を選んで、品を押すと入る。一覧に無い物は数字で */
+function 追加シート(d, 帯 = 今の時間帯()){
+  const 品 = [R食('s11'), ...レシピ.filter(r => r['区分'] === '間食' && r.id !== 's11'), ...レシピ.filter(r => r['分類'] === 'スムージー' && r['区分'] !== '間食')].filter(Boolean);
+  const 量々 = [[.5, '½'], [1, '1'], [1.5, '1½'], [2, '2']];
+  let 量 = 1;
+  const p = $('panel');
+  p.innerHTML = `
+    <span class="grab" aria-hidden="true"></span>
+    <div class="hd"><div><p class="label">${d === 今日() ? '今日' : esc(日の名(d))}の分に入れる</p><h2 id="sh-title">間食・夜食を追加</h2></div><button type="button" class="x" id="sh-x" aria-label="閉じる"></button></div>
+    <section><p class="label">時間帯</p><div class="seg five" role="group" aria-label="時間帯" id="ad-t">${時間帯.map(([k, n]) => `<button type="button" data-t="${k}" aria-pressed="${k === 帯}">${esc(n.replace('のとき', '').replace('（トレ後・深夜）', ''))}</button>`).join('')}</div>
+      <p class="hint" id="ad-th"></p></section>
+    <section><p class="label">量</p><div class="seg four" role="group" aria-label="量" id="ad-q">${量々.map(([v, n]) => `<button type="button" data-q="${v}" aria-pressed="${v === 1}"><b>${n}</b><span>${v === 1 ? '1人分' : ''}</span></button>`).join('')}</div></section>
+    <section><p class="label">品を押すと入る</p><div class="adlist">${品.map(r => `<button type="button" class="adi" data-id="${esc(r.id)}"><span class="n">${名(r['名前'])}</span><span class="v"><b data-k="${r['kcal']}">${r['kcal']}</b> kcal・P <b data-p="${r['たんぱく質']}">${r['たんぱく質']}</b> g</span></button>`).join('')}</div></section>
+    <section><p class="label">一覧に無い物（数字で）</p>
+      <div class="adfree"><input type="text" id="ad-n" placeholder="名前（例：プロテインバー）" autocomplete="off"><input type="number" id="ad-k" inputmode="numeric" placeholder="kcal" min="0" max="3000"><input type="number" id="ad-p" inputmode="decimal" placeholder="たんぱく質 g" min="0" max="200"></div>
+      <button type="button" class="go food" id="ad-go" style="margin-top:10px">この内容で追加</button><p class="hint">袋の栄養成分表示の数字を入れる。量の選択は、この欄には掛けない</p></section>`;
+  $('sheet').hidden = false; document.body.style.overflow = 'hidden';
+  const 帯の字 = () => $('ad-th').textContent = `${時間帯名[帯]}に入れる。` + (帯 === '夜' ? '夕食のあと〜深夜（0〜4時に入れた分は前の日の分）' : 帯 === '間食' ? '昼食と夕食のあいだ。夕食の目安から引く' : 'その食事に足して数える');
+  帯の字();
+  p.querySelectorAll('#ad-t button').forEach(b => b.addEventListener('click', () => { 帯 = b.dataset.t; p.querySelectorAll('#ad-t button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); 帯の字() }));
+  p.querySelectorAll('#ad-q button').forEach(b => b.addEventListener('click', () => {
+    量 = +b.dataset.q; p.querySelectorAll('#ad-q button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    p.querySelectorAll('.adi').forEach(e => { e.querySelector('[data-k]').textContent = Math.round(e.querySelector('[data-k]').dataset.k * 量); e.querySelector('[data-p]').textContent = Math.round(e.querySelector('[data-p]').dataset.p * 量) });
+  }));
+  p.querySelectorAll('.adi').forEach(b => b.addEventListener('click', () => {
+    const r = R食(b.dataset.id); if (!r) return;
+    追加する(d, {t: 帯, id: r.id, 名前: r['名前'], kcal: Math.round(r['kcal'] * 量), p: Math.round(r['たんぱく質'] * 量), 量});
+    知らせ(`${時間帯名[帯]}に ${r['名前']}（${Math.round(r['kcal'] * 量)} kcal）を追加`); シートを閉じる(); 全体();
+  }));
+  $('ad-go').addEventListener('click', () => {
+    const n = $('ad-n').value.trim(), k = Math.round(+$('ad-k').value), P = Math.round(+$('ad-p').value || 0);
+    if (!n || !(k > 0)){ 知らせ('名前と kcal を入れる'); return }
+    追加する(d, {t: 帯, 名前: n, kcal: k, p: P, 量: 1});
+    知らせ(`${時間帯名[帯]}に ${n}（${k} kcal）を追加`); シートを閉じる(); 全体();
+  });
+  $('sh-x').addEventListener('click', シートを閉じる); $('sh-x').focus();
 }
 
 /* ── 外で食べたものの記録：文か写真を Mac の判定役（Claude）に送り、料理ごとの量と栄養を受け取る ──
@@ -2523,6 +2614,7 @@ function 終わる(){
     <h2>${見出し}</h2>
     <p class="cue">${一言}</p>
     <div class="sum"><div><b class="num">${分秒(秒)}</b><span>時間</span></div><div><b class="num">${kcal(記, 秒)}</b><span>消費 kcal（推定）</span></div><div><b class="num">${s.今週}/${目標}</b><span>今週</span></div></div>
+    ${R食('s11') ? `<div class="after shake"><button type="button" class="go food" id="d-shake">トレ後のプロテインスムージーを追加<small>${R食('s11')['kcal']} kcal・P ${R食('s11')['たんぱく質']} g</small></button><button type="button" class="linkbtn" id="d-shake-how">作り方</button></div>` : ''}
     ${記録した && (t !== 今日() || new Date().getHours() < 夜更け) ? `<div class="rpe" id="d-day"><p class="label">記録する日</p><div class="opts two">
       ${[日付(足す日(new Date(), -1)), 今日()].map(d => `<button type="button" data-d="${d}" aria-pressed="${d === t}">${日の名(d)}</button>`).join('')}
     </div></div>` : ''}
@@ -2542,6 +2634,14 @@ function 終わる(){
     if (a.length){ a[a.length - 1]['きつさ'] = v; 文 = 段階を見直す(a[a.length - 1]); 保存.set('記録', a); 運動の記録を送る([a[a.length - 1]['日']]) }
     $('d-rpe').textContent = 文 || (v >= 5 ? '次回は短縮も考える' : '');
   }));
+  const ds = $('d-shake'); if (ds) ds.addEventListener('click', () => {
+    const r = R食('s11'), d = 食の日(), 帯 = 今の時間帯() === '夜' ? '夜' : 今の時間帯() === '夕' ? '夕' : '間食';
+    if (追加(d).some(x => x.id === 's11' && x.t === 帯) && !confirm('今日はもう追加しています。もう1杯追加しますか？')) return;
+    追加する(d, {t: 帯, id: r.id, 名前: r['名前'], kcal: r['kcal'], p: r['たんぱく質'], 量: 1});
+    ds.disabled = true; ds.firstChild.textContent = '追加した ✓ ';
+    知らせ(`${時間帯名[帯]}にトレ後のプロテインスムージー（${r['kcal']} kcal）を追加`);
+  });
+  const dh = $('d-shake-how'); if (dh) dh.addEventListener('click', () => { 閉じる(); 画面('food'); シート(R食('s11'), '間食', 食の日()) });
   const df = $('d-food');
   if (df) df.addEventListener('click', () => { 閉じる(); 好み.区分 = 今の区分(); 保存.set('好み', 好み); 画面('food') });
   if (記録した){ ピッ(660, .2); setTimeout(() => ピッ(990, .3), 220); 紙吹雪(); 話す(見出し) }
@@ -2632,7 +2732,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ── 設定（右上の歯車。2026-11-11 依頼者「右上に設定ボタンをつけて色々設定できるようにしろ」）── */
-const 版の名 = '25（11/18 02:03）', 版の記号 = '8a630d1d';
+const 版の名 = '26（11/18 02:21）', 版の記号 = 'f62b354a';
 function 画面の色の欄(){
   const t = 保存.get('画面の色', 'auto');
   document.querySelectorAll('#o-theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
@@ -2708,13 +2808,15 @@ function 日の食(d){
   for (const k of 区分4){
     const r = 記[k];
     if (r) 食[k] = {k: Math.round(r.kcal || 0), P: Math.round(r.p || 0), F: r.f, C: r.c, 名: r.名前 || '記録した食事', 済: true, 外: !!r.外};
+    else if (k === '間食') continue;   // 間食は実際に記録・追加した分だけ数える（献立の予定の間食は食べないことが多い。食事の画面と同じ）
     else if (d === 今日()){ const v = 食の値(d, k); if (v.kcal > 0) 食[k] = {k: Math.round(v.kcal), P: Math.round(v.P), 名: v.名, 済: false} }
     else if (控 && 控.食[k]) 食[k] = {...控.食[k], 済: false};
   }
-  if (!Object.keys(食).length) return null;
+  const 足 = 追加(d).map(x => ({k: x.kcal || 0, P: x.p || 0, F: x.f, C: x.c, 名: x.名前, 済: true, t: x.t, 区: 帯の区分(x.t)}));
+  if (!Object.keys(食).length && !足.length) return null;
   const 目 = 控 ? 控.目 : (() => { const x = 栄養の目標(d); return {kcal: x.kcal, P: x.P} })();
-  const 並 = Object.values(食);
-  return {食, 目, 計: 並.reduce((a, x) => a + x.k, 0), P: 並.reduce((a, x) => a + x.P, 0), 記録数: 並.filter(x => x.済).length, 数: 並.length};
+  const 並 = [...Object.values(食), ...足];
+  return {食, 足, 目, 計: 並.reduce((a, x) => a + x.k, 0), P: 並.reduce((a, x) => a + x.P, 0), 記録数: 並.filter(x => x.済).length, 数: 並.length};
 }
 /* 運動の記録を Mac へ送る（その日のいちばんやれた回）。EDIT FLOW が、抜けた回を後ろの日に組み直すのに使う */
 function 運動の記録を送る(日々){
@@ -2869,7 +2971,7 @@ function 食事の記録画面(){
       const 組 = 日々.slice(日数 - 7 * (g + 1), 日数 - 7 * g).filter(d => d < t && 値[d]);
       const 始 = 日々[日数 - 7 * (g + 1)], n = 組.length || 1;
       const 段 = 区分4.flatMap(k => {
-        const 記 = 組.reduce((a, d) => a + ((値[d].食[k] || {}).済 ? 値[d].食[k].k : 0), 0) / n;
+        const 記 = 組.reduce((a, d) => a + ((値[d].食[k] || {}).済 ? 値[d].食[k].k : 0) + 値[d].足.filter(z => z.区 === k).reduce((b, z) => b + z.k, 0), 0) / n;
         const 予 = 組.reduce((a, d) => a + (値[d].食[k] && !値[d].食[k].済 ? 値[d].食[k].k : 0), 0) / n;
         return [{v: 記, 色: 区分色[k]}, {v: 予, 色: 区分色[k], 薄: true}];
       });
@@ -2883,7 +2985,7 @@ function 食事の記録画面(){
       const x = 値[d], 曜字 = 曜[new Date(d + 'T12:00').getDay()];
       const 名_ = 期 === 'w' ? `${Number(d.slice(8))}${曜字}` : `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
       if (!x) return {名: 名_, 段: [], 目: null, 計: 0, P: 0, tip: `<span class="nw">${日の名(d)}</span><span class="nw">記録なし</span>`};
-      return {名: 名_, d, 段: 区分4.filter(k => x.食[k]).map(k => ({v: x.食[k].k, 色: 区分色[k], 薄: !x.食[k].済})), 目: x.目.kcal, 計: x.計, P: x.P, 目P: x.目.P,
+      return {名: 名_, d, 段: [...区分4.filter(k => x.食[k]).map(k => ({v: x.食[k].k, 色: 区分色[k], 薄: !x.食[k].済})), ...x.足.map(z => ({v: z.k, 色: 区分色[z.区]}))], 目: x.目.kcal, 計: x.計, P: x.P, 目P: x.目.P,
         tip: `<span class="nw">${日の名(d)}${d === t ? '（途中）' : ''}</span><span class="nw"><b>${x.計}</b> kcal（目標 ${x.目.kcal}）</span><span class="nw">たんぱく質 <b>${x.P}</b> g（目標 ${x.目.P}）</span>`};
     });
   }
@@ -2913,6 +3015,7 @@ function 日のシート(d){
     : `<div><span>${予 ? `予定 ${esc(予)}（${名((メ(予) || {})['名前'] || '')}）` : '休養日'}</span><span>${予 && d < 運動の日() ? '抜けた' : 予 ? '' : '予定なし'}</span></div>`;
   const 食 = f ? 区分4.filter(k => f.食[k]).map(k => { const x = f.食[k], PFC = x.済 && x.F != null ? `<small>F ${Math.round(x.F)}・C ${Math.round(x.C || 0)}</small>` : '';
     return `<div class="lg-d"><span class="lg-m"><span><b style="color:${区分色[k]}">${k === '間食' ? '間食' : k + '食'}</b>　${名(x.名)}</span><small>${x.外 ? '外で食べた' : x.済 ? '記録した' : '献立の予定（記録なし）'}</small></span><span class="lg-v">${x.k} kcal・P ${x.P}${PFC}</span></div>` }).join('')
+    + f.足.map(x => `<div class="lg-d"><span class="lg-m"><span><b style="color:${区分色[x.区]}">${esc(時間帯名[x.t] || x.t)}</b>　${名(x.名)}</span><small>追加した</small></span><span class="lg-v">${x.k} kcal・P ${x.P}</span></div>`).join('')
     + `<div class="lg-d"><span class="lg-m"><span><b>合計</b></span><small>目標 ${f.目.kcal} kcal・P ${f.目.P} g</small></span><span class="lg-v"><b>${f.計} kcal・P ${f.P}</b></span></div>` : '<div><span>記録なし</span><span></span></div>';
   const p = $('panel');
   p.innerHTML = `
@@ -2965,7 +3068,7 @@ requestAnimationFrame(回る);
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=8a630d1d', {scope: './'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=f62b354a', {scope: './'}).catch(() => {});
 }
 </script>
 </body>
